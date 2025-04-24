@@ -1,0 +1,88 @@
+@startuml shiftwoErd
+
+' ログインユーザのメタデータ管理用。
+entity "ユーザー" as User {
+  +id: string, UUID
+  --
+  *name: string
+  *email: string
+}
+
+' ログインユーザの権限管理用テーブル。Adminなどを想定。
+entity "権限" as Permission {
+  +id: string, UUID
+  --
+  *name: string
+}
+
+' イベントごとのユーザ情報テーブル。
+entity "スタッフ" as Staff {
+  +id: string, UUID
+  --
+  *userId: string, UUID
+  *preferredRoles: array of Role IDs
+  *unavailableTimes: array of TimeRange
+}
+
+' 開催されるイベントを管理するテーブル。
+entity "イベント" as Event {
+  +id: string, UUID
+  --
+  *name: string
+  *rooms: array of Room
+  *owners: array of user IDs
+}
+
+entity "イベント設定" as EventSetting {
+  +id: string, UUID
+  --
+  *timeUnitMinutes: number
+}
+
+entity "部屋" as Room {
+  +id: string, UUID
+  --
+  *name: string
+'   *timeTable: array of TimeRange
+}
+
+' NOTE: データモデルには存在したものの、テーブルと分けて使い回すものではなさそうなので
+'       コメントアウトしています
+' entity "時間範囲" as TimeRange {
+' '   +id: string, UUID
+' '   --
+'   *startTime: DateTime
+'   *endTime: DateTime
+' }
+
+entity "シフト" as Shift {
+  +id: string, UUID
+  --
+  *eventId: string, UUID
+  *roomId: string, UUID
+  *staffId: string, UUID
+  *roleId: string, UUID
+  *startTime: DateTime
+  *endTime: DateTime
+}
+
+' シフトごとに必要な役割を定義するテーブル。
+entity "シフト役割" as Role {
+  +id: string, UUID
+  --
+  *name: string
+  *color: string, hex color code
+  *requiredStaffCount: number
+}
+
+User ||--o| Permission : has
+User }|--|{ Event : owns
+User ||--o Staff : has
+Event ||--o Room : contains
+Event ||--o Shift : has
+Event ||--o| EventSetting : has
+Room ||--o Shift : has
+Shift ||--o Staff : assigned
+Shift ||--|| Role : has
+
+@enduml
