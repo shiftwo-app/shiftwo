@@ -1,16 +1,17 @@
 import ShiftTimeline from "@/app/components/ShiftTimeline";
+import { prisma } from "@/app/lib/prisma";
 import { Role, Shift, ShiftSetting, ShiftStatus, Staff } from "./types";
 
 const HomePage = async () => {
-  const shifts = ((await prisma?.shift.findMany({
+  const shifts = ((await prisma.shift.findMany({
     where: {
       status: ShiftStatus.confirmed,
     },
-  })) ?? []) as unknown as Shift[];
-  const roles: Role[] = (await prisma?.role.findMany()) ?? [];
-  const staffs: Staff[] = (await prisma?.staff.findMany()) ?? [];
+  })) ?? []) as unknown as Shift[]; // timeRangeのJsonValueを上書き
+  const roles: Role[] = await prisma.role.findMany();
+  const staffs: Staff[] = await prisma.staff.findMany();
   const shiftSetting: ShiftSetting | null =
-    (await prisma?.shiftSetting.findFirst()) ?? null;
+    await prisma.shiftSetting.findFirst();
 
   const startTime = new Date(2024, 0, 1, 9, 0, 0);
   const endTime = new Date(2024, 0, 1, 22, 0, 0);
