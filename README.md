@@ -29,4 +29,8 @@ This project uses [`next/font`](https://nextjs.org/docs/app/building-your-applic
 cd .devcontainer && docker-compose up -d
 
 npx prisma migrate dev
+
+pnpm prisma:seed
+
+pnpm dev
 ```
