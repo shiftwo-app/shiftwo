@@ -1,9 +1,13 @@
-// app/page.tsx
-"use client";
-import type React from "react";
-import { useState, useEffect } from "react";
+//backup file
+import React, { useState, useEffect } from "react";
 import ShiftTimeline from "./components/ShiftTimeline";
-import type { Shift, Role, Staff, ShiftSetting, ShiftStatus } from "./types";
+import { Shift, Role, Staff, ShiftSetting } from "./types";
+import {
+	fetchShifts,
+	fetchRoles,
+	fetchStaffs,
+	fetchShiftSetting,
+} from "./lib/api";
 
 const HomePage: React.FC = () => {
 	const [shifts, setShifts] = useState<Shift[]>([]);
@@ -15,10 +19,10 @@ const HomePage: React.FC = () => {
 		const fetchData = async () => {
 			const [shiftsData, rolesData, staffsData, shiftSettingData] =
 				await Promise.all([
-					fetch("/api/shifts").then((res) => res.json()), // Fetch confirmed shifts
-					fetch("/api/roles").then((res) => res.json()),
-					fetch("/api/staff").then((res) => res.json()),
-					fetch("/api/settings").then((res) => res.json()),
+					fetchShifts(),
+					fetchRoles(),
+					fetchStaffs(),
+					fetchShiftSetting(),
 				]);
 			setShifts(shiftsData);
 			setRoles(rolesData);

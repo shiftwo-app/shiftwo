@@ -1,0 +1,45 @@
+shift-app/
+├── app/
+│   ├── api/
+│   │   ├── staff/
+│   │   │   └── route.ts // Staff API routes
+│   │   ├── roles/
+│   │   │   └── route.ts // Role API routes
+│   │   ├── events/
+│   │   │   └── route.ts // Event API routes
+│   │   ├── shifts/
+│   │   │   └── route.ts // Shift API routes
+│   │   └── settings/
+│   │       └── route.ts // Settings API routes
+│   ├── components/
+│   │   ├── ShiftTimeline.tsx
+│   │   ├── StaffList.tsx
+│   │   ├── RoleList.tsx
+│   │   ├── EventTimeTable.tsx
+│   │   ├── RoomTimeTable.tsx
+│   │   ├── ShiftForm.tsx
+│   │   ├── StaffShiftView.tsx
+│   │   ├── RoleShiftView.tsx
+│   │   ├── ShiftSettingForm.tsx
+│   │   └── StaffPreferenceForm.tsx
+│   ├── lib/
+│   │   ├── prisma.ts // Prisma client
+│   │   ├── date-utils.ts // Date/time utilities
+│   │   └── data-utils.ts // Data manipulation utilities
+│   ├── types/
+│   │   └── index.ts // Type definitions
+│   ├── page.tsx // Top page (Shift creation)
+│   ├── staff/
+│   │   └── [staffId]/
+│   │       └── page.tsx // Staff detail page
+│   ├── roles/
+│   │   └── page.tsx // Role management page
+│   ├── events/
+│   │   └── page.tsx // Event management page
+│   └── settings/
+│       └── page.tsx // Settings page
+├── prisma/
+│   └── schema.prisma
+├── .env
+├── package.json
+└── ...

@@ -1,0 +1,38 @@
+services:
+  app:
+    # image: node:22-slim
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - 3000:3000
+    volumes:
+      - ../.:/workspace
+    working_dir: /workspace
+    tty: true
+    # command:
+    # - /bin/bash
+    # - -c
+    # - apt-get update && apt-get install -y git && rm -rf /var/lib/apt/lists/*
+    # - npm install -g pnpm
+    # - pnpm install
+    environment:
+      - TZ=Asia/Tokyo
+
+  db:
+    image: postgres:17-alpine
+    ports:
+      - 5432:5432
+    volumes:
+      - db:/var/lib/postgresql/data
+    environment:
+      POSTGRES_DB: shiftwo
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: shiftwo2025
+    # healthcheck:
+    #   test: ["CMD-SHELL", "pg_isready"]
+    #   interval: 5s
+    #   timeout: 5s
+    #   retries: 5
+volumes:
+  db:

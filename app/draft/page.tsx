@@ -1,11 +1,11 @@
-// app/page.tsx
+// app/draft/page.tsx
 "use client";
 import type React from "react";
 import { useState, useEffect } from "react";
-import ShiftTimeline from "./components/ShiftTimeline";
-import type { Shift, Role, Staff, ShiftSetting, ShiftStatus } from "./types";
+import ShiftTimeline from "../components/ShiftTimeline";
+import type { Shift, Role, Staff, ShiftSetting, ShiftStatus } from "../types";
 
-const HomePage: React.FC = () => {
+const DraftPage: React.FC = () => {
 	const [shifts, setShifts] = useState<Shift[]>([]);
 	const [roles, setRoles] = useState<Role[]>([]);
 	const [staffs, setStaffs] = useState<Staff[]>([]);
@@ -15,7 +15,7 @@ const HomePage: React.FC = () => {
 		const fetchData = async () => {
 			const [shiftsData, rolesData, staffsData, shiftSettingData] =
 				await Promise.all([
-					fetch("/api/shifts").then((res) => res.json()), // Fetch confirmed shifts
+					fetch("/api/shifts/draft").then((res) => res.json()), // Fetch draft shifts
 					fetch("/api/roles").then((res) => res.json()),
 					fetch("/api/staff").then((res) => res.json()),
 					fetch("/api/settings").then((res) => res.json()),
@@ -33,7 +33,7 @@ const HomePage: React.FC = () => {
 
 	return (
 		<div>
-			<h1>Shift Management</h1>
+			<h1>Draft Shifts</h1>
 			{shiftSetting && (
 				<ShiftTimeline
 					shifts={shifts}
@@ -48,4 +48,4 @@ const HomePage: React.FC = () => {
 	);
 };
 
-export default HomePage;
+export default DraftPage;

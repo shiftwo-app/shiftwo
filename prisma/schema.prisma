@@ -1,0 +1,61 @@
+// prisma/schema.prisma
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql" // Or your chosen database
+  url      = env("DATABASE_URL")
+}
+
+model Staff {
+  id              String    @id @default(uuid())
+  name            String
+  preferredRoles  Role[]    @relation("StaffPreferredRoles")
+  unavailableTimes Json[] // Array of TimeRange (start, end)
+  shifts          Shift[]
+}
+
+model Role {
+  id              String    @id @default(uuid())
+  name            String
+  color           String
+  requiredStaffCount Int
+  preferredBy     Staff[]   @relation("StaffPreferredRoles")
+  shifts          Shift[]
+}
+
+model Event {
+  id    String @id @default(uuid())
+  name  String
+  rooms Room[]
+}
+
+model Room {
+  id        String @id @default(uuid())
+  name      String
+  timeTable Json[] // Array of TimeRange (start, end)
+  eventId   String
+  event     Event  @relation(fields: [eventId], references: [id])
+}
+
+model Shift {
+  id              String    @id @default(uuid())
+  staff           Staff     @relation(fields: [staffId], references: [id])
+  staffId         String
+  role            Role      @relation(fields: [roleId], references: [id])
+  roleId          String
+  timeRange       Json // TimeRange (start, end)
+  isPreferredRole Boolean
+  status          ShiftStatus @default(draft) // Add this line
+}
+
+enum ShiftStatus {
+  draft
+  confirmed
+}
+
+model ShiftSetting {
+  id              String    @id @default(uuid())
+  timeUnitMinutes Int
+}
