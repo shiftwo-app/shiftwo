@@ -1,4 +1,6 @@
-# SHIFTWO / シフトヲ
+<div align="center">
+![Shiftwo / シフトヲ](https://raw.githubusercontent.com/shiftwo-app/shiftwo/.github/logo_standard.svg)
+</div>
 
 ## Getting Started
 
