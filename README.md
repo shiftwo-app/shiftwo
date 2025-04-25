@@ -1,5 +1,5 @@
 <div align="center">
-![Shiftwo / シフトヲ](https://raw.githubusercontent.com/shiftwo-app/shiftwo/refs/heads/main/.github/logo_standard.svg)
+<img src="https://raw.githubusercontent.com/shiftwo-app/shiftwo/main/.github/logo_standard.svg" alt="Shiftwo / シフトヲ" style="max-width: 400px;" />
 </div>
 
 ## Getting Started
