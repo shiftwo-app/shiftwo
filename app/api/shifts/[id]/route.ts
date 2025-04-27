@@ -4,13 +4,14 @@ import { prisma } from "../../../lib/prisma";
 
 export async function PUT(
 	req: NextRequest,
-	{ params }: { params: { id: string } },
+	{ params }: { params: Promise<{ id: string }> },
 ) {
 	try {
+		const { id } = await params;
 		const body = await req.json();
 		const updatedShift = await prisma.shift.update({
 			where: {
-				id: params.id,
+				id: id,
 			},
 			data: {
 				staffId: body.staffId,
