@@ -1,4 +1,4 @@
-import { Shift, Role, Staff, ShiftSetting } from "../types";
+import type { Shift, Role, Staff, ShiftSetting } from "../types";
 
 const BASE_URL = "/api";
 

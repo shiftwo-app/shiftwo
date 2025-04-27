@@ -20,7 +20,7 @@ const ShiftTimeline: React.FC<ShiftTimelineProps> = ({
 	endTime,
 }) => {
 	const timeSlots = [];
-	let currentTime = new Date(startTime);
+	const currentTime = new Date(startTime);
 	while (currentTime < endTime) {
 		timeSlots.push(new Date(currentTime));
 		currentTime.setMinutes(currentTime.getMinutes() + timeUnitMinutes);

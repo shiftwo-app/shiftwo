@@ -1,7 +1,8 @@
 //backup file
-import React, { useState, useEffect } from "react";
+import type React from "react";
+import { useState, useEffect } from "react";
 import ShiftTimeline from "./components/ShiftTimeline";
-import { Shift, Role, Staff, ShiftSetting } from "./types";
+import type { Shift, Role, Staff, ShiftSetting } from "./types";
 import {
 	fetchShifts,
 	fetchRoles,

@@ -1,6 +1,6 @@
 import ShiftTimeline from "@/app/components/ShiftTimeline";
 import { prisma } from "@/app/lib/prisma";
-import { Role, Shift, ShiftSetting, ShiftStatus, Staff } from "./types";
+import { type Role, type Shift, type ShiftSetting, ShiftStatus, type Staff } from "./types";
 
 const HomePage = async () => {
 	const shifts = ((await prisma.shift.findMany({
