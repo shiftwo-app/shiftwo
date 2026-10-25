@@ -4,7 +4,7 @@ FROM node:22-slim
 RUN apt-get update && apt-get install -y \
     git \
     && rm -rf /var/lib/apt/lists/*
-RUN npm install -g pnpm
+RUN npm install -g pnpm@12.15.0
 
 # ワークスペースディレクトリを作成
 WORKDIR /workspace
