@@ -5,3 +5,9 @@ allowBuilds:
   esbuild: true
   prisma: true
   sharp: false
+
+overrides:
+  # next 15.5.28 は postcss を 8.4.31 に固定していて、postcss とその下の nanoid・source-map-js に
+  # pnpm audit の脆弱性が残る（2026-10）。next 15 系にはこれを直した版がないので、同じメジャーの直った版に上げる。
+  # @tailwindcss/postcss の下の postcss（8.5.3）もこれでそろえて上げる。
+  'postcss@<8.5.23': ^8.5.31
