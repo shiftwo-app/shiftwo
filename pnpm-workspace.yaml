@@ -1,13 +1,20 @@
 allowBuilds:
-  '@biomejs/biome': false
-  '@prisma/client': true
-  '@prisma/engines': true
+  "@prisma/client": true
+  "@prisma/engines": true
   esbuild: true
   prisma: true
   sharp: false
 
 overrides:
-  # next 15 系は postcss を 8.4.31 に固定していて、postcss とその下の nanoid・source-map-js に
-  # pnpm audit の脆弱性が残る（2026-10）。next 15 系にはこれを直した版がないので、同じメジャーの直った版にそろえる。
-  # @tailwindcss/postcss の下の postcss（8.5.3）もこれで上がる。
-  postcss: ^8.5.31
+  # Vite+ の推奨どおり、ほかの部品が要求する vite も Vite+ の vite（vite-plus-core）にそろえる
+  vite@*: "catalog:"
+
+catalog:
+  vite: npm:@voidzero-dev/vite-plus-core@1.5.0
+  vite-plus: 1.5.0
+
+peerDependencyRules:
+  allowAny:
+    - vite
+  allowedVersions:
+    vite: "*"

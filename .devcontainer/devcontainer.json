@@ -6,41 +6,39 @@
 	"customizations": {
 		"vscode": {
 			"extensions": [
-				"dbaeumer.vscode-eslint",
-				"esbenp.prettier-vscode",
+				"oxc.oxc-vscode",
 				"bradlc.vscode-tailwindcss",
 				"formulahendry.auto-rename-tag",
-				"csstools.postcss",
 				"ms-vscode.vscode-typescript-next",
-				"biomejs.biome",
 				"prisma.prisma"
 			],
 			"settings": {
 				"editor.formatOnSave": true,
 				"[typescript]": {
-					"editor.defaultFormatter": "biomejs.biome"
+					"editor.defaultFormatter": "oxc.oxc-vscode"
 				},
 				"[javascript]": {
-					"editor.defaultFormatter": "biomejs.biome"
+					"editor.defaultFormatter": "oxc.oxc-vscode"
 				},
 				"[typescriptreact]": {
-					"editor.defaultFormatter": "biomejs.biome"
+					"editor.defaultFormatter": "oxc.oxc-vscode"
 				},
 				"[javascriptreact]": {
-					"editor.defaultFormatter": "biomejs.biome"
+					"editor.defaultFormatter": "oxc.oxc-vscode"
 				},
 				"[json]": {
-					"editor.defaultFormatter": "biomejs.biome"
+					"editor.defaultFormatter": "oxc.oxc-vscode"
 				},
 				"[css]": {
-					"editor.defaultFormatter": "biomejs.biome"
+					"editor.defaultFormatter": "oxc.oxc-vscode"
 				},
 				"[html]": {
-					"editor.defaultFormatter": "biomejs.biome"
+					"editor.defaultFormatter": "oxc.oxc-vscode"
 				},
 				"editor.codeActionsOnSave": {
-					"source.fixAll": "explicit"
+					"source.fixAll.oxc": "explicit"
 				},
+				"oxc.fmt.disableNestedConfig": true,
 				"typescript.tsdk": "node_modules/typescript/lib"
 			}
 		}
