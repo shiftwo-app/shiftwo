@@ -1,0 +1,16 @@
+# イメージの中で作り直すもの・入れてはいけないもの
+.git
+node_modules
+dist
+src/generated
+prisma/generated-schema
+prisma/*.db
+.tanstack
+.wrangler
+.env*
+.dev.vars*
+deploy/docker/.env
+data
+misc
+*.tsbuildinfo
+.playwright-mcp

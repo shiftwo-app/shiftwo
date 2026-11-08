@@ -39,8 +39,13 @@ describe("resolveMailTransport", () => {
 		);
 	});
 
+	it("smtp と cloudflare は受け付ける", () => {
+		expect(resolveMailTransport("smtp", "production")).toBe("smtp");
+		expect(resolveMailTransport("cloudflare", "production")).toBe("cloudflare");
+	});
+
 	it("知らない値はエラー", () => {
-		expect(() => resolveMailTransport("smtp", "development")).toThrow(
+		expect(() => resolveMailTransport("sendgrid", "development")).toThrow(
 			/MAIL_TRANSPORT/,
 		);
 	});

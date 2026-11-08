@@ -3,6 +3,8 @@ import { PrismaPg } from "@prisma/adapter-pg";
 import { PrismaClient } from "../generated/prisma-postgresql/client";
 import { parseDatabaseProvider } from "../lib/database-provider";
 import { loadEnvFileIfExists } from "../lib/load-env";
+import { createCloudflareRestTransport } from "../lib/mail/cloudflare-rest-transport.server";
+import { createSmtpTransport } from "../lib/mail/smtp-transport.server";
 import { createLocalBlobStore } from "../lib/storage/local-store.server";
 import type { Platform } from "./types";
 
@@ -23,7 +25,11 @@ export const platform: Platform = {
 			adapter: new PrismaPg({ connectionString: process.env.DATABASE_URL }),
 		});
 	},
-	mailTransports: {},
+	mailTransports: {
+		smtp: createSmtpTransport(process.env),
+		// Workers の外から Cloudflare Email Service で送る（REST API）
+		cloudflare: createCloudflareRestTransport(process.env),
+	},
 	createBlobStore() {
 		const driver = process.env.STORAGE_DRIVER || "local";
 		if (driver !== "local") {
