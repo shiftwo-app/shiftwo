@@ -39,7 +39,7 @@ const range = (date: string, start: string, end: string) => ({
 });
 
 async function main() {
-	// 既存データのクリーンアップ（団体を消すと、テナント・イベント・スタッフ・役割・シフト・メンバー・招待コードも消える）
+	// 既存データのクリーンアップ（団体を消すと、テナント・イベント・スタッフ・持ち場・シフト・メンバー・招待コードも消える）
 	await prisma.organization.deleteMany({});
 
 	const owner = await upsertDemoUser(DEMO_OWNER_EMAIL, "リーダー");
@@ -94,34 +94,39 @@ async function main() {
 		range("2024-06-03", "10:00", "15:00"),
 	]);
 
-	// 日常シフトの役割（テナントごと）
-	const dailyRole = (
+	// 日常シフトの持ち場（テナントごと）
+	const dailyPosition = (
 		tenantId: string,
 		name: string,
 		color: string,
 		requiredStaffCount: number,
 	) =>
-		prisma.role.create({
+		prisma.position.create({
 			data: { organizationId, tenantId, name, color, requiredStaffCount },
 		});
-	const register = await dailyRole(shibuya.id, "レジ", "#F59E0B", 2);
-	const stocking = await dailyRole(shibuya.id, "品出し", "#10B981", 1);
-	const shinjukuRegister = await dailyRole(shinjuku.id, "レジ", "#F59E0B", 1);
+	const register = await dailyPosition(shibuya.id, "レジ", "#F59E0B", 2);
+	const stocking = await dailyPosition(shibuya.id, "品出し", "#10B981", 1);
+	const shinjukuRegister = await dailyPosition(
+		shinjuku.id,
+		"レジ",
+		"#F59E0B",
+		1,
+	);
 
 	// 日常シフト（イベントに紐づかないシフト）
 	const dailyShift = (
 		tenantId: string,
 		staffId: string,
-		roleId: string,
+		positionId: string,
 		timeRange: { start: Date; end: Date },
 		status: ShiftStatus,
 	) => ({
 		organizationId,
 		tenantId,
 		staffId,
-		roleId,
+		positionId,
 		timeRange,
-		isPreferredRole: true,
+		isPreferredPosition: true,
 		status,
 	});
 	await prisma.shift.createMany({
@@ -157,7 +162,7 @@ async function main() {
 		],
 	});
 
-	// ---- イベント（単発運用）：渋谷店の「WordCamp 2024」。役割はイベントごとで、時間粒度は 15 分に上書き ----
+	// ---- イベント（単発運用）：渋谷店の「WordCamp 2024」。持ち場はイベントごとで、時間粒度は 15 分に上書き ----
 	const event = await prisma.event.create({
 		data: {
 			organizationId,
@@ -187,8 +192,12 @@ async function main() {
 			},
 		],
 	});
-	const eventRole = (name: string, color: string, requiredStaffCount: number) =>
-		prisma.role.create({
+	const eventPosition = (
+		name: string,
+		color: string,
+		requiredStaffCount: number,
+	) =>
+		prisma.position.create({
 			data: {
 				organizationId,
 				tenantId: shibuya.id,
@@ -198,25 +207,25 @@ async function main() {
 				requiredStaffCount,
 			},
 		});
-	const admin = await eventRole("管理者", "#FF5733", 1);
-	const moderator = await eventRole("司会進行", "#33FFF6", 2);
-	await eventRole("タイムキーパー", "#33FF57", 3);
-	await eventRole("チェッカー", "#3357FF", 4);
-	const reception = await eventRole("受付", "#3357FF", 4);
+	const admin = await eventPosition("管理者", "#FF5733", 1);
+	const moderator = await eventPosition("司会進行", "#33FFF6", 2);
+	await eventPosition("タイムキーパー", "#33FF57", 3);
+	await eventPosition("チェッカー", "#3357FF", 4);
+	const reception = await eventPosition("受付", "#3357FF", 4);
 	await prisma.staff.update({
 		where: { id: yamada.id },
 		data: {
-			preferredRoles: { connect: [{ id: admin.id }, { id: reception.id }] },
+			preferredPositions: { connect: [{ id: admin.id }, { id: reception.id }] },
 		},
 	});
 	await prisma.staff.update({
 		where: { id: sato.id },
-		data: { preferredRoles: { connect: [{ id: reception.id }] } },
+		data: { preferredPositions: { connect: [{ id: reception.id }] } },
 	});
 
 	const eventShift = (
 		staffId: string,
-		roleId: string,
+		positionId: string,
 		timeRange: { start: Date; end: Date },
 		status: ShiftStatus,
 	) => ({
@@ -224,9 +233,9 @@ async function main() {
 		tenantId: shibuya.id,
 		eventId: event.id,
 		staffId,
-		roleId,
+		positionId,
 		timeRange,
-		isPreferredRole: true,
+		isPreferredPosition: true,
 		status,
 	});
 	await prisma.shift.createMany({
@@ -277,11 +286,11 @@ async function main() {
 		},
 		include: { tenants: true },
 	});
-	await prisma.role.create({
+	await prisma.position.create({
 		data: {
 			organizationId: otherOrg.id,
 			tenantId: otherOrg.tenants[0].id,
-			name: "別団体の役割",
+			name: "別団体の持ち場",
 			color: "#999999",
 			requiredStaffCount: 1,
 		},

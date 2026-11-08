@@ -13,7 +13,7 @@ function EventsPage() {
 		<main className="mx-auto max-w-2xl space-y-4 p-6">
 			<h1 className="text-xl font-bold">イベント</h1>
 			<p className="text-sm text-gray-600">
-				単発のイベントのシフトは、日常シフトとは別に、イベントごとの役割で組みます。
+				単発のイベントのシフトは、日常シフトとは別に、イベントごとの持ち場で組みます。
 			</p>
 			{tenantContext.events.length === 0 ? (
 				<p className="text-sm">まだイベントはありません。</p>

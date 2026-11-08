@@ -7,7 +7,7 @@ import {
 	useState,
 } from "react";
 import type { KeyboardEvent, PointerEvent, RefObject } from "react";
-import { type Role, type Shift, ShiftStatus, type Staff } from "../types";
+import { type Position, type Shift, ShiftStatus, type Staff } from "../types";
 import {
 	buildRows,
 	buildTicks,
@@ -44,7 +44,7 @@ export interface TimelineEditing {
 
 interface ShiftTimelineProps {
 	shifts: Shift[];
-	roles: Role[];
+	positions: Position[];
 	staffs: Staff[];
 	/** ShiftSetting.timeUnitMinutes。ズームの初期値と、編集のときの吸着の刻みに使う */
 	timeUnitMinutes: number;
@@ -54,16 +54,16 @@ interface ShiftTimelineProps {
 /** 1 目盛りの幅（px）。ズームを変えると 1 分あたりの幅が変わる */
 const TICK_WIDTH_PX = 40;
 const LANE_HEIGHT_PX = 40;
-/** 役割別の行の上に出す、充足バッジの帯の高さ */
+/** 持ち場別の行の上に出す、充足バッジの帯の高さ */
 const BADGE_BAND_HEIGHT_PX = 22;
 /** 編集モードで表示期間の前後に足す余白 */
 const EDIT_PADDING_MS = 60 * 60_000;
 const DAY_MS = 24 * 60 * 60_000;
-/** 行の見出し（役割名・スタッフ名）の幅。横にスクロールしても左に残る */
+/** 行の見出し（持ち場名・スタッフ名）の幅。横にスクロールしても左に残る */
 const HEADER_WIDTH_PX = 160;
 
 const AXIS_LABELS: Record<TimelineAxis, string> = {
-	role: "役割別",
+	position: "持ち場別",
 	staff: "スタッフ別",
 };
 
@@ -130,12 +130,12 @@ const useWheelZoom = (
 
 const ShiftTimeline = ({
 	shifts,
-	roles,
+	positions,
 	staffs,
 	timeUnitMinutes,
 	editing,
 }: ShiftTimelineProps) => {
-	const [axis, setAxis] = useState<TimelineAxis>("role");
+	const [axis, setAxis] = useState<TimelineAxis>("position");
 	const [zoom, setZoom] = useState<ZoomMinutes>(toZoom(timeUnitMinutes));
 	const zoomSelectId = useId();
 	const now = useNow();
@@ -181,8 +181,8 @@ const ShiftTimeline = ({
 	}, [dayShifts, day, isEditing]);
 	const ticks = useMemo(() => buildTicks(range, zoom), [range, zoom]);
 	const rows = useMemo(
-		() => buildRows(axis, dayShifts, roles, staffs),
-		[axis, dayShifts, roles, staffs],
+		() => buildRows(axis, dayShifts, positions, staffs),
+		[axis, dayShifts, positions, staffs],
 	);
 
 	const pxPerMs = TICK_WIDTH_PX / (zoom * MINUTE_MS);
@@ -353,7 +353,7 @@ const ShiftTimeline = ({
 			</div>
 
 			<p className="text-xs text-gray-500">
-				点線の枠は下書き、オレンジの枠は希望外の割り当てです。役割別の行の上の数字は「入っている人数
+				点線の枠は下書き、オレンジの枠は希望外の割り当てです。持ち場別の行の上の数字は「入っている人数
 				/ 必要な人数」で、足りない時間帯は赤くなります。⌘ / Ctrl
 				を押しながらホイール（ピンチ）でズームできます。
 				{editing &&
@@ -363,7 +363,7 @@ const ShiftTimeline = ({
 	);
 };
 
-/** 役割の行の上に、時間帯ごとの「入っている人数 / 必要な人数」を出す（FR-4-D） */
+/** 持ち場の行の上に、時間帯ごとの「入っている人数 / 必要な人数」を出す（FR-4-D） */
 const StaffingBand = ({
 	label,
 	requiredCount,
@@ -417,7 +417,7 @@ const ShiftBlock = ({
 	unitMinutes: number;
 	editing?: TimelineEditing;
 }) => {
-	const { shift, role, staff } = item;
+	const { shift, position, staff } = item;
 	// ドラッグ中・保存中は、動かした先を仮に表示する。保存後にデータが変われば消す
 	const [preview, setPreview] = useState<{ start: number; end: number } | null>(
 		null,
@@ -431,14 +431,14 @@ const ShiftBlock = ({
 
 	const shown = preview ?? { start: item.start, end: item.end };
 	const isDraft = shift.status === ShiftStatus.draft;
-	// 役割別の行ではスタッフ名、スタッフ別の行では役割名を出す
-	const title = axis === "role" ? staff?.name : role?.name;
+	// 持ち場別の行ではスタッフ名、スタッフ別の行では持ち場名を出す
+	const title = axis === "position" ? staff?.name : position?.name;
 	const time = `${formatTime(shown.start)}〜${formatTime(shown.end)}`;
 	const notes = [
 		isDraft ? "下書き" : undefined,
-		shift.isPreferredRole ? undefined : "希望外の割り当て",
+		shift.isPreferredPosition ? undefined : "希望外の割り当て",
 	].filter(Boolean);
-	const label = [staff?.name, role?.name, time, ...notes]
+	const label = [staff?.name, position?.name, time, ...notes]
 		.filter(Boolean)
 		.join("、");
 
@@ -528,14 +528,14 @@ const ShiftBlock = ({
 				setPreview(null);
 			}}
 			onKeyDown={handleKeyDown}
-			className={`absolute overflow-hidden rounded px-1 text-xs leading-tight shadow-sm select-none focus:outline-2 focus:outline-offset-1 focus:outline-blue-600 ${isDraft ? "border-2 border-dashed" : "border"} ${shift.isPreferredRole ? "border-gray-700/40" : "border-orange-500 ring-2 ring-orange-400"} ${editing ? "cursor-grab touch-none active:cursor-grabbing" : ""} ${preview ? "opacity-80 shadow-lg" : ""}`}
+			className={`absolute overflow-hidden rounded px-1 text-xs leading-tight shadow-sm select-none focus:outline-2 focus:outline-offset-1 focus:outline-blue-600 ${isDraft ? "border-2 border-dashed" : "border"} ${shift.isPreferredPosition ? "border-gray-700/40" : "border-orange-500 ring-2 ring-orange-400"} ${editing ? "cursor-grab touch-none active:cursor-grabbing" : ""} ${preview ? "opacity-80 shadow-lg" : ""}`}
 			style={{
 				left,
 				width: Math.max(width - 2, 4),
 				top: item.lane * LANE_HEIGHT_PX + 4,
 				height: LANE_HEIGHT_PX - 8,
-				backgroundColor: role?.color ?? "#cccccc",
-				color: readableTextColor(role?.color),
+				backgroundColor: position?.color ?? "#cccccc",
+				color: readableTextColor(position?.color),
 			}}
 		>
 			<span className="block truncate font-semibold">{title}</span>

@@ -48,24 +48,28 @@ describe.skipIf(!hasDatabase)(
 		const ids = {
 			staffA: "",
 			staffB: "",
-			dailyRoleA1: "",
-			dailyRoleA2: "",
-			eventRoleE1: "",
-			dailyRoleB1: "",
+			dailyPositionA1: "",
+			dailyPositionA2: "",
+			eventPositionE1: "",
+			dailyPositionB1: "",
 			dailyShiftA1: "",
 			dailyShiftA2: "",
 			eventShiftE1: "",
 			dailyShiftB1: "",
 		};
 
-		const shiftInput = (staffId: string, roleId: string, status = "draft") => ({
+		const shiftInput = (
+			staffId: string,
+			positionId: string,
+			status = "draft",
+		) => ({
 			staffId,
-			roleId,
+			positionId,
 			timeRange: {
 				start: "2026-11-20T09:00:00+09:00",
 				end: "2026-11-20T12:00:00+09:00",
 			},
-			isPreferredRole: true,
+			isPreferredPosition: true,
 			status,
 		});
 		const timeRange = {
@@ -159,12 +163,12 @@ describe.skipIf(!hasDatabase)(
 			});
 			ids.staffA = staffA.id;
 			ids.staffB = staffB.id;
-			const role = (
+			const position = (
 				organizationId: string,
 				tenantId: string,
 				eventId: string | null,
 			) =>
-				prisma.role.create({
+				prisma.position.create({
 					data: {
 						organizationId,
 						tenantId,
@@ -174,16 +178,18 @@ describe.skipIf(!hasDatabase)(
 						requiredStaffCount: 1,
 					},
 				});
-			ids.dailyRoleA1 = (await role(orgs.a.id, tenants.a1.id, null)).id;
-			ids.dailyRoleA2 = (await role(orgs.a.id, tenants.a2.id, null)).id;
-			ids.eventRoleE1 = (await role(orgs.a.id, tenants.a1.id, eventE1.id)).id;
-			ids.dailyRoleB1 = (await role(orgs.b.id, tenants.b1.id, null)).id;
+			ids.dailyPositionA1 = (await position(orgs.a.id, tenants.a1.id, null)).id;
+			ids.dailyPositionA2 = (await position(orgs.a.id, tenants.a2.id, null)).id;
+			ids.eventPositionE1 = (
+				await position(orgs.a.id, tenants.a1.id, eventE1.id)
+			).id;
+			ids.dailyPositionB1 = (await position(orgs.b.id, tenants.b1.id, null)).id;
 			const shift = (
 				organizationId: string,
 				tenantId: string,
 				eventId: string | null,
 				staffId: string,
-				roleId: string,
+				positionId: string,
 			) =>
 				prisma.shift.create({
 					data: {
@@ -191,17 +197,29 @@ describe.skipIf(!hasDatabase)(
 						tenantId,
 						eventId,
 						staffId,
-						roleId,
+						positionId,
 						timeRange,
-						isPreferredRole: true,
+						isPreferredPosition: true,
 						status: "draft",
 					},
 				});
 			ids.dailyShiftA1 = (
-				await shift(orgs.a.id, tenants.a1.id, null, ids.staffA, ids.dailyRoleA1)
+				await shift(
+					orgs.a.id,
+					tenants.a1.id,
+					null,
+					ids.staffA,
+					ids.dailyPositionA1,
+				)
 			).id;
 			ids.dailyShiftA2 = (
-				await shift(orgs.a.id, tenants.a2.id, null, ids.staffA, ids.dailyRoleA2)
+				await shift(
+					orgs.a.id,
+					tenants.a2.id,
+					null,
+					ids.staffA,
+					ids.dailyPositionA2,
+				)
 			).id;
 			ids.eventShiftE1 = (
 				await shift(
@@ -209,11 +227,17 @@ describe.skipIf(!hasDatabase)(
 					tenants.a1.id,
 					eventE1.id,
 					ids.staffA,
-					ids.eventRoleE1,
+					ids.eventPositionE1,
 				)
 			).id;
 			ids.dailyShiftB1 = (
-				await shift(orgs.b.id, tenants.b1.id, null, ids.staffB, ids.dailyRoleB1)
+				await shift(
+					orgs.b.id,
+					tenants.b1.id,
+					null,
+					ids.staffB,
+					ids.dailyPositionB1,
+				)
 			).id;
 		});
 
@@ -285,7 +309,7 @@ describe.skipIf(!hasDatabase)(
 				expect(
 					await saveShift(
 						access("owner"),
-						shiftInput(ids.staffB, ids.dailyRoleA1),
+						shiftInput(ids.staffB, ids.dailyPositionA1),
 					),
 				).toMatchObject({
 					ok: false,
@@ -298,17 +322,17 @@ describe.skipIf(!hasDatabase)(
 		});
 
 		describe("テナントとイベント", () => {
-			it("日常シフトの一覧には、そのテナントの日常シフトと日常の役割だけが入る（イベントのシフトは入らない）", async () => {
+			it("日常シフトの一覧には、そのテナントの日常シフトと日常の持ち場だけが入る（イベントのシフトは入らない）", async () => {
 				const board = await findShiftBoard(
 					{ organizationId: orgs.a.id, tenantId: tenants.a1.id, eventId: null },
 					"draft" as never,
 				);
 				expect(board.shifts.map((s) => s.id)).toEqual([ids.dailyShiftA1]);
-				expect(board.roles.map((r) => r.id)).toEqual([ids.dailyRoleA1]);
+				expect(board.positions.map((r) => r.id)).toEqual([ids.dailyPositionA1]);
 				expect(board.staffs.map((s) => s.id)).toEqual([ids.staffA]); // スタッフは団体全体
 			});
 
-			it("イベントの一覧には、そのイベントのシフトとイベントの役割だけが入る", async () => {
+			it("イベントの一覧には、そのイベントのシフトとイベントの持ち場だけが入る", async () => {
 				const board = await findShiftBoard(
 					{
 						organizationId: orgs.a.id,
@@ -318,14 +342,14 @@ describe.skipIf(!hasDatabase)(
 					"draft" as never,
 				);
 				expect(board.shifts.map((s) => s.id)).toEqual([ids.eventShiftE1]);
-				expect(board.roles.map((r) => r.id)).toEqual([ids.eventRoleE1]);
+				expect(board.positions.map((r) => r.id)).toEqual([ids.eventPositionE1]);
 			});
 
-			it("日常シフトにイベントの役割は使えず、イベントに日常の役割は使えない。ほかのテナントの役割も使えない", async () => {
+			it("日常シフトにイベントの持ち場は使えず、イベントに日常の持ち場は使えない。ほかのテナントの持ち場も使えない", async () => {
 				expect(
 					await saveShift(
 						access("owner"),
-						shiftInput(ids.staffA, ids.eventRoleE1),
+						shiftInput(ids.staffA, ids.eventPositionE1),
 					),
 				).toMatchObject({
 					ok: false,
@@ -334,13 +358,13 @@ describe.skipIf(!hasDatabase)(
 				expect(
 					await saveShift(
 						access("owner", tenants.a1, eventE1),
-						shiftInput(ids.staffA, ids.dailyRoleA1),
+						shiftInput(ids.staffA, ids.dailyPositionA1),
 					),
 				).toMatchObject({ ok: false, status: 400 });
 				expect(
 					await saveShift(
 						access("owner"),
-						shiftInput(ids.staffA, ids.dailyRoleA2),
+						shiftInput(ids.staffA, ids.dailyPositionA2),
 					),
 				).toMatchObject({
 					ok: false,
@@ -352,7 +376,7 @@ describe.skipIf(!hasDatabase)(
 				expect(
 					await saveShift(
 						access("owner"),
-						shiftInput(ids.staffA, ids.dailyRoleA1),
+						shiftInput(ids.staffA, ids.dailyPositionA1),
 						ids.dailyShiftA2,
 					),
 				).toMatchObject({ ok: false, status: 404 });
@@ -373,7 +397,7 @@ describe.skipIf(!hasDatabase)(
 			it("イベントで作ったシフトはイベントに、日常シフトで作ったシフトはイベントなしで保存される", async () => {
 				const daily = await saveShift(
 					access("owner"),
-					shiftInput(ids.staffA, ids.dailyRoleA1),
+					shiftInput(ids.staffA, ids.dailyPositionA1),
 				);
 				expect(daily).toMatchObject({
 					ok: true,
@@ -381,7 +405,7 @@ describe.skipIf(!hasDatabase)(
 				});
 				const evented = await saveShift(
 					{ ...access("owner", tenants.a1, eventE1), timeUnitMinutes: 5 },
-					shiftInput(ids.staffA, ids.eventRoleE1),
+					shiftInput(ids.staffA, ids.eventPositionE1),
 				);
 				expect(evented).toMatchObject({
 					ok: true,
@@ -454,7 +478,7 @@ describe.skipIf(!hasDatabase)(
 				expect(
 					await saveShift(
 						access("staff"),
-						shiftInput(ids.staffA, ids.dailyRoleA1),
+						shiftInput(ids.staffA, ids.dailyPositionA1),
 					),
 				).toMatchObject({
 					status: 403,
@@ -462,7 +486,7 @@ describe.skipIf(!hasDatabase)(
 				expect(
 					await saveShift(
 						access("guest"),
-						shiftInput(ids.staffA, ids.dailyRoleA1),
+						shiftInput(ids.staffA, ids.dailyPositionA1),
 					),
 				).toMatchObject({
 					status: 403,
@@ -470,7 +494,7 @@ describe.skipIf(!hasDatabase)(
 				expect(
 					await saveShift(
 						access("leader"),
-						shiftInput(ids.staffA, ids.dailyRoleA1, "confirmed"),
+						shiftInput(ids.staffA, ids.dailyPositionA1, "confirmed"),
 					),
 				).toMatchObject({ ok: true, shift: { status: "confirmed" } });
 			});

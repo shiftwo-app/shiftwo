@@ -3,7 +3,7 @@ import ShiftBoardPage from "../../../../../../../../components/ShiftBoardPage";
 import { getShiftBoard } from "../../../../../../../../server/shifts.functions";
 import { ShiftStatus } from "../../../../../../../../types";
 
-// イベントのシフト（イベントの役割で組む）
+// イベントのシフト（イベントの持ち場で組む）
 export const Route = createFileRoute(
 	"/_authed/o/$orgSlug/t/$tenantSlug/e/$eventSlug/",
 )({

@@ -1,6 +1,6 @@
 // サーバーだけで使う DB アクセス。どの関数も団体（とテナント・イベント）の ID を受け取り、その中のデータだけを扱う
 import { prisma } from "../lib/prisma.server";
-import type { Role, Shift, ShiftStatus, Staff } from "../types";
+import type { Position, Shift, ShiftStatus, Staff } from "../types";
 
 /** シフトの単位（ID）。eventId が null なら日常シフト */
 export type ShiftScopeIds = {
@@ -11,8 +11,8 @@ export type ShiftScopeIds = {
 
 export type ShiftBoard = {
 	shifts: Shift[];
-	/** この単位の役割（日常シフトならテナントの役割、イベントならイベントの役割） */
-	roles: Role[];
+	/** この単位の持ち場（日常シフトならテナントの持ち場、イベントならイベントの持ち場） */
+	positions: Position[];
 	/** スタッフは団体全体で共通 */
 	staffs: Staff[];
 };
@@ -21,7 +21,7 @@ export const findShiftBoard = async (
 	scope: ShiftScopeIds,
 	status: ShiftStatus,
 ): Promise<ShiftBoard> => {
-	const [shifts, roles, staffs] = await Promise.all([
+	const [shifts, positions, staffs] = await Promise.all([
 		prisma.shift.findMany({
 			where: {
 				organizationId: scope.organizationId,
@@ -30,7 +30,7 @@ export const findShiftBoard = async (
 				status,
 			},
 		}),
-		prisma.role.findMany({
+		prisma.position.findMany({
 			where: {
 				organizationId: scope.organizationId,
 				tenantId: scope.tenantId,
@@ -41,7 +41,7 @@ export const findShiftBoard = async (
 	]);
 	return {
 		shifts: shifts as unknown as Shift[], // timeRange の JsonValue を TimeRange として扱う
-		roles,
+		positions,
 		staffs,
 	};
 };
@@ -57,11 +57,11 @@ export const findShiftsWithRelations = (
 			eventId: scope.eventId,
 			status,
 		},
-		include: { staff: true, role: true },
+		include: { staff: true, position: true },
 	});
 
 export const findStaffsWithPreferredRoles = (organizationId: string) =>
 	prisma.staff.findMany({
 		where: { organizationId },
-		include: { preferredRoles: true },
+		include: { preferredPositions: true },
 	});

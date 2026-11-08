@@ -1,5 +1,5 @@
 // タイムラインの計算（純粋な関数）。描画は ShiftTimeline.tsx が受け持つ
-import type { Role, Shift, Staff } from "../../types";
+import type { Position, Shift, Staff } from "../../types";
 
 export const MINUTE_MS = 60_000;
 const HOUR_MS = 60 * MINUTE_MS;
@@ -22,13 +22,13 @@ export const stepZoom = (
 	return ZOOM_OPTIONS[Math.min(Math.max(index, 0), ZOOM_OPTIONS.length - 1)];
 };
 
-export type TimelineAxis = "role" | "staff";
+export type TimelineAxis = "position" | "staff";
 
 export type Interval = { start: number; end: number };
 
 export type TimelineItem = Interval & {
 	shift: Shift;
-	role?: Role;
+	position?: Position;
 	staff?: Staff;
 	/** 行の中で何段目に置くか（0 始まり） */
 	lane: number;
@@ -41,7 +41,7 @@ export type TimelineRow = {
 	items: TimelineItem[];
 	/** 行の段数。シフトがなくても 1 */
 	laneCount: number;
-	/** 役割別の行だけ：必要な人数（Role.requiredStaffCount） */
+	/** 持ち場別の行だけ：必要な人数（Position.requiredStaffCount） */
 	requiredCount?: number;
 };
 
@@ -191,7 +191,7 @@ const toRow = (
 	id: string,
 	label: string,
 	shifts: Shift[],
-	lookup: { roles: Map<string, Role>; staffs: Map<string, Staff> },
+	lookup: { positions: Map<string, Position>; staffs: Map<string, Staff> },
 	color?: string,
 	requiredCount?: number,
 ): TimelineRow => {
@@ -205,7 +205,7 @@ const toRow = (
 	const lanes = assignLanes(sorted);
 	const items = sorted.map((item, index) => ({
 		...item,
-		role: lookup.roles.get(item.shift.roleId),
+		position: lookup.positions.get(item.shift.positionId),
 		staff: lookup.staffs.get(item.shift.staffId),
 		lane: lanes[index] ?? 0,
 	}));
@@ -214,28 +214,28 @@ const toRow = (
 };
 
 /**
- * 縦軸（FR-1-2）に合わせて行を作る。役割別なら役割ごと、スタッフ別ならスタッフごとに 1 行。
- * シフトのない役割・スタッフも、空いていることがわかるよう行として残す
+ * 縦軸（FR-1-2）に合わせて行を作る。持ち場別なら持ち場ごと、スタッフ別ならスタッフごとに 1 行。
+ * シフトのない持ち場・スタッフも、空いていることがわかるよう行として残す
  */
 export const buildRows = (
 	axis: TimelineAxis,
 	shifts: Shift[],
-	roles: Role[],
+	positions: Position[],
 	staffs: Staff[],
 ): TimelineRow[] => {
 	const lookup = {
-		roles: new Map(roles.map((role) => [role.id, role])),
+		positions: new Map(positions.map((position) => [position.id, position])),
 		staffs: new Map(staffs.map((staff) => [staff.id, staff])),
 	};
-	if (axis === "role") {
-		return roles.map((role) =>
+	if (axis === "position") {
+		return positions.map((position) =>
 			toRow(
-				role.id,
-				role.name,
-				shifts.filter((shift) => shift.roleId === role.id),
+				position.id,
+				position.name,
+				shifts.filter((shift) => shift.positionId === position.id),
 				lookup,
-				role.color,
-				role.requiredStaffCount,
+				position.color,
+				position.requiredStaffCount,
 			),
 		);
 	}

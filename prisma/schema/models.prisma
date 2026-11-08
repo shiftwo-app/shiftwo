@@ -8,7 +8,8 @@ model Staff {
   organizationId  String
   organization    Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   name            String
-  preferredRoles  Role[]    @relation("StaffPreferredRoles")
+  // 希望する持ち場（relation の名前は、中間テーブルの名前を変えないよう StaffPreferredRoles のまま）
+  preferredPositions Position[] @relation("StaffPreferredRoles")
   // TimeRange（start, end）の配列。SQLite（D1）には配列型がないので、Json の中に配列で持つ。
   // @default("[]") は付けない（SQLite では Prisma が既定値を空文字列で出力してしまう）。作る側で [] を渡す
   unavailableTimes Json
@@ -17,8 +18,9 @@ model Staff {
   @@index([organizationId])
 }
 
-// 役割。日常シフトの役割はテナントごと（eventId なし）、イベントの役割はイベントごと（eventId あり）で、分けて持つ
-model Role {
+// 持ち場（受付・レジなど）。日常シフトの持ち場はテナントごと（eventId なし）、イベントの持ち場はイベントごと（eventId あり）で、分けて持つ。
+// 権限の「ロール」とは別のもの。DB のテーブル名は以前の名前（Role）のまま
+model Position {
   id              String    @id @default(uuid())
   organizationId  String
   organization    Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
@@ -34,6 +36,7 @@ model Role {
 
   @@index([organizationId])
   @@index([tenantId, eventId])
+  @@map("Role")
 }
 
 // イベント（単発運用）。テナントの下に置く。URL は /o/<団体>/t/<テナント>/e/<slug>
@@ -48,7 +51,7 @@ model Event {
   // 時間粒度の上書き（null ならテナントの値を使う）
   timeUnitMinutes Int?
   rooms           Room[]
-  roles           Role[]
+  positions       Position[]
   shifts          Shift[]
   members         EventMember[]
 
@@ -77,10 +80,12 @@ model Shift {
   // 団体を消したときに一緒に消えるよう Cascade（スタッフ・役割を消すと、そのシフトも消える）
   staff           Staff     @relation(fields: [staffId], references: [id], onDelete: Cascade)
   staffId         String
-  role            Role      @relation(fields: [roleId], references: [id], onDelete: Cascade)
-  roleId          String
+  position        Position  @relation(fields: [positionId], references: [id], onDelete: Cascade)
+  // DB の列名は以前の名前（roleId）のまま
+  positionId      String    @map("roleId")
   timeRange       Json // TimeRange (start, end)
-  isPreferredRole Boolean
+  // 希望どおりの持ち場か（DB の列名は以前の名前のまま）
+  isPreferredPosition Boolean @map("isPreferredRole")
   status          ShiftStatus @default(draft)
 
   @@index([organizationId, status])
@@ -104,7 +109,7 @@ model Tenant {
   createdAt       DateTime     @default(now())
   updatedAt       DateTime     @updatedAt
   events          Event[]
-  roles           Role[]
+  positions       Position[]
   shifts          Shift[]
   members         TenantMember[]
 
@@ -151,7 +156,7 @@ model Organization {
   members      Member[]
   invites      Invite[]
   staffs       Staff[]
-  roles        Role[]
+  positions    Position[]
   tenants      Tenant[]
   events       Event[]
   shifts       Shift[]

@@ -1,6 +1,6 @@
 import type {
 	Staff as PrismaStaff,
-	Role as PrismaRole,
+	Position as PrismaPosition,
 	Shift as PrismaShift,
 	Tenant as PrismaTenant,
 	Event as PrismaEvent,
@@ -8,7 +8,8 @@ import type {
 } from "../generated/prisma-postgresql/client";
 
 export type Staff = PrismaStaff;
-export type Role = PrismaRole;
+/** 持ち場（受付・レジなど）。権限のロールとは別 */
+export type Position = PrismaPosition;
 export type Shift = Omit<PrismaShift, "timeRange"> & {
 	timeRange: TimeRange;
 };
