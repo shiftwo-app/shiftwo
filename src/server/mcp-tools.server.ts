@@ -97,7 +97,7 @@ const isoDateTime = z.iso
 
 const shiftScopeInput = {
 	orgSlug: slug.describe("Organization slug (from list_organizations)"),
-	tenantSlug: slug.describe("Tenant slug (from list_scopes)"),
+	tenantSlug: slug.describe("Location slug (tenantSlug from list_scopes)"),
 	eventSlug: slug
 		.optional()
 		.describe("Event slug (from list_scopes). Omit for regular (daily) shifts"),
@@ -108,7 +108,7 @@ const preferenceScopeInput = {
 	tenantSlug: slug
 		.optional()
 		.describe(
-			"Tenant slug. Omit both tenantSlug and eventSlug for the organization-wide preference",
+			"Location slug (tenantSlug from list_scopes). Omit both tenantSlug and eventSlug for the organization-wide preference",
 		),
 	eventSlug: slug
 		.optional()
@@ -180,7 +180,7 @@ export const createShiftwoMcpServer = (principal: McpPrincipal) => {
 		{ name: "shiftwo", version: "1.0.0" },
 		{
 			instructions:
-				"shiftwo (シフトヲ) manages staff shifts for organizations (tenants, events). " +
+				"shiftwo (シフトヲ) manages staff shifts for organizations, their locations (such as stores or venues), and events. " +
 				"You act as the signed-in user and can only see and change what that user can in shiftwo. " +
 				"Start with list_organizations, then list_scopes. Times are in Japan Standard Time (+09:00).",
 		},
@@ -228,9 +228,9 @@ export const createShiftwoMcpServer = (principal: McpPrincipal) => {
 	server.registerTool(
 		"list_scopes",
 		{
-			title: "List tenants and events",
+			title: "List locations and events",
 			description:
-				"List the tenants (regular shifts) and their events in an organization whose shifts the user can view.",
+				"List the locations (regular shifts; identified by tenantSlug) and their events in an organization whose shifts the user can view.",
 			inputSchema: z.object({ orgSlug: shiftScopeInput.orgSlug }),
 			annotations: readOnly,
 		},
@@ -254,7 +254,7 @@ export const createShiftwoMcpServer = (principal: McpPrincipal) => {
 		{
 			title: "Get shifts",
 			description:
-				"Get the shifts of a tenant (regular shifts) or an event, with its positions and staff. " +
+				"Get the shifts of a location (regular shifts) or an event, with its positions and staff. " +
 				"Each shift has a version; pass it to update_shift or delete_shift. " +
 				"preferenceConflicts (shift id -> reasons) is included only when the user can edit shifts.",
 			inputSchema: z.object({
@@ -317,7 +317,7 @@ export const createShiftwoMcpServer = (principal: McpPrincipal) => {
 		{
 			title: "Get my preference",
 			description:
-				"Get the signed-in user's own shift preference (breaks, preferred positions, memo) for the organization, a tenant, or an event. " +
+				"Get the signed-in user's own shift preference (breaks, preferred positions, memo) for the organization, a location, or an event. " +
 				"'effective' is what applies after inheriting from wider scopes.",
 			inputSchema: z.object(preferenceScopeInput),
 			annotations: readOnly,
@@ -539,7 +539,7 @@ export const createShiftwoMcpServer = (principal: McpPrincipal) => {
 		{
 			title: "Submit my preference",
 			description:
-				"Submit or replace the signed-in user's own preference for the organization, a tenant, or an event: " +
+				"Submit or replace the signed-in user's own preference for the organization, a location, or an event: " +
 				"preferred break times, preferred positions (ids from get_my_preference.selectablePositions), and a memo. " +
 				"Rejected after the deadline unless the user can manage everyone's preferences.",
 			inputSchema: z.object({
