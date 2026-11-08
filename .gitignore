@@ -56,3 +56,6 @@ yarn-error.log*
 # Cloudflare（wrangler のローカルの状態と、ローカルの秘密の値）
 /.wrangler/
 .dev.vars*
+
+# Claude Code の個人の設定（許可ルールなど）
+/.claude/settings.local.json
