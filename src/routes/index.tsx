@@ -11,23 +11,17 @@ export const Route = createFileRoute("/")({
 function HomePage() {
 	const { shifts, roles, staffs, shiftSetting } = Route.useLoaderData();
 
-	// TODO: Event・Room から表示する期間を決める（今は固定）
-	const startTime = new Date(2024, 0, 1, 9, 0, 0);
-	const endTime = new Date(2024, 0, 1, 22, 0, 0);
-
 	return (
-		<div>
-			<h1>Shift Management</h1>
+		<main className="space-y-4 p-4">
+			<h1 className="text-xl font-bold">Shift Management</h1>
 			{shiftSetting && (
 				<ShiftTimeline
 					shifts={shifts}
 					roles={roles}
 					staffs={staffs}
 					timeUnitMinutes={shiftSetting.timeUnitMinutes}
-					startTime={startTime}
-					endTime={endTime}
 				/>
 			)}
-		</div>
+		</main>
 	);
 }
