@@ -312,6 +312,7 @@ model User {
   oauthRefreshTokens OauthRefreshToken[]
   oauthAccessTokens  OauthAccessToken[]
   oauthConsents      OauthConsent[]
+  passkeys           Passkey[]
 
   @@unique([email])
   @@map("user")
@@ -396,6 +397,26 @@ model StaffPreference {
   @@index([organizationId])
   @@index([tenantId])
   @@index([eventId])
+}
+
+// パスキー（Better Auth の passkey プラグイン）。メール・Discord に加えて、指紋や顔などでログインできる
+model Passkey {
+  id           String    @id
+  name         String?
+  publicKey    String
+  userId       String
+  user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  credentialID String
+  counter      Int
+  deviceType   String
+  backedUp     Boolean
+  transports   String?
+  createdAt    DateTime?
+  aaguid       String?
+
+  @@index([userId])
+  @@index([credentialID])
+  @@map("passkey")
 }
 
 // ---- MCP（AI のアシスタントからシフトヲを使う）のための OAuth の認可サーバー（Better Auth の jwt / mcp プラグイン）----

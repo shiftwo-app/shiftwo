@@ -34,4 +34,18 @@ export default {
 	languageDescription:
 		"화면과 나에게 오는 메일(로그인 메일 등)에 쓰이는 언어예요.",
 	languageAuto: "브라우저에 맞추기",
+	passkeyTitle: "패스키",
+	passkeyDescription:
+		"지문, 얼굴, 기기 잠금 해제로 로그인할 수 있어요. 이메일 인증 코드를 기다리지 않아도 돼요.",
+	passkeyNone: "등록한 패스키가 없어요",
+	passkeyAdd: "패스키 등록하기",
+	passkeyAdded: "패스키를 등록했어요. 다음부터 패스키로 로그인할 수 있어요",
+	passkeyAddFailed: "패스키를 등록하지 못했어요. 다시 시도해 주세요",
+	passkeyRemove: "삭제",
+	passkeyRemoved:
+		"패스키를 삭제했어요. 기기나 비밀번호 관리자에 남아 있는 것은 그쪽에서 삭제해 주세요",
+	passkeyUnnamed: "패스키",
+	passkeyCreatedAt: "{date}에 등록",
+	passkeySynced: "동기화됨",
+	passkeyUnsupported: "이 브라우저에서는 패스키를 사용할 수 없어요",
 } satisfies Messages<typeof ja>;

@@ -33,4 +33,17 @@ export default {
 	languageTitle: "語言",
 	languageDescription: "用於介面以及寄給你的郵件（如登入郵件）。",
 	languageAuto: "跟隨瀏覽器",
+	passkeyTitle: "密碼金鑰",
+	passkeyDescription:
+		"可以透過指紋、臉部或裝置解鎖登入，不必等待電子郵件驗證碼。",
+	passkeyNone: "尚未有密碼金鑰",
+	passkeyAdd: "新增密碼金鑰",
+	passkeyAdded: "已新增密碼金鑰。下次即可使用它登入",
+	passkeyAddFailed: "無法新增密碼金鑰，請再試一次",
+	passkeyRemove: "刪除",
+	passkeyRemoved: "已刪除密碼金鑰。請同時在裝置或密碼管理器中刪除它",
+	passkeyUnnamed: "密碼金鑰",
+	passkeyCreatedAt: "{date} 新增",
+	passkeySynced: "已同步",
+	passkeyUnsupported: "此瀏覽器不支援密碼金鑰",
 } satisfies Messages<typeof ja>;

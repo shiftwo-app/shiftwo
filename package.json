@@ -32,6 +32,7 @@
 		"@better-auth/cimd": "1.7.18",
 		"@better-auth/mcp": "1.7.18",
 		"@better-auth/oauth-provider": "1.7.18",
+		"@better-auth/passkey": "1.7.18",
 		"@modelcontextprotocol/server": "2.4.0",
 		"@prisma/adapter-d1": "^7.10.1",
 		"@prisma/adapter-pg": "^7.10.1",

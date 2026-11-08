@@ -33,4 +33,18 @@ export default {
 	languageDescription:
 		"画面と、あなたに届くメール（ログインのメールなど）の言語です。",
 	languageAuto: "ブラウザに合わせる",
+	passkeyTitle: "パスキー",
+	passkeyDescription:
+		"指紋や顔、端末のロックの解除でログインできます。メールの確認コードを待たずに済みます。",
+	passkeyNone: "登録したパスキーはありません",
+	passkeyAdd: "パスキーを登録する",
+	passkeyAdded: "パスキーを登録しました。次からはパスキーでログインできます",
+	passkeyAddFailed: "パスキーを登録できませんでした。もう一度お試しください",
+	passkeyRemove: "消す",
+	passkeyRemoved:
+		"パスキーを消しました。端末やパスワードマネージャーに残っているものは、そちらで消してください",
+	passkeyUnnamed: "パスキー",
+	passkeyCreatedAt: "{date} に登録",
+	passkeySynced: "同期される",
+	passkeyUnsupported: "このブラウザでは、パスキーを使えません",
 } as const;

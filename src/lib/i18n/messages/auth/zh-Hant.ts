@@ -52,4 +52,7 @@ export default {
 	loginEmailEnterCode: "■ 輸入驗證碼",
 	loginEmailExpires: "兩者都會在 {minutes} 分鐘後失效。",
 	loginEmailIgnore: "如果不是你本人操作，請忽略此郵件。",
+	passkeySignIn: "使用密碼金鑰登入",
+	passkeyFailed:
+		"無法使用密碼金鑰登入。請確認這是你註冊過的密碼金鑰，或使用電子郵件登入。",
 } satisfies Messages<typeof ja>;

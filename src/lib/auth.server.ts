@@ -2,6 +2,7 @@
 import { platform } from "#platform";
 import { cimd } from "@better-auth/cimd";
 import { mcp } from "@better-auth/mcp";
+import { getAuthenticatorName, passkey } from "@better-auth/passkey";
 import { betterAuth } from "better-auth";
 import { prismaAdapter } from "better-auth/adapters/prisma";
 import { emailOTP, jwt } from "better-auth/plugins";
@@ -117,6 +118,21 @@ export const auth = betterAuth({
 						await sendMail(buildLoginEmail({ email, otp, link, t }));
 					},
 				);
+			},
+		}),
+		// パスキー。登録はログインしている本人だけ（アカウントの設定から）。
+		// rpID はサイトのホスト名（パスキーはこれに結びつくので、本番のドメインを変えると使えなくなる）
+		passkey({
+			rpID: new URL(baseURL ?? "http://localhost:3000").hostname,
+			rpName: "シフトヲ",
+			registration: {
+				// 名前は、わかるときは認証器の種類（iCloud キーチェーン、Google パスワードマネージャーなど）にする
+				afterVerification: ({ verification }) => {
+					const name = getAuthenticatorName(
+						verification.registrationInfo?.aaguid,
+					);
+					return name ? { name } : undefined;
+				},
 			},
 		}),
 		// MCP（AI のアシスタントからシフトヲを使う）。シフトヲが OAuth の認可サーバーになり、

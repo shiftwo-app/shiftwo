@@ -66,12 +66,13 @@ pnpm dev
 
 ### ログインと新規登録
 
-ログインは [Better Auth](https://www.better-auth.com/) で、次の 2 つの方法があります。
+ログインは [Better Auth](https://www.better-auth.com/) で、次の 3 つの方法があります。
 
 - **メール**：確認コードと、押すだけでログインできるリンクを 1 通のメールで送ります（10 分で使えなくなります）。開発中（`MAIL_TRANSPORT` が未設定）はメールを送らず、dev サーバーのターミナルに出します。本番では `MAIL_TRANSPORT` を `smtp` か `cloudflare`（Cloudflare Email Service）にします
 - **Discord**：`DISCORD_CLIENT_ID` と `DISCORD_CLIENT_SECRET` の両方を設定したときだけ、ログイン画面にボタンが出ます。[Discord Developer Portal](https://discord.com/developers/applications) でアプリを作り、OAuth2 の Redirects に `<BETTER_AUTH_URL>/api/auth/callback/discord` を登録してください。Discord でメールアドレスを確認していないアカウントではログインできません
+- **パスキー**：指紋・顔・端末のロックの解除でログインします。登録は、メールか Discord でログインしてから、アカウントの設定で行います（パスキーだけで新しく登録することはできません）。パスキーは `BETTER_AUTH_URL` のホスト名（rpID）に結びつくので、本番のドメインを変えると、登録したパスキーは使えなくなります
 
-はじめての人は、どちらの方法でもアカウントが作られ、`/welcome` で名前を決めてから使い始めます（新規登録は `/signup`）。
+はじめての人は、メールか Discord でアカウントが作られ、`/welcome` で名前を決めてから使い始めます（新規登録は `/signup`）。
 
 画面、server function、API（`/api/*`）は、どれもログインが必要です。
 
