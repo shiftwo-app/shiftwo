@@ -45,9 +45,23 @@ export const parseCsv = (text: string): string[][] => {
 	return rows.filter((cells) => cells.some((cell) => cell.trim() !== ""));
 };
 
-/** 値を CSV の 1 つの値にする（, " 改行を含むときはダブルクォートで囲む） */
-const escapeCell = (value: string) =>
-	/[",\r\n]/.test(value) ? `"${value.replaceAll('"', '""')}"` : value;
+/** 表計算ソフトが式として扱う先頭の文字（CSV インジェクション。= + - @ とタブ・改行） */
+const FORMULA_START = /^[=+\-@\t\r]/;
+
+/**
+ * 値を CSV の 1 つの値にする（, " 改行を含むときはダブルクォートで囲む）。
+ * 式として動かないよう、式の文字で始まる値には ' を付けて文字にする（名前などの入力をそのまま書き出すため）
+ */
+const escapeCell = (value: string) => {
+	const safe = FORMULA_START.test(value) ? `'${value}` : value;
+	return /[",\r\n]/.test(safe) ? `"${safe.replaceAll('"', '""')}"` : safe;
+};
+
+/** toCsv が式よけに付けた先頭の ' を外す（書き出した CSV を読み戻すとき、元の値に戻すため） */
+export const stripFormulaGuard = (value: string): string =>
+	value.startsWith("'") && FORMULA_START.test(value.slice(1))
+		? value.slice(1)
+		: value;
 
 /** 行の配列を CSV の文字列にする（Excel で文字化けしないよう、先頭に BOM を付ける） */
 export const toCsv = (rows: string[][]): string =>

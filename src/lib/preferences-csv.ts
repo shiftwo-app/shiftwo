@@ -5,7 +5,7 @@
 //
 // 列の見出しは日本語・英語（staff, breaks, positions, memo）と、画面の言語の見出しを受け付ける。
 // 休憩は「日付 始まり-終わり」を ; で区切って並べる（時刻は日本時間。終わりは 24:00 も可）。持ち場は名前を ; で区切る
-import { parseCsv, toCsv } from "./csv";
+import { parseCsv, stripFormulaGuard, toCsv } from "./csv";
 import type { Translate } from "./i18n/translate";
 import { translatorFor } from "./i18n/translate";
 import {
@@ -148,7 +148,7 @@ export const parsePreferenceCsv = (
 		const cell = (column: Column) =>
 			columns[column] === undefined
 				? ""
-				: (cells[columns[column]] ?? "").trim();
+				: stripFormulaGuard((cells[columns[column]] ?? "").trim());
 		const errors: string[] = [];
 		const staffName = cell("staff");
 		const matches = staffsByName.get(normalize(staffName)) ?? [];
