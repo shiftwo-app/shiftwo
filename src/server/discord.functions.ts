@@ -2,6 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { loginMethods } from "../lib/auth.server";
 import { resolveAvatarUrl } from "../lib/avatar";
+import { serverT } from "../lib/i18n/request-locale.server";
 import { prisma } from "../lib/prisma.server";
 import { requireUserMiddleware } from "./auth-middleware";
 import { refreshDiscordMemberships } from "./discord-membership.server";
@@ -144,7 +145,7 @@ export const setDiscordGuild = createServerFn({ method: "POST" })
 		if (!token) {
 			return {
 				ok: false as const,
-				errors: ["先にアカウントの設定で Discord を連携してください"],
+				errors: [serverT("errors.discordLinkFirst")],
 			};
 		}
 		const guilds = await fetchCurrentUserGuilds(token);
@@ -152,9 +153,7 @@ export const setDiscordGuild = createServerFn({ method: "POST" })
 		if (!guild) {
 			return {
 				ok: false as const,
-				errors: [
-					"そのサーバーが見つかりません（自分が参加しているサーバーだけ選べます）",
-				],
+				errors: [serverT("errors.discordGuildNotFound")],
 			};
 		}
 		await prisma.organization.update({

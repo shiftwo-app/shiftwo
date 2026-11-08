@@ -6,6 +6,7 @@ import { buttonClass } from "../ui/Button";
 import Section from "../ui/Section";
 import TenantOrEventForm from "./TenantOrEventForm";
 import type { RunMutation } from "./useMutationRunner";
+import { useT } from "../../lib/i18n/react";
 
 /** 団体の設定のテナントの欄：一覧（各テナントの設定へ）と、テナントの作成 */
 const TenantsSection = ({
@@ -18,12 +19,13 @@ const TenantsSection = ({
 	run: RunMutation;
 }) => {
 	const createTenant = useServerFn(createTenantFn);
+	const t = useT();
 	const id = useId();
 	return (
 		<Section
 			id={`${id}-h`}
-			title={`テナント（${tenants.length}）`}
-			description="店舗など、シフトを組む単位です。日常シフトの持ち場やイベントは、テナントごとに持ちます。"
+			title={t("settings.tenantsTitle", { count: tenants.length })}
+			description={t("settings.tenantsDescription")}
 		>
 			{tenants.length > 0 && (
 				<ul className="divide-y divide-line overflow-hidden rounded-lg border border-line bg-surface text-sm">
@@ -45,7 +47,7 @@ const TenantsSection = ({
 								params={{ orgSlug, tenantSlug: tenant.slug }}
 								className={buttonClass("ghost", "sm")}
 							>
-								設定
+								{t("settings.tenantSettingsLink")}
 							</Link>
 						</li>
 					))}
@@ -53,11 +55,11 @@ const TenantsSection = ({
 			)}
 			<div className="space-y-3 rounded-lg border border-dashed border-line-strong p-4">
 				<h3 className="text-sm font-bold text-ink">
-					テナントを作る（店舗など）
+					{t("settings.tenantCreate")}
 				</h3>
 				<TenantOrEventForm
 					kind="tenant"
-					submitLabel="作る"
+					submitLabel={t("settings.create")}
 					onSubmit={(value) =>
 						run(() =>
 							createTenant({

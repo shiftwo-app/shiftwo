@@ -59,15 +59,28 @@ const timeFormatter = new Intl.DateTimeFormat("ja-JP", {
 	hourCycle: "h23",
 });
 
-const dateFormatter = new Intl.DateTimeFormat("ja-JP", {
-	timeZone: DISPLAY_TIME_ZONE,
-	month: "numeric",
-	day: "numeric",
-	weekday: "short",
-});
+/** 日付の見出しの書式（Intl のロケールごとに 1 つ作って使い回す） */
+const dateFormatters = new Map<string, Intl.DateTimeFormat>();
+const dateFormatterFor = (intlLocale: string): Intl.DateTimeFormat => {
+	let formatter = dateFormatters.get(intlLocale);
+	if (!formatter) {
+		formatter = new Intl.DateTimeFormat(intlLocale, {
+			timeZone: DISPLAY_TIME_ZONE,
+			month: "numeric",
+			day: "numeric",
+			weekday: "short",
+		});
+		dateFormatters.set(intlLocale, formatter);
+	}
+	return formatter;
+};
 
-/** 日付の見出し（例：6/1(土)） */
-export const formatDay = (ms: number): string => dateFormatter.format(ms);
+/** 日付の見出しを、画面の言語（Intl のロケール、例：en-US）で書く。タイムゾーンは日本時間のまま */
+export const formatDayIn = (ms: number, intlLocale: string): string =>
+	dateFormatterFor(intlLocale).format(ms);
+
+/** 日付の見出し（例：6/1(土)）。日本語 */
+export const formatDay = (ms: number): string => formatDayIn(ms, "ja-JP");
 
 /** その時刻を含む日の 0:00（表示のタイムゾーン） */
 export const startOfDisplayDay = (ms: number): number =>
@@ -230,6 +243,8 @@ export const buildRows = (
 	shifts: Shift[],
 	positions: Position[],
 	staffs: Staff[],
+	/** 持ち場のないシフトをまとめる行の見出し（画面の言語のもの） */
+	unassignedLabel = "持ち場なし",
 ): TimelineRow[] => {
 	const lookup = {
 		positions: new Map(positions.map((position) => [position.id, position])),
@@ -249,7 +264,7 @@ export const buildRows = (
 		// 持ち場のないシフト（持ち場を使っていなかったときに作ったもの）は、最後の 1 行にまとめる
 		const unassigned = shifts.filter((shift) => !shift.positionId);
 		if (unassigned.length > 0) {
-			rows.push(toRow(UNASSIGNED_ROW_ID, "持ち場なし", unassigned, lookup));
+			rows.push(toRow(UNASSIGNED_ROW_ID, unassignedLabel, unassigned, lookup));
 		}
 		return rows;
 	}

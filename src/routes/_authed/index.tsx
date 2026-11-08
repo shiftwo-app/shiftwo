@@ -2,55 +2,64 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import Badge from "../../components/ui/Badge";
 import { buttonClass } from "../../components/ui/Button";
 import PageHeader from "../../components/ui/PageHeader";
+import { useT } from "../../lib/i18n/react";
+import { translate } from "../../lib/i18n/translate";
 import { memberRoleLabel } from "../../lib/org/member-label";
 import { listMyOrganizations } from "../../server/org.functions";
 
 // ログイン後のトップ：所属している団体の一覧
 export const Route = createFileRoute("/_authed/")({
 	loader: () => listMyOrganizations(),
-	head: () => ({ meta: [{ title: "団体 | シフトヲ" }] }),
+	head: ({ match }) => ({
+		meta: [
+			{
+				title: translate(match.context.locale, "shell.pageTitle", {
+					page: translate(match.context.locale, "orgs.listTitle"),
+				}),
+			},
+		],
+	}),
 	component: OrgListPage,
 });
 
 function OrgListPage() {
 	const organizations = Route.useLoaderData();
+	const t = useT();
 	return (
 		<main className="mx-auto max-w-3xl px-4 py-8 sm:px-6">
 			<PageHeader
-				title="団体"
+				title={t("orgs.listTitle")}
 				actions={
 					<>
 						<Link to="/orgs/new" className={buttonClass("primary")}>
-							団体を作る
+							{t("orgs.create")}
 						</Link>
 						<Link
 							to="/join"
 							search={{ code: "" }}
 							className={buttonClass("secondary")}
 						>
-							招待コードで参加
+							{t("orgs.joinWithCode")}
 						</Link>
 					</>
 				}
 			/>
 			{organizations.length === 0 ? (
 				<div className="rounded-lg border border-dashed border-line-strong px-6 py-10 text-center">
-					<p className="text-base font-bold text-ink">
-						まだどの団体にも所属していません
-					</p>
+					<p className="text-base font-bold text-ink">{t("orgs.emptyTitle")}</p>
 					<p className="mt-2 text-sm leading-relaxed text-ink-muted">
-						団体を作るか、招待コードで参加してください。
+						{t("orgs.emptyBody")}
 					</p>
 					<div className="mt-6 flex flex-wrap justify-center gap-2">
 						<Link to="/orgs/new" className={buttonClass("primary")}>
-							団体を作る
+							{t("orgs.create")}
 						</Link>
 						<Link
 							to="/join"
 							search={{ code: "" }}
 							className={buttonClass("secondary")}
 						>
-							招待コードで参加
+							{t("orgs.joinWithCode")}
 						</Link>
 					</div>
 				</div>
@@ -66,13 +75,14 @@ function OrgListPage() {
 								<span className="flex flex-wrap items-center gap-2">
 									<span className="font-bold text-ink">{org.name}</span>
 									{org.suspended && (
-										<Badge tone="warn">
-											Discord サーバーの条件で見られません
-										</Badge>
+										<Badge tone="warn">{t("orgs.suspendedBadge")}</Badge>
 									)}
 								</span>
 								<span className="text-xs text-ink-muted">
-									{org.displayName}（{memberRoleLabel(org)}）
+									{t("shell.memberWithRole", {
+										name: org.displayName,
+										role: memberRoleLabel(org, t),
+									})}
 								</span>
 							</Link>
 						</li>

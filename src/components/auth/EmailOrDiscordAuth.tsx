@@ -2,6 +2,8 @@ import { useRouter } from "@tanstack/react-router";
 import { useId, useState } from "react";
 import type { FormEvent, ReactNode } from "react";
 import { authClient } from "../../lib/auth-client";
+import type { MessageKey } from "../../lib/i18n/messages";
+import { useT } from "../../lib/i18n/react";
 import { markLoginRequested } from "../../server/session.functions";
 import Alert from "../ui/Alert";
 import Button from "../ui/Button";
@@ -12,17 +14,17 @@ export type AuthMode = "login" | "signup";
 
 const COPY: Record<
 	AuthMode,
-	{ title: string; sendLabel: string; discordLabel: string }
+	{ title: MessageKey; sendLabel: MessageKey; discordLabel: MessageKey }
 > = {
 	login: {
-		title: "シフトヲにログイン",
-		sendLabel: "ログイン用のメールを送る",
-		discordLabel: "Discord でログイン",
+		title: "auth.loginTitle",
+		sendLabel: "auth.loginSendLabel",
+		discordLabel: "auth.loginDiscordLabel",
 	},
 	signup: {
-		title: "シフトヲに新規登録",
-		sendLabel: "登録用のメールを送る",
-		discordLabel: "Discord で登録",
+		title: "auth.signupTitle",
+		sendLabel: "auth.signupSendLabel",
+		discordLabel: "auth.signupDiscordLabel",
 	},
 };
 
@@ -55,6 +57,7 @@ const EmailOrDiscordAuth = ({
 	notice?: ReactNode;
 }) => {
 	const copy = COPY[mode];
+	const t = useT();
 	const router = useRouter();
 	const id = useId();
 	const [step, setStep] = useState<Step>({ name: "email" });
@@ -72,7 +75,7 @@ const EmailOrDiscordAuth = ({
 			await markLoginRequested({ data: { email } });
 		} catch {
 			setBusy(false);
-			setError("メールアドレスの形を確かめてください");
+			setError(t("auth.emailInvalid"));
 			return;
 		}
 		const { error } = await authClient.emailOtp.sendVerificationOtp({
@@ -81,9 +84,7 @@ const EmailOrDiscordAuth = ({
 		});
 		setBusy(false);
 		if (error) {
-			setError(
-				"メールを送れませんでした。アドレスを確かめて、もう一度試してください",
-			);
+			setError(t("auth.emailSendFailed"));
 			return;
 		}
 		setStep({ name: "code", email });
@@ -100,7 +101,7 @@ const EmailOrDiscordAuth = ({
 		});
 		setBusy(false);
 		if (error) {
-			setError("確認コードが違うか、期限が切れています");
+			setError(t("auth.codeInvalid"));
 			return;
 		}
 		router.history.push(redirectTo);
@@ -115,7 +116,7 @@ const EmailOrDiscordAuth = ({
 	return (
 		<div className="space-y-6">
 			<h1 className="text-center text-2xl leading-tight font-bold tracking-tight text-ink">
-				{copy.title}
+				{t(copy.title)}
 			</h1>
 
 			{notice}
@@ -130,11 +131,11 @@ const EmailOrDiscordAuth = ({
 							className="h-10 w-full"
 						>
 							<DiscordMark />
-							{copy.discordLabel}
+							{t(copy.discordLabel)}
 						</Button>
 						<p className="flex items-center gap-3 text-xs text-ink-muted">
 							<span aria-hidden="true" className="h-px flex-1 bg-line" />
-							または
+							{t("auth.or")}
 							<span aria-hidden="true" className="h-px flex-1 bg-line" />
 						</p>
 					</>
@@ -147,7 +148,7 @@ const EmailOrDiscordAuth = ({
 								htmlFor={`${id}-email`}
 								className="text-sm font-bold text-ink"
 							>
-								メールアドレス
+								{t("auth.emailLabel")}
 							</label>
 							<input
 								id={`${id}-email`}
@@ -165,21 +166,32 @@ const EmailOrDiscordAuth = ({
 							disabled={busy}
 							className="h-10 w-full"
 						>
-							{copy.sendLabel}
+							{t(copy.sendLabel)}
 						</Button>
 					</form>
 				) : (
 					<form onSubmit={verify} className="space-y-4">
 						<Alert tone="info">
-							<span className="font-bold break-all">{step.email}</span>{" "}
-							にメールを送りました。メールのリンクを開くか、確認コードを入力してください。
+							{/* メールアドレスだけ太字にする（文の中の {email} の位置に差し込む） */}
+							{t("auth.codeSent")
+								.split("{email}")
+								.flatMap((part, index) =>
+									index === 0
+										? [part]
+										: [
+												<span key={index} className="font-bold break-all">
+													{step.email}
+												</span>,
+												part,
+											],
+								)}
 						</Alert>
 						<div className="flex flex-col gap-1">
 							<label
 								htmlFor={`${id}-otp`}
 								className="text-sm font-bold text-ink"
 							>
-								確認コード（6 桁）
+								{t("auth.codeLabel")}
 							</label>
 							<input
 								id={`${id}-otp`}
@@ -199,7 +211,7 @@ const EmailOrDiscordAuth = ({
 							disabled={busy}
 							className="h-10 w-full"
 						>
-							ログイン
+							{t("auth.signIn")}
 						</Button>
 						<div className="flex justify-between text-sm">
 							<button
@@ -210,7 +222,7 @@ const EmailOrDiscordAuth = ({
 								}}
 								className={link}
 							>
-								アドレスを変える
+								{t("auth.changeEmail")}
 							</button>
 							<button
 								type="button"
@@ -218,7 +230,7 @@ const EmailOrDiscordAuth = ({
 								onClick={() => sendCode()}
 								className={link}
 							>
-								もう一度送る
+								{t("auth.resend")}
 							</button>
 						</div>
 					</form>

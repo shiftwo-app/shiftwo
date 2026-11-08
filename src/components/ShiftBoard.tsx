@@ -7,6 +7,8 @@ import {
 	type ShiftMutationResult,
 	updateShift,
 } from "../server/shifts.functions";
+import { useT } from "../lib/i18n/react";
+import type { MessageKey } from "../lib/i18n/messages";
 import type { RealtimeTransport } from "../lib/realtime/types";
 import type { ShiftScopeParams } from "../lib/shift-scope";
 import type { Position, Shift, ShiftStatus, Staff } from "../types";
@@ -27,18 +29,18 @@ type LastAction =
 			/** 自分が変えたあとの version（そのあとにほかの人が変えていたら、元に戻さない） */
 			version: number;
 			before: ShiftPayload;
-			label: string;
+			label: MessageKey;
 	  }
-	| { type: "create"; id: string; version: number; label: string }
-	| { type: "delete"; before: ShiftPayload; label: string };
+	| { type: "create"; id: string; version: number; label: MessageKey }
+	| { type: "delete"; before: ShiftPayload; label: MessageKey };
 
 /** ほかの人の変更が続けて届いたとき、まとめて 1 回だけ読み直すための待ち時間 */
 const REFRESH_DEBOUNCE_MS = 200;
 
-const LIVE_LABEL: Record<LiveStatus, string> = {
-	connecting: "接続中…",
-	live: "ほかの人の変更をすぐに反映します",
-	offline: "ほかの人の変更を受け取れていません（つなぎ直しています）",
+const LIVE_LABEL: Record<LiveStatus, MessageKey> = {
+	connecting: "board.liveConnecting",
+	live: "board.liveLive",
+	offline: "board.liveOffline",
 };
 
 const toPayload = (
@@ -92,6 +94,7 @@ const ShiftBoard = ({
 	/** 持ち場を使うか */
 	positionsEnabled: boolean;
 }) => {
+	const t = useT();
 	const router = useRouter();
 	const create = useServerFn(createShift);
 	const update = useServerFn(updateShift);
@@ -137,7 +140,7 @@ const ShiftBoard = ({
 			return true;
 		} catch (error) {
 			console.error(error);
-			setErrors(["保存できませんでした。時間をおいて、もう一度試してください"]);
+			setErrors([t("board.saveFailed")]);
 			return false;
 		} finally {
 			setBusy(false);
@@ -161,7 +164,7 @@ const ShiftBoard = ({
 					id: shift.id,
 					version: saved.version,
 					before: toPayload(shift),
-					label: "時間の変更",
+					label: "board.actionChangeTime",
 				}),
 		);
 
@@ -172,7 +175,7 @@ const ShiftBoard = ({
 				setLastAction({
 					type: "delete",
 					before: toPayload(shift),
-					label: "削除",
+					label: "board.actionDelete",
 				}),
 		);
 	};
@@ -188,7 +191,7 @@ const ShiftBoard = ({
 					type: "create",
 					id: shift.id,
 					version: shift.version,
-					label: "作成",
+					label: "board.actionCreate",
 				}),
 		);
 
@@ -246,7 +249,7 @@ const ShiftBoard = ({
 							className={`relative inline-block size-2 rounded-full ${liveStatus === "live" ? "bg-brand" : liveStatus === "offline" ? "bg-warn" : "bg-line-strong"}`}
 						/>
 					</span>
-					{LIVE_LABEL[liveStatus]}
+					{t(LIVE_LABEL[liveStatus])}
 				</p>
 				{canEdit && (
 					<div className="flex flex-wrap items-center gap-2">
@@ -256,17 +259,19 @@ const ShiftBoard = ({
 								onClick={handleUndo}
 								disabled={!lastAction || busy}
 							>
-								{lastAction ? `元に戻す（${lastAction.label}）` : "元に戻す"}
+								{lastAction
+									? t("board.undoWithAction", { action: t(lastAction.label) })
+									: t("board.undo")}
 							</Button>
 						)}
 						<div
 							role="group"
-							aria-label="操作モード"
+							aria-label={t("board.modeGroup")}
 							className="inline-flex rounded-md border border-line-strong bg-surface p-0.5"
 						>
 							{[
-								{ value: false, label: "閲覧" },
-								{ value: true, label: "編集" },
+								{ value: false, label: t("board.modeView") },
+								{ value: true, label: t("board.modeEdit") },
 							].map((option) => (
 								<button
 									key={option.label}

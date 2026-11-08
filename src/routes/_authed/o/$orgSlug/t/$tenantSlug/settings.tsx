@@ -16,6 +16,7 @@ import {
 } from "../../../../../../server/manage.functions";
 import { getShiftBoard } from "../../../../../../server/shifts.functions";
 import { ShiftStatus } from "../../../../../../types";
+import { useT } from "../../../../../../lib/i18n/react";
 
 // テナントの設定：名前・URL 名・時間粒度、日常シフトの持ち場、テナントでのロールの割り当て
 export const Route = createFileRoute(
@@ -39,6 +40,7 @@ function TenantSettingsPage() {
 	const { positions, assignments } = Route.useLoaderData();
 	const params = Route.useParams();
 	const router = useRouter();
+	const t = useT();
 	const updateTenant = useServerFn(updateTenantFn);
 	const { run, errors } = useMutationRunner();
 	const scope = { orgSlug: params.orgSlug, tenantSlug: params.tenantSlug };
@@ -51,15 +53,18 @@ function TenantSettingsPage() {
 
 	return (
 		<main className="mx-auto max-w-5xl px-4 py-6 sm:px-6">
-			<PageHeader title="テナントの設定" />
+			<PageHeader title={t("settings.tenantSettingsTitle")} />
 			<ErrorList errors={errors} className="mb-6" />
 			<div>
 				{canManageTenant && (
-					<Section id="tenant-settings-basic" title="テナント">
+					<Section
+						id="tenant-settings-basic"
+						title={t("settings.tenantSection")}
+					>
 						<TenantOrEventForm
 							kind="tenant"
 							initial={tenant}
-							submitLabel="保存"
+							submitLabel={t("common.save")}
 							onSubmit={async (value) => {
 								let newSlug: string | null = null;
 								const ok = await run(async () => {
@@ -90,14 +95,14 @@ function TenantSettingsPage() {
 				{canManageTenant && (
 					<Section
 						id="tenant-settings-positions-toggle"
-						title="持ち場を使うか"
-						description="使わないときは、シフトを人と時間だけで組みます（持ち場の選択・持ち場別の表示・必要な人数・希望の持ち場を出しません）。"
+						title={t("settings.positionsToggleTitle")}
+						description={t("settings.positionsToggleDescription")}
 					>
 						<PositionsToggle
 							scope={scope}
 							value={tenantContext.positionsOverride}
 							inherited={tenantContext.organizationPositionsEnabled}
-							inheritLabel="団体と同じ"
+							inheritLabel={t("settings.sameAsOrg")}
 							run={run}
 						/>
 					</Section>
@@ -105,13 +110,11 @@ function TenantSettingsPage() {
 				{canManagePositions && (
 					<Section
 						id="tenant-settings-positions"
-						title="日常シフトの持ち場"
-						description="イベントの持ち場は、イベントの設定で別に決めます。"
+						title={t("settings.tenantPositionsTitle")}
+						description={t("settings.tenantPositionsDescription")}
 					>
 						{!tenantContext.positionsEnabled && (
-							<Alert tone="info">
-								このテナントでは持ち場を使っていません。使うようにすると、ここで決めた持ち場を使えます。
-							</Alert>
+							<Alert tone="info">{t("settings.tenantPositionsUnused")}</Alert>
 						)}
 						<PositionsEditor scope={scope} positions={positions} run={run} />
 					</Section>
@@ -119,8 +122,8 @@ function TenantSettingsPage() {
 				{assignments && (
 					<Section
 						id="tenant-settings-roles"
-						title="このテナントでのロールの割り当て"
-						description="ここで割り当てたロールの、シフトに関わる権限（シフトの閲覧・編集・確定、持ち場・イベントの管理）が、このテナントとその下のイベントで上乗せされます（店長など）。"
+						title={t("settings.tenantRolesTitle")}
+						description={t("settings.tenantRolesDescription")}
 					>
 						<ScopedRolesEditor
 							scope={scope}
@@ -131,7 +134,7 @@ function TenantSettingsPage() {
 				)}
 			</div>
 			{!canManageTenant && !canManagePositions && !assignments && (
-				<Alert tone="info">このテナントの設定を変える権限がありません。</Alert>
+				<Alert tone="info">{t("settings.tenantNoPermission")}</Alert>
 			)}
 		</main>
 	);

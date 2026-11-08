@@ -1,4 +1,6 @@
-// ログインのメールの文面。確認コードと、押すだけでログインできるリンクを 1 通に入れる
+// ログインのメールの文面。確認コードと、押すだけでログインできるリンクを 1 通に入れる。
+// 文面の言語は、呼ぶ側（auth.server.ts）がリクエストの言語の t を渡して決める
+import { type Translate, translatorFor } from "../i18n/translate";
 
 export const LOGIN_CODE_EXPIRES_MINUTES = 10;
 
@@ -15,24 +17,27 @@ export const buildLoginEmail = ({
 	otp,
 	link,
 	appName = "shiftwo",
+	t = translatorFor("ja"),
 }: {
 	email: string;
 	otp: string;
 	link: string;
 	appName?: string;
+	/** 文面の言語（既定は日本語） */
+	t?: Translate;
 }) => ({
 	to: email,
-	subject: `${appName} のログイン（確認コード ${otp}）`,
+	subject: t("auth.loginEmailSubject", { app: appName, otp }),
 	text: [
-		`${appName} にログインするには、次のどちらかを使ってください。`,
+		t("auth.loginEmailIntro", { app: appName }),
 		"",
-		"■ リンクを開く",
+		t("auth.loginEmailOpenLink"),
 		link,
 		"",
-		"■ 確認コードを入力する",
+		t("auth.loginEmailEnterCode"),
 		otp,
 		"",
-		`どちらも ${LOGIN_CODE_EXPIRES_MINUTES} 分で使えなくなります。`,
-		"心当たりがなければ、このメールは無視してください。",
+		t("auth.loginEmailExpires", { minutes: LOGIN_CODE_EXPIRES_MINUTES }),
+		t("auth.loginEmailIgnore"),
 	].join("\n"),
 });

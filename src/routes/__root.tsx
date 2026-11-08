@@ -5,14 +5,19 @@ import {
 	Scripts,
 } from "@tanstack/react-router";
 import type { ReactNode } from "react";
+import { getCurrentLocale } from "../lib/i18n/current-locale";
+import { I18nProvider, useT } from "../lib/i18n/react";
+import { translate } from "../lib/i18n/translate";
 import styles from "../styles.css?url";
 
 export const Route = createRootRoute({
-	head: () => ({
+	// 画面の言語（サーバーではリクエストの言語、画面ではサーバーが描いた <html lang>）
+	beforeLoad: () => ({ locale: getCurrentLocale() }),
+	head: ({ match }) => ({
 		meta: [
 			{ charSet: "utf-8" },
 			{ name: "viewport", content: "width=device-width, initial-scale=1" },
-			{ title: "シフトヲ" },
+			{ title: translate(match.context.locale, "common.appName") },
 			// スマホのブラウザの上の帯の色（地の色にそろえる）
 			{
 				name: "theme-color",
@@ -47,20 +52,21 @@ export const Route = createRootRoute({
 
 // 見つからないとき（所属していない団体も、団体があるかどうかを漏らさないよう同じ表示にする）
 function NotFound() {
+	const t = useT();
 	return (
 		<main className="mx-auto max-w-md space-y-4 px-6 py-16">
 			<p aria-hidden="true" className="text-5xl font-bold text-line-strong">
 				404
 			</p>
-			<h1 className="text-2xl font-bold">見つかりません</h1>
+			<h1 className="text-2xl font-bold">{t("shell.notFoundTitle")}</h1>
 			<p className="text-sm leading-relaxed text-ink-muted">
-				ページが見つからないか、見る権限がありません。団体のページなら、その団体に参加しているか確かめてください。
+				{t("shell.notFoundBody")}
 			</p>
 			<a
 				href="/"
 				className="inline-block text-sm font-bold text-primary underline underline-offset-4"
 			>
-				トップへ
+				{t("shell.notFoundBackHome")}
 			</a>
 		</main>
 	);
@@ -75,13 +81,14 @@ function RootComponent() {
 }
 
 function RootDocument({ children }: Readonly<{ children: ReactNode }>) {
+	const { locale } = Route.useRouteContext();
 	return (
-		<html lang="ja">
+		<html lang={locale}>
 			<head>
 				<HeadContent />
 			</head>
 			<body className="antialiased">
-				{children}
+				<I18nProvider locale={locale}>{children}</I18nProvider>
 				<Scripts />
 			</body>
 		</html>

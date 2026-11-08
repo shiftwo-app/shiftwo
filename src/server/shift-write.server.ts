@@ -4,6 +4,7 @@
 // API（server route）と server function の両方から使うので、結果は HTTP に依存しない形で返す
 import { platform } from "#platform";
 import { z } from "zod";
+import { serverT } from "../lib/i18n/request-locale.server";
 import { hasPermission, type Permission } from "../lib/org/permissions";
 import { isPrismaError, PRISMA_ERROR } from "../lib/prisma-errors";
 import { prisma } from "../lib/prisma.server";
@@ -42,17 +43,17 @@ const fail = (
 ): ShiftWriteError => ({ ok: false, status, message, ...extra });
 
 const notFound = () =>
-	fail(404, "Shift not found", { errors: ["シフトが見つかりません"] });
+	fail(404, "Shift not found", {
+		errors: [serverT("board.errorShiftNotFound")],
+	});
 const forbiddenEdit = () =>
-	fail(403, "Forbidden", { errors: ["シフトを編集する権限がありません"] });
+	fail(403, "Forbidden", { errors: [serverT("board.errorForbiddenEdit")] });
 const forbiddenConfirm = () =>
-	fail(403, "Forbidden", { errors: ["確定したシフトを扱う権限がありません"] });
+	fail(403, "Forbidden", { errors: [serverT("board.errorForbiddenConfirm")] });
 const conflict = () =>
 	fail(409, "Shift was changed by someone else", {
 		conflict: true,
-		errors: [
-			"ほかの人が先にこのシフトを変更しました。最新の内容を表示したので、もう一度操作してください",
-		],
+		errors: [serverT("board.errorConflict")],
 	});
 
 /** 同じ単位を見ている人に、シフトが変わったことを知らせる（応答は待たせない） */
@@ -91,7 +92,7 @@ export const saveShift = async (
 	if (!parsed.success) {
 		return fail(400, "Invalid shift", {
 			issues: z.flattenError(parsed.error),
-			errors: ["入力の形が正しくありません"],
+			errors: [serverT("board.errorInvalidInput")],
 		});
 	}
 	const input = parsed.data;
@@ -105,6 +106,7 @@ export const saveShift = async (
 		input.timeRange.start,
 		input.timeRange.end,
 		access.timeUnitMinutes,
+		serverT,
 	);
 	if (ruleErrors.length > 0) {
 		return fail(400, "Invalid time range", {
@@ -120,7 +122,7 @@ export const saveShift = async (
 	const positionId = access.positionsEnabled ? input.positionId : null;
 	if (access.positionsEnabled && !positionId) {
 		return fail(400, "Position is required", {
-			errors: ["持ち場を選んでください"],
+			errors: [serverT("board.errorPositionRequired")],
 		});
 	}
 	const [staffCount, positionCount] = await Promise.all([
@@ -133,7 +135,7 @@ export const saveShift = async (
 	]);
 	if (staffCount === 0 || positionCount === 0) {
 		return fail(400, "Staff or position does not exist", {
-			errors: ["スタッフか持ち場が見つかりません"],
+			errors: [serverT("board.errorStaffOrPositionMissing")],
 		});
 	}
 

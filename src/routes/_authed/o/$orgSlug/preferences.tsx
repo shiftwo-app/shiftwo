@@ -15,10 +15,13 @@ import {
 	fromDateTimeInputValue,
 	toDateTimeInputValue,
 } from "../../../../components/timeline/datetime";
+import type { MessageKey } from "../../../../lib/i18n/messages";
+import { useIntlLocale, useT } from "../../../../lib/i18n/react";
+import { type Translate, translate } from "../../../../lib/i18n/translate";
 import {
 	decodePreferenceScope,
 	encodePreferenceScope,
-	PREFERENCE_LEVEL_LABELS,
+	PREFERENCE_LEVEL_LABEL_KEYS,
 	type PreferenceInput,
 	type PreferenceLevel,
 } from "../../../../lib/preferences";
@@ -45,21 +48,28 @@ export const Route = createFileRoute("/_authed/o/$orgSlug/preferences")({
 		if (!page) throw notFound();
 		return page;
 	},
-	head: () => ({ meta: [{ title: "希望 | シフトヲ" }] }),
+	head: ({ match }) => ({
+		meta: [
+			{
+				title: `${translate(match.context.locale, "preferences.title")} | ${translate(match.context.locale, "common.appName")}`,
+			},
+		],
+	}),
 	component: PreferencesPage,
 });
 
 type Page = NonNullable<Awaited<ReturnType<typeof getPreferencePage>>>;
 
-const dateTimeFormatter = new Intl.DateTimeFormat("ja-JP", {
-	timeZone: "Asia/Tokyo",
-	year: "numeric",
-	month: "numeric",
-	day: "numeric",
-	hour: "2-digit",
-	minute: "2-digit",
-});
-const formatDateTime = (date: Date) => dateTimeFormatter.format(date);
+/** 締切の表示（日本時間） */
+const formatDateTime = (date: Date, intlLocale: string) =>
+	new Intl.DateTimeFormat(intlLocale, {
+		timeZone: "Asia/Tokyo",
+		year: "numeric",
+		month: "numeric",
+		day: "numeric",
+		hour: "2-digit",
+		minute: "2-digit",
+	}).format(date);
 
 const toPeriodMs = (period: Page["period"]) =>
 	period
@@ -69,10 +79,25 @@ const toPeriodMs = (period: Page["period"]) =>
 			}
 		: null;
 
-const sourceText = (level: PreferenceLevel, source: PreferenceLevel | null) => {
-	if (source === null) return "まだ出していません";
-	if (source === level) return `この${PREFERENCE_LEVEL_LABELS[level]}の希望`;
-	return `${PREFERENCE_LEVEL_LABELS[source]}の希望を使っています`;
+const SOURCE_OWN_KEYS: Record<PreferenceLevel, MessageKey> = {
+	org: "preferences.sourceOwnOrg",
+	tenant: "preferences.sourceOwnTenant",
+	event: "preferences.sourceOwnEvent",
+};
+const SOURCE_USING_KEYS: Record<PreferenceLevel, MessageKey> = {
+	org: "preferences.sourceUsingOrg",
+	tenant: "preferences.sourceUsingTenant",
+	event: "preferences.sourceUsingEvent",
+};
+
+const sourceText = (
+	t: Translate,
+	level: PreferenceLevel,
+	source: PreferenceLevel | null,
+) => {
+	if (source === null) return t("preferences.sourceNone");
+	if (source === level) return t(SOURCE_OWN_KEYS[level]);
+	return t(SOURCE_USING_KEYS[source]);
 };
 
 function PreferencesPage() {
@@ -86,6 +111,8 @@ function PreferencesPage() {
 	const level = page.scope.level;
 	const period = toPeriodMs(page.period);
 	const scopeSelectId = useId();
+	const t = useT();
+	const intlLocale = useIntlLocale();
 
 	const saveFor = (staffId: string) => (input: PreferenceInput) =>
 		run(() =>
@@ -97,15 +124,15 @@ function PreferencesPage() {
 	return (
 		<main className="mx-auto max-w-5xl px-4 py-6 sm:px-6">
 			<PageHeader
-				title="希望"
-				description="休憩・参加できない時間、やりたい持ち場、メモを出せます。団体全体の希望を基本にして、テナントやイベントごとに上書きできます（イベントのシフトでは、イベント、テナント、団体全体の順に、ある希望を使います）。"
+				title={t("preferences.title")}
+				description={t("preferences.description")}
 			/>
 
 			{/* どこの希望かを選ぶ欄と、その単位の受付の様子 */}
 			<div className="mb-6 space-y-3 rounded-lg border border-line bg-surface p-4">
 				<div className="flex flex-col gap-1">
 					<label htmlFor={scopeSelectId} className="text-sm font-bold text-ink">
-						どこの希望か
+						{t("preferences.scopeSelectLabel")}
 					</label>
 					<select
 						id={scopeSelectId}
@@ -115,18 +142,20 @@ function PreferencesPage() {
 						}
 						className="control w-full sm:max-w-sm"
 					>
-						<option value="org">団体全体</option>
+						<option value="org">{t(PREFERENCE_LEVEL_LABEL_KEYS.org)}</option>
 						{page.scopes.map((tenant) => (
 							<optgroup key={tenant.tenantSlug} label={tenant.tenantName}>
 								<option value={`t:${tenant.tenantSlug}`}>
-									{tenant.tenantName}（テナント全体）
+									{t("preferences.scopeTenantOption", {
+										name: tenant.tenantName,
+									})}
 								</option>
 								{tenant.events.map((event) => (
 									<option
 										key={event.slug}
 										value={`e:${tenant.tenantSlug}/${event.slug}`}
 									>
-										イベント：{event.name}
+										{t("preferences.scopeEventOption", { name: event.name })}
 									</option>
 								))}
 							</optgroup>
@@ -137,33 +166,37 @@ function PreferencesPage() {
 					<span className="font-bold">{page.label}</span>
 					{period && (
 						<span className="text-ink-muted">
-							期間{" "}
-							<span className="tabular text-ink">{formatRange(period)}</span>
+							{t("preferences.period")}{" "}
+							<span className="tabular text-ink">
+								{formatRange(period, intlLocale)}
+							</span>
 						</span>
 					)}
 					{page.deadline ? (
 						<span className="inline-flex flex-wrap items-center gap-2 text-ink-muted">
 							<span>
-								締切{" "}
+								{t("preferences.deadline")}{" "}
 								<span className="tabular text-ink">
-									{formatDateTime(new Date(page.deadline))}
+									{formatDateTime(new Date(page.deadline), intlLocale)}
 								</span>
 							</span>
-							{page.pastDeadline && <Badge tone="warn">締め切りました</Badge>}
+							{page.pastDeadline && (
+								<Badge tone="warn">{t("preferences.pastDeadlineBadge")}</Badge>
+							)}
 						</span>
 					) : (
-						<span className="text-ink-muted">締切なし</span>
+						<span className="text-ink-muted">
+							{t("preferences.noDeadline")}
+						</span>
 					)}
 				</p>
 			</div>
 
 			<ErrorList errors={errors} />
 
-			<Section id="mine-h" title="自分の希望">
+			<Section id="mine-h" title={t("preferences.mineTitle")}>
 				{!page.myStaff || !page.mine ? (
-					<p className="text-sm text-ink-muted">
-						あなたはまだスタッフとして登録されていません。シフトを組む人に、スタッフへの紐づけを頼んでください。
-					</p>
+					<p className="text-sm text-ink-muted">{t("preferences.notStaff")}</p>
 				) : (
 					<MyPreference
 						key={`${scope}:${page.mine.own?.updatedAt.toString() ?? "none"}`}
@@ -177,7 +210,7 @@ function PreferencesPage() {
 			</Section>
 
 			{page.canSetDeadline && (
-				<Section id="settings-h" title="受付の設定">
+				<Section id="settings-h" title={t("preferences.settingsTitle")}>
 					<PreferenceSettingsForm key={scope} page={page} scope={scope} />
 				</Section>
 			)}
@@ -187,11 +220,13 @@ function PreferencesPage() {
 					id="all-h"
 					title={
 						<>
-							みんなの希望
-							<span className="tabular">（{page.all.length} 人）</span>
+							{t("preferences.allTitle")}
+							<span className="tabular">
+								{t("preferences.allCount", { count: page.all.length })}
+							</span>
 						</>
 					}
-					description="シフトを組む人は、締切のあとでも直せます。"
+					description={t("preferences.allDescription")}
 				>
 					<ul className="divide-y divide-line rounded-lg border border-line bg-surface">
 						{page.all.map((view) => (
@@ -228,19 +263,16 @@ function MyPreference({
 	onRemove: () => Promise<boolean>;
 }) {
 	const mine = page.mine!;
+	const t = useT();
 	const locked = page.pastDeadline && !page.canManageAll;
 	return (
 		<div className="space-y-4">
 			<div>
 				<Badge tone={mine.effective.source === null ? "neutral" : "primary"}>
-					{sourceText(level, mine.effective.source)}
+					{sourceText(t, level, mine.effective.source)}
 				</Badge>
 			</div>
-			{locked && (
-				<Alert tone="warn">
-					締切を過ぎたので、希望は変えられません。変えたいときはシフトを組む人に頼んでください。
-				</Alert>
-			)}
+			{locked && <Alert tone="warn">{t("preferences.lockedAlert")}</Alert>}
 			<PreferenceForm
 				positions={page.positions}
 				timeUnitMinutes={page.timeUnitMinutes}
@@ -250,8 +282,8 @@ function MyPreference({
 				disabled={locked}
 				submitLabel={
 					mine.own || level === "org"
-						? "保存する"
-						: "この単位の希望として保存する"
+						? t("preferences.saveButton")
+						: t("preferences.saveAsOverride")
 				}
 				onSubmit={onSave}
 			/>
@@ -259,8 +291,10 @@ function MyPreference({
 				<div className="border-t border-line pt-4">
 					<Button variant="ghost" size="sm" onClick={() => void onRemove()}>
 						{level === "org"
-							? "希望を消す"
-							: `上書きをやめる（${level === "event" ? "テナントか団体全体" : "団体全体"}の希望を使う）`}
+							? t("preferences.removeOrg")
+							: level === "event"
+								? t("preferences.removeOverrideFromEvent")
+								: t("preferences.removeOverrideFromTenant")}
 					</Button>
 				</div>
 			)}
@@ -284,6 +318,8 @@ function StaffPreferenceRow({
 	onRemove: () => Promise<boolean>;
 }) {
 	const [editing, setEditing] = useState(false);
+	const t = useT();
+	const intlLocale = useIntlLocale();
 	const names = view.effective.positionIds
 		.map((pid) => page.positions.find((p) => p.id === pid)?.name)
 		.filter(Boolean);
@@ -292,7 +328,7 @@ function StaffPreferenceRow({
 			<div className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
 				<span className="font-bold text-ink">{view.staff.name}</span>
 				<Badge tone={view.effective.source === null ? "neutral" : "primary"}>
-					{sourceText(level, view.effective.source)}
+					{sourceText(t, level, view.effective.source)}
 				</Badge>
 				<Button
 					variant="ghost"
@@ -301,25 +337,31 @@ function StaffPreferenceRow({
 					aria-expanded={editing}
 					className="ml-auto"
 				>
-					{editing ? "閉じる" : "直す"}
+					{editing ? t("common.close") : t("common.edit")}
 				</Button>
 			</div>
 			<dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 text-ink">
-				<dt className="text-ink-muted">休憩</dt>
+				<dt className="text-ink-muted">{t("preferences.breaks")}</dt>
 				<dd className="tabular">
 					{view.effective.breaks.length > 0
-						? view.effective.breaks.map(formatRange).join("、")
-						: "なし"}
+						? view.effective.breaks
+								.map((range) => formatRange(range, intlLocale))
+								.join(t("preferences.listSeparator"))
+						: t("preferences.none")}
 				</dd>
 				{page.positionsEnabled && (
 					<>
-						<dt className="text-ink-muted">持ち場</dt>
-						<dd>{names.length > 0 ? names.join("、") : "なし"}</dd>
+						<dt className="text-ink-muted">{t("preferences.positions")}</dt>
+						<dd>
+							{names.length > 0
+								? names.join(t("preferences.listSeparator"))
+								: t("preferences.none")}
+						</dd>
 					</>
 				)}
 				{view.effective.memo && (
 					<>
-						<dt className="text-ink-muted">メモ</dt>
+						<dt className="text-ink-muted">{t("preferences.memo")}</dt>
 						<dd className="break-words whitespace-pre-wrap">
 							{view.effective.memo}
 						</dd>
@@ -334,7 +376,7 @@ function StaffPreferenceRow({
 						period={period}
 						initial={view.own ?? { ...view.effective, positionIds: [] }}
 						disabled={false}
-						submitLabel="保存する"
+						submitLabel={t("preferences.saveButton")}
 						onSubmit={async (input) => {
 							const ok = await onSave(input);
 							if (ok) setEditing(false);
@@ -344,7 +386,9 @@ function StaffPreferenceRow({
 					{view.own && (
 						<div className="border-t border-line pt-3">
 							<Button variant="ghost" size="sm" onClick={() => void onRemove()}>
-								{level === "org" ? "希望を消す" : "上書きをやめる"}
+								{level === "org"
+									? t("preferences.removeOrg")
+									: t("preferences.removeOverride")}
 							</Button>
 						</div>
 					)}
@@ -363,6 +407,7 @@ function PreferenceSettingsForm({
 	scope: string;
 }) {
 	const id = useId();
+	const t = useT();
 	const params = Route.useParams();
 	const setSettings = useServerFn(setPreferenceSettingsFn);
 	const { run, errors } = useMutationRunner();
@@ -399,7 +444,7 @@ function PreferenceSettingsForm({
 			<ErrorList errors={errors} />
 			<div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end">
 				<label htmlFor={`${id}-deadline`} className={field}>
-					締切（空なら締切なし）
+					{t("preferences.deadlineField")}
 					<input
 						id={`${id}-deadline`}
 						type="datetime-local"
@@ -411,7 +456,7 @@ function PreferenceSettingsForm({
 				{isEvent && (
 					<>
 						<label htmlFor={`${id}-start`} className={field}>
-							イベントの始まり
+							{t("preferences.eventStart")}
 							<input
 								id={`${id}-start`}
 								type="datetime-local"
@@ -421,7 +466,7 @@ function PreferenceSettingsForm({
 							/>
 						</label>
 						<label htmlFor={`${id}-end`} className={field}>
-							イベントの終わり
+							{t("preferences.eventEnd")}
 							<input
 								id={`${id}-end`}
 								type="datetime-local"
@@ -437,12 +482,12 @@ function PreferenceSettingsForm({
 					variant="primary"
 					className="self-start sm:self-auto"
 				>
-					保存
+					{t("common.save")}
 				</Button>
 			</div>
 			{isEvent && (
 				<p className="text-xs leading-relaxed text-ink-muted">
-					期間を決めると、期間の外の休憩は出せなくなります（両方を空にすると、期間なし）。
+					{t("preferences.periodHelp")}
 				</p>
 			)}
 		</form>

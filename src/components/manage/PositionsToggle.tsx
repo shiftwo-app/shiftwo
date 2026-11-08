@@ -3,6 +3,7 @@ import { useId } from "react";
 import { type PositionsSetting, toPositionsSetting } from "../../lib/positions";
 import { setPositionsSettingFn } from "../../server/manage.functions";
 import type { RunMutation } from "./useMutationRunner";
+import { useT } from "../../lib/i18n/react";
 
 /**
  * 持ち場を使うかの切り替え。団体（scope に tenantSlug なし）は「使う・使わない」、
@@ -24,6 +25,7 @@ const PositionsToggle = ({
 	inheritLabel?: string;
 	run: RunMutation;
 }) => {
+	const t = useT();
 	const id = useId();
 	const setSetting = useServerFn(setPositionsSettingFn);
 	const current = toPositionsSetting(value);
@@ -32,16 +34,21 @@ const PositionsToggle = ({
 			? [
 					{
 						value: "inherit" as const,
-						label: `${inheritLabel ?? "上と同じ"}（${inherited ? "使う" : "使わない"}）`,
+						label: t("settings.positionsInheritOption", {
+							label: inheritLabel ?? t("settings.positionsInheritDefault"),
+							value: inherited
+								? t("settings.positionsOn")
+								: t("settings.positionsOff"),
+						}),
 					},
 				]
 			: []),
-		{ value: "on", label: "使う" },
-		{ value: "off", label: "使わない" },
+		{ value: "on", label: t("settings.positionsOn") },
+		{ value: "off", label: t("settings.positionsOff") },
 	];
 	return (
 		<fieldset className="space-y-2">
-			<legend className="sr-only">持ち場を使うか</legend>
+			<legend className="sr-only">{t("settings.positionsToggleTitle")}</legend>
 			<div className="inline-flex flex-wrap rounded-md border border-line-strong bg-surface p-0.5">
 				{options.map((option) => (
 					<label

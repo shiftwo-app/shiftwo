@@ -1,5 +1,6 @@
 import { useId, useState } from "react";
 import type { FormEvent } from "react";
+import { useT } from "../lib/i18n/react";
 import type { Position, Staff } from "../types";
 import {
 	fromDateTimeInputValue,
@@ -41,6 +42,7 @@ const ShiftForm = ({
 	/** 作れたら true */
 	onSubmit: (value: ShiftFormValue) => Promise<boolean>;
 }) => {
+	const t = useT();
 	const id = useId();
 	const [staffId, setStaffId] = useState(staffs[0]?.id ?? "");
 	const [positionId, setPositionId] = useState(positions[0]?.id ?? "");
@@ -58,8 +60,8 @@ const ShiftForm = ({
 		if (!staffId || (positionsEnabled && !positionId) || !startIso || !endIso) {
 			setFormError(
 				positionsEnabled
-					? "スタッフ・持ち場・開始・終了をすべて入力してください"
-					: "スタッフ・開始・終了をすべて入力してください",
+					? t("board.formRequiredWithPosition")
+					: t("board.formRequired"),
 			);
 			return;
 		}
@@ -79,14 +81,16 @@ const ShiftForm = ({
 
 	return (
 		<form
-			aria-label="シフトを作る"
+			aria-label={t("board.formTitle")}
 			onSubmit={handleSubmit}
 			className="space-y-3 rounded-lg border border-line bg-surface p-4"
 		>
-			<p className="text-sm leading-snug font-bold text-ink">シフトを作る</p>
+			<p className="text-sm leading-snug font-bold text-ink">
+				{t("board.formTitle")}
+			</p>
 			<div className="grid items-end gap-3 sm:grid-cols-2 lg:grid-cols-[repeat(4,minmax(0,1fr))_auto_auto]">
 				<label htmlFor={`${id}-staff`} className={field}>
-					スタッフ
+					{t("board.formStaff")}
 					<select
 						id={`${id}-staff`}
 						value={staffId}
@@ -102,7 +106,7 @@ const ShiftForm = ({
 				</label>
 				{positionsEnabled && (
 					<label htmlFor={`${id}-position`} className={field}>
-						持ち場
+						{t("board.formPosition")}
 						<select
 							id={`${id}-position`}
 							value={positionId}
@@ -118,7 +122,7 @@ const ShiftForm = ({
 					</label>
 				)}
 				<label htmlFor={`${id}-start`} className={field}>
-					開始
+					{t("board.formStart")}
 					<input
 						id={`${id}-start`}
 						type="datetime-local"
@@ -129,7 +133,7 @@ const ShiftForm = ({
 					/>
 				</label>
 				<label htmlFor={`${id}-end`} className={field}>
-					終了
+					{t("board.formEnd")}
 					<input
 						id={`${id}-end`}
 						type="datetime-local"
@@ -147,11 +151,11 @@ const ShiftForm = ({
 							checked={isPreferredPosition}
 							onChange={(event) => setIsPreferredPosition(event.target.checked)}
 						/>
-						希望どおりの持ち場
+						{t("board.formPreferredPosition")}
 					</label>
 				)}
 				<Button type="submit" variant="primary" disabled={busy}>
-					作る
+					{t("board.formSubmit")}
 				</Button>
 			</div>
 			{formError && (

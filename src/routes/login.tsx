@@ -1,7 +1,11 @@
 import { createFileRoute, Link, redirect } from "@tanstack/react-router";
 import EmailOrDiscordAuth from "../components/auth/EmailOrDiscordAuth";
 import Logo from "../components/Logo";
+import LanguageSwitcher from "../components/shell/LanguageSwitcher";
 import Alert from "../components/ui/Alert";
+import type { Translate } from "../lib/i18n/translate";
+import { translate } from "../lib/i18n/translate";
+import { useT } from "../lib/i18n/react";
 import { safeRedirectPath } from "../lib/safe-redirect";
 import { getLoginMethods, getSession } from "../server/session.functions";
 
@@ -18,19 +22,28 @@ export const Route = createFileRoute("/login")({
 		if (await getSession()) throw redirect({ href: search.redirect });
 	},
 	loader: () => getLoginMethods(),
-	head: () => ({ meta: [{ title: "ログイン | シフトヲ" }] }),
+	head: ({ match }) => ({
+		meta: [
+			{
+				title: translate(match.context.locale, "shell.pageTitle", {
+					page: translate(match.context.locale, "auth.signIn"),
+				}),
+			},
+		],
+	}),
 	component: LoginPage,
 });
 
 /** Better Auth のエラーコードを、画面に出す文に */
-const loginErrorMessage = (code: string): string =>
+const loginErrorMessage = (t: Translate, code: string): string =>
 	code === "email_not_verified"
-		? "Discord のメールアドレスが確認されていません。Discord でメールアドレスを確認してから、もう一度試してください"
-		: "ログインできませんでした。Discord のメールアドレスが確認済みか確かめて、もう一度試してください";
+		? t("auth.discordEmailNotVerified")
+		: t("auth.discordLoginFailed");
 
 function LoginPage() {
 	const { redirect: redirectTo, error } = Route.useSearch();
 	const methods = Route.useLoaderData();
+	const t = useT();
 	return (
 		<main className="px-4 py-12 sm:py-20">
 			<div className="mx-auto max-w-sm space-y-8">
@@ -40,19 +53,20 @@ function LoginPage() {
 					redirectTo={redirectTo}
 					discordEnabled={methods.discord}
 					notice={
-						error && <Alert tone="error">{loginErrorMessage(error)}</Alert>
+						error && <Alert tone="error">{loginErrorMessage(t, error)}</Alert>
 					}
 				/>
 				<p className="text-center text-sm text-ink-muted">
-					はじめての方は{" "}
+					{t("auth.signupPrompt")}{" "}
 					<Link
 						to="/signup"
 						search={{ redirect: redirectTo }}
 						className="font-bold text-primary underline underline-offset-4 hover:text-primary-strong"
 					>
-						新規登録
+						{t("auth.signupLink")}
 					</Link>
 				</p>
+				<LanguageSwitcher className="justify-center" />
 			</div>
 		</main>
 	);

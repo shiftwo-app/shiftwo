@@ -11,6 +11,8 @@ import {
 	hasPermission,
 	parsePermissions,
 } from "../lib/org/permissions";
+import type { MessageKey } from "../lib/i18n/messages";
+import { serverT } from "../lib/i18n/request-locale.server";
 import { fromPositionsSetting } from "../lib/positions";
 import { prisma } from "../lib/prisma.server";
 import type { ShiftScopeParams } from "../lib/shift-scope";
@@ -35,9 +37,13 @@ import { requireScopeAccess, type ScopeAccess } from "./scope-access.server";
 // 管理の画面から呼ぶ server function。どれもログインが必要で、メンバーかとその単位での権限を毎回確かめる
 
 type Errors = { ok: false; errors: string[] };
+/**
+ * 入力の誤りを、このリクエストの言語の文章にする。入力の決まりのメッセージはキーで、
+ * キーでないもの（zod の既定の文など）は translate がそのまま返す
+ */
 const errorsOf = (error: z.ZodError): Errors => ({
 	ok: false,
-	errors: error.issues.map((issue) => issue.message),
+	errors: error.issues.map((issue) => serverT(issue.message as MessageKey)),
 });
 const slug = z.string().min(1);
 const id = z.string().min(1);
@@ -134,7 +140,10 @@ export const updateEventFn = createServerFn({ method: "POST" })
 			"event.manage",
 		);
 		if (!access.event)
-			return { ok: false as const, errors: ["イベントが見つかりません"] };
+			return {
+				ok: false as const,
+				errors: [serverT("settings.errorEventNotFound")],
+			};
 		return updateEvent(
 			{ organizationId: access.organization.id, tenantId: access.tenant.id },
 			access.event.id,
@@ -154,7 +163,10 @@ export const deleteEventFn = createServerFn({ method: "POST" })
 			"event.manage",
 		);
 		if (!access.event)
-			return { ok: false as const, errors: ["イベントが見つかりません"] };
+			return {
+				ok: false as const,
+				errors: [serverT("settings.errorEventNotFound")],
+			};
 		return deleteEvent(
 			{ organizationId: access.organization.id, tenantId: access.tenant.id },
 			access.event.id,
@@ -214,10 +226,10 @@ export const deletePositionFn = createServerFn({ method: "POST" })
 // ---- スタッフ（スタッフの管理） ----
 
 /** メンバーとの紐づけは、メンバーを見る権限もあるときだけ（見られないメンバーを選べないように） */
-const LINK_FORBIDDEN = {
+const linkForbidden = () => ({
 	ok: false as const,
-	errors: ["メンバーと紐づけるには、メンバーを見る権限が必要です"],
-};
+	errors: [serverT("settings.errorLinkForbidden")],
+});
 const canLink = (access: OrgMembership, memberId: string | null) =>
 	memberId === null || hasPermission(access.member.permissions, "member.view");
 /** 更新では、今の紐づけをそのまま保つだけなら、メンバーを見る権限がなくてもよい */
@@ -293,7 +305,7 @@ export const createStaffFn = createServerFn({ method: "POST" })
 			orgSlug,
 			"staff.manage",
 		);
-		if (!canLink(access, parsed.data.memberId)) return LINK_FORBIDDEN;
+		if (!canLink(access, parsed.data.memberId)) return linkForbidden();
 		return createStaff(access.organization.id, parsed.data);
 	});
 
@@ -313,7 +325,7 @@ export const updateStaffFn = createServerFn({ method: "POST" })
 			"staff.manage",
 		);
 		if (!(await canKeepLink(access, staffId, parsed.data.memberId))) {
-			return LINK_FORBIDDEN;
+			return linkForbidden();
 		}
 		return updateStaff(access.organization.id, staffId, parsed.data);
 	});
@@ -453,7 +465,7 @@ export const setPositionsSettingFn = createServerFn({ method: "POST" })
 			if (value === null) {
 				return {
 					ok: false,
-					errors: ["団体では、使うか使わないかを選んでください"],
+					errors: [serverT("settings.errorOrgPositionsInherit")],
 				};
 			}
 			await prisma.organization.update({

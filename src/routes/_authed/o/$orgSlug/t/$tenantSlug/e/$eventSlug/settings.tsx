@@ -18,6 +18,7 @@ import {
 } from "../../../../../../../../server/manage.functions";
 import { getShiftBoard } from "../../../../../../../../server/shifts.functions";
 import { ShiftStatus } from "../../../../../../../../types";
+import { useT } from "../../../../../../../../lib/i18n/react";
 
 // イベントの設定：名前・URL 名・時間粒度の上書き、イベントの持ち場、イベントでのロールの割り当て、削除
 export const Route = createFileRoute(
@@ -40,6 +41,7 @@ function EventSettingsPage() {
 	const { positions, assignments } = Route.useLoaderData();
 	const params = Route.useParams();
 	const router = useRouter();
+	const t = useT();
 	const updateEvent = useServerFn(updateEventFn);
 	const removeEvent = useServerFn(deleteEventFn);
 	const { run, errors } = useMutationRunner();
@@ -55,15 +57,15 @@ function EventSettingsPage() {
 
 	return (
 		<main className="mx-auto max-w-5xl px-4 py-6 sm:px-6">
-			<PageHeader title="イベントの設定" />
+			<PageHeader title={t("settings.eventSettingsTitle")} />
 			<ErrorList errors={errors} className="mb-6" />
 			<div>
 				{canManageEvent && (
-					<Section id="event-settings-basic" title="イベント">
+					<Section id="event-settings-basic" title={t("settings.eventSection")}>
 						<TenantOrEventForm
 							kind="event"
 							initial={event}
-							submitLabel="保存"
+							submitLabel={t("common.save")}
 							onSubmit={async (value) => {
 								let newSlug: string | null = null;
 								const ok = await run(async () => {
@@ -87,14 +89,14 @@ function EventSettingsPage() {
 				{canManageEvent && (
 					<Section
 						id="event-settings-positions-toggle"
-						title="持ち場を使うか"
-						description="使わないときは、シフトを人と時間だけで組みます（持ち場の選択・持ち場別の表示・必要な人数・希望の持ち場を出しません）。"
+						title={t("settings.positionsToggleTitle")}
+						description={t("settings.positionsToggleDescription")}
 					>
 						<PositionsToggle
 							scope={params}
 							value={eventContext.positionsOverride}
 							inherited={eventContext.inheritedPositionsEnabled}
-							inheritLabel="テナントと同じ"
+							inheritLabel={t("settings.sameAsTenant")}
 							run={run}
 						/>
 					</Section>
@@ -102,13 +104,11 @@ function EventSettingsPage() {
 				{canManagePositions && (
 					<Section
 						id="event-settings-positions"
-						title="このイベントの持ち場"
-						description="日常シフトの持ち場とは別に持ちます。"
+						title={t("settings.eventPositionsTitle")}
+						description={t("settings.eventPositionsDescription")}
 					>
 						{!eventContext.positionsEnabled && (
-							<Alert tone="info">
-								このイベントでは持ち場を使っていません。使うようにすると、ここで決めた持ち場を使えます。
-							</Alert>
+							<Alert tone="info">{t("settings.eventPositionsUnused")}</Alert>
 						)}
 						<PositionsEditor scope={params} positions={positions} run={run} />
 					</Section>
@@ -116,8 +116,8 @@ function EventSettingsPage() {
 				{assignments && (
 					<Section
 						id="event-settings-roles"
-						title="このイベントでのロールの割り当て"
-						description="ここで割り当てたロールの、シフトに関わる権限が、このイベントだけで上乗せされます。"
+						title={t("settings.eventRolesTitle")}
+						description={t("settings.eventRolesDescription")}
 					>
 						<ScopedRolesEditor
 							scope={params}
@@ -129,13 +129,13 @@ function EventSettingsPage() {
 				{canManageEvent && (
 					<Section
 						id="event-settings-delete"
-						title="イベントを消す"
-						description="イベントの持ち場とシフトも消えます。元に戻せません。"
+						title={t("settings.eventDeleteTitle")}
+						description={t("settings.eventDeleteDescription")}
 					>
 						<div>
 							<ConfirmButton
-								label="このイベントを消す"
-								confirmLabel="本当に消す（イベントの持ち場とシフトも消えます）"
+								label={t("settings.eventDelete")}
+								confirmLabel={t("settings.eventDeleteConfirm")}
 								onConfirm={async () => {
 									const ok = await run(() => removeEvent({ data: params }));
 									if (ok) {
@@ -154,7 +154,7 @@ function EventSettingsPage() {
 				)}
 			</div>
 			{!canManageEvent && !canManagePositions && !assignments && (
-				<Alert tone="info">このイベントの設定を変える権限がありません。</Alert>
+				<Alert tone="info">{t("settings.eventNoPermission")}</Alert>
 			)}
 		</main>
 	);

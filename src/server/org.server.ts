@@ -16,6 +16,7 @@ import {
 	type Permission,
 	parsePermissions,
 } from "../lib/org/permissions";
+import { serverT } from "../lib/i18n/request-locale.server";
 import { isPrismaError, PRISMA_ERROR } from "../lib/prisma-errors";
 import { checkGuildMembership, type GuildChecker } from "./discord.server";
 import { prisma } from "../lib/prisma.server";
@@ -41,8 +42,7 @@ const fail = (...errors: string[]): { ok: false; errors: string[] } => ({
 	errors,
 });
 
-const FORBIDDEN_GRANT =
-	"自分が持っていない権限を含むロールは、付けたり渡したりできません";
+const forbiddenGrant = () => serverT("errors.forbiddenGrant");
 
 export type CreateOrganizationResult = Result<{ slug: string }>;
 
@@ -86,7 +86,7 @@ export const createOrganization = async (input: {
 		return { ok: true, slug: organization.slug };
 	} catch (error) {
 		if (isPrismaError(error, PRISMA_ERROR.uniqueViolation)) {
-			return fail("この URL はすでに使われています");
+			return fail(serverT("orgs.slugTaken"));
 		}
 		throw error;
 	}
@@ -100,8 +100,7 @@ const findRole = (organizationId: string, roleId: string) =>
 	});
 
 /** 確かめたあとに、ほかの人が同じロールを変えていたとき */
-const CONCURRENT_CHANGE =
-	"ほかの人が同時にこのロールを変えました。画面を読み直して、もう一度試してください";
+const concurrentChange = () => serverT("errors.roleConcurrentChange");
 
 // ---- ロール ----
 
@@ -118,7 +117,7 @@ export const createRole = async (
 	input: RoleInput,
 ): Promise<Result<{ id: string }>> => {
 	if (!canGrant(actor.permissions, input.permissions))
-		return fail(FORBIDDEN_GRANT);
+		return fail(forbiddenGrant());
 	const last = await prisma.orgRole.aggregate({
 		where: { organizationId },
 		_max: { sortOrder: true },
@@ -144,12 +143,12 @@ export const updateRole = async (
 	input: RoleInput,
 ): Promise<Result> => {
 	const role = await findRole(organizationId, roleId);
-	if (!role) return fail("ロールが見つかりません");
+	if (!role) return fail(serverT("errors.roleNotFound"));
 	if (!canGrant(actor.permissions, parsePermissions(role.permissions))) {
-		return fail("自分が持っていない権限を含むロールは変えられません");
+		return fail(serverT("errors.roleUpdateForbidden"));
 	}
 	if (!canGrant(actor.permissions, input.permissions))
-		return fail(FORBIDDEN_GRANT);
+		return fail(forbiddenGrant());
 	// 確かめたときのまま（updatedAt が同じ）のときだけ書く。途中でほかの人が権限を足していたら書かない
 	const updated = await prisma.orgRole.updateMany({
 		where: { id: role.id, organizationId, updatedAt: role.updatedAt },
@@ -159,7 +158,7 @@ export const updateRole = async (
 			permissions: input.permissions,
 		},
 	});
-	if (updated.count === 0) return fail(CONCURRENT_CHANGE);
+	if (updated.count === 0) return fail(concurrentChange());
 	return { ok: true };
 };
 
@@ -170,15 +169,15 @@ export const deleteRole = async (
 	roleId: string,
 ): Promise<Result> => {
 	const role = await findRole(organizationId, roleId);
-	if (!role) return fail("ロールが見つかりません");
+	if (!role) return fail(serverT("errors.roleNotFound"));
 	if (!canGrant(actor.permissions, parsePermissions(role.permissions))) {
-		return fail("自分が持っていない権限を含むロールは消せません");
+		return fail(serverT("errors.roleDeleteForbidden"));
 	}
 	// 確かめたときのまま（updatedAt が同じ）のときだけ消す
 	const deleted = await prisma.orgRole.deleteMany({
 		where: { id: role.id, organizationId, updatedAt: role.updatedAt },
 	});
-	if (deleted.count === 0) return fail(CONCURRENT_CHANGE);
+	if (deleted.count === 0) return fail(concurrentChange());
 	return { ok: true };
 };
 
@@ -201,18 +200,16 @@ export const setMemberRoles = async (
 			where: { id: memberId, organizationId },
 			select: { id: true, isOwner: true, roles: { select: { roleId: true } } },
 		});
-		if (!member) return fail("メンバーが見つかりません");
+		if (!member) return fail(serverT("errors.memberNotFound"));
 		if (member.isOwner) {
-			return fail(
-				"オーナーのロールは変えられません（オーナーは常に全権限です）",
-			);
+			return fail(serverT("errors.ownerRolesFixed"));
 		}
 
 		const wanted = [...new Set(roleIds)];
 		const found = await tx.orgRole.count({
 			where: { organizationId, id: { in: wanted } },
 		});
-		if (found !== wanted.length) return fail("ロールが見つかりません");
+		if (found !== wanted.length) return fail(serverT("errors.roleNotFound"));
 
 		const current = member.roles.map((r) => r.roleId);
 		const toAdd = wanted.filter((id) => !current.includes(id));
@@ -226,7 +223,7 @@ export const setMemberRoles = async (
 				(r) => !canGrant(actor.permissions, parsePermissions(r.permissions)),
 			)
 		) {
-			return fail(FORBIDDEN_GRANT);
+			return fail(forbiddenGrant());
 		}
 
 		// 外すのは、上で確かめたロールだけ
@@ -259,12 +256,12 @@ export const createInvite = async (input: {
 	now?: Date;
 }): Promise<Result<{ code: string }>> => {
 	const role = await findRole(input.organizationId, input.roleId);
-	if (!role) return fail("ロールが見つかりません");
+	if (!role) return fail(serverT("errors.roleNotFound"));
 	// 招待で渡せるのは、自分が持っている権限の範囲のロールだけ（「ゲストを招待する」がある人は、Discord の条件の免除も渡せる）
 	if (
 		!canInviteWith(input.actor.permissions, parsePermissions(role.permissions))
 	) {
-		return fail(FORBIDDEN_GRANT);
+		return fail(forbiddenGrant());
 	}
 	const now = input.now ?? new Date();
 	for (let attempt = 0; attempt < 5; attempt++) {
@@ -339,7 +336,8 @@ export const previewInvite = async (
 			invite.organization.discordGuildId,
 			invite.role.permissions,
 		)
-			? (invite.organization.discordGuildName ?? "指定のサーバー")
+			? (invite.organization.discordGuildName ??
+				serverT("orgs.suspendedGuildFallback"))
 			: null,
 	};
 };

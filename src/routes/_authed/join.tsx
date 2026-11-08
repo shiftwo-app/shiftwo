@@ -1,14 +1,17 @@
 import { createFileRoute, useRouter } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useState } from "react";
-import type { FormEvent } from "react";
+import type { FormEvent, ReactNode } from "react";
 import Alert from "../../components/ui/Alert";
 import Button from "../../components/ui/Button";
 import Field from "../../components/ui/Field";
 import PageHeader from "../../components/ui/PageHeader";
+import type { MessageKey } from "../../lib/i18n/messages";
+import { useT } from "../../lib/i18n/react";
+import { type Translate, translate } from "../../lib/i18n/translate";
 import {
 	formatInviteCode,
-	INVITE_UNUSABLE_MESSAGES,
+	INVITE_UNUSABLE_MESSAGE_KEYS,
 	type InviteUnusableReason,
 } from "../../lib/org/invite-code";
 import { NAME_MAX_LENGTH } from "../../lib/profile";
@@ -25,29 +28,44 @@ type JoinFailure =
 
 const OTHER_MESSAGES: Record<
 	Exclude<JoinFailure, InviteUnusableReason>,
-	string
+	MessageKey
 > = {
-	not_found: "招待コードが見つかりません。入力を確かめてください",
-	already_member: "すでにこの団体のメンバーです",
-	discord_required:
-		"この団体に参加するには、Discord の連携が必要です。アカウントの設定で Discord を連携してから、もう一度試してください",
-	not_in_guild:
-		"この団体の Discord サーバーのメンバーではありません。サーバーに参加してから、もう一度試してください",
-	discord_unavailable:
-		"Discord に確かめられませんでした。時間をおいて、もう一度試してください",
+	not_found: "orgs.joinNotFound",
+	already_member: "orgs.joinAlreadyMember",
+	discord_required: "orgs.joinDiscordRequired",
+	not_in_guild: "orgs.joinNotInGuild",
+	discord_unavailable: "orgs.joinDiscordUnavailable",
 };
 
-const reasonMessage = (reason: JoinFailure) =>
-	reason in OTHER_MESSAGES
-		? OTHER_MESSAGES[reason as keyof typeof OTHER_MESSAGES]
-		: INVITE_UNUSABLE_MESSAGES[reason as InviteUnusableReason];
+const reasonMessage = (t: Translate, reason: JoinFailure) =>
+	t(
+		reason in OTHER_MESSAGES
+			? OTHER_MESSAGES[reason as keyof typeof OTHER_MESSAGES]
+			: INVITE_UNUSABLE_MESSAGE_KEYS[reason as InviteUnusableReason],
+	);
+
+/** 訳文の {name} の位置に、要素を差し込む（太字や等幅で見せたいところ） */
+const fill = (template: string, parts: Record<string, ReactNode>) =>
+	template
+		.split(/\{(\w+)\}/)
+		.map((part, index) =>
+			index % 2 === 1 ? <span key={index}>{parts[part] ?? part}</span> : part,
+		);
 
 // 招待コードで団体に参加する。?code= で開けば、コードが入った状態になる
 export const Route = createFileRoute("/_authed/join")({
 	validateSearch: (search: Record<string, unknown>) => ({
 		code: typeof search.code === "string" ? search.code : "",
 	}),
-	head: () => ({ meta: [{ title: "招待コードで参加 | シフトヲ" }] }),
+	head: ({ match }) => ({
+		meta: [
+			{
+				title: translate(match.context.locale, "shell.pageTitle", {
+					page: translate(match.context.locale, "orgs.joinWithCode"),
+				}),
+			},
+		],
+	}),
 	component: JoinPage,
 });
 
@@ -55,6 +73,7 @@ function JoinPage() {
 	const { user } = Route.useRouteContext();
 	const { code: initialCode } = Route.useSearch();
 	const router = useRouter();
+	const t = useT();
 	const preview = useServerFn(previewInviteFn);
 	const accept = useServerFn(acceptInviteFn);
 	const [code, setCode] = useState(initialCode);
@@ -73,7 +92,7 @@ function JoinPage() {
 		try {
 			const result = await preview({ data: { code } });
 			if (!result.ok) {
-				setErrors([reasonMessage(result.reason)]);
+				setErrors([reasonMessage(t, result.reason)]);
 				return;
 			}
 			if (result.alreadyMember) {
@@ -97,7 +116,9 @@ function JoinPage() {
 			const result = await accept({ data: { code, displayName } });
 			if (!result.ok) {
 				setErrors(
-					"errors" in result ? result.errors : [reasonMessage(result.reason)],
+					"errors" in result
+						? result.errors
+						: [reasonMessage(t, result.reason)],
 				);
 				return;
 			}
@@ -112,11 +133,11 @@ function JoinPage() {
 
 	return (
 		<main className="mx-auto max-w-xl px-4 py-8 sm:px-6">
-			<PageHeader title="招待コードで参加" />
+			<PageHeader title={t("orgs.joinWithCode")} />
 			<div className="space-y-5 rounded-xl border border-line bg-surface p-6">
 				{!found ? (
 					<form onSubmit={check} className="space-y-4">
-						<Field label="招待コード（8 文字）">
+						<Field label={t("orgs.inviteCodeLabel")}>
 							{(props) => (
 								<input
 									{...props}
@@ -134,35 +155,42 @@ function JoinPage() {
 							disabled={busy}
 							className="h-10 w-full"
 						>
-							確かめる
+							{t("orgs.joinCheck")}
 						</Button>
 					</form>
 				) : (
 					<form onSubmit={join} className="space-y-4">
 						<p className="text-sm leading-relaxed text-ink">
-							「<strong className="font-bold">{found.organizationName}</strong>
-							」に ロール「
-							{found.roleName}」で参加します（招待コード{" "}
-							<span className="font-mono tabular">
-								{formatInviteCode(code.toUpperCase().replace(/[\s-]/g, ""))}
-							</span>
-							）。
+							{fill(t("orgs.joinConfirm"), {
+								org: (
+									<strong className="font-bold">
+										{found.organizationName}
+									</strong>
+								),
+								role: found.roleName,
+								code: (
+									<span className="font-mono tabular">
+										{formatInviteCode(code.toUpperCase().replace(/[\s-]/g, ""))}
+									</span>
+								),
+							})}
 						</p>
 						{found.requiredDiscordGuildName && (
 							<Alert tone="info">
-								この団体は、Discord サーバー「{found.requiredDiscordGuildName}
-								」のメンバーだけが参加できます。Discord
-								を連携し、そのサーバーに参加している必要があります（
-								<a
-									href="/help/discord-server"
-									className="font-bold text-primary underline underline-offset-4 hover:text-primary-strong"
-								>
-									くわしく
-								</a>
-								）。
+								{fill(t("orgs.joinGuildRequired"), {
+									guild: found.requiredDiscordGuildName,
+									more: (
+										<a
+											href="/help/discord-server"
+											className="font-bold text-primary underline underline-offset-4 hover:text-primary-strong"
+										>
+											{t("orgs.learnMore")}
+										</a>
+									),
+								})}
 							</Alert>
 						)}
-						<Field label="この団体でのあなたの表示名">
+						<Field label={t("orgs.displayNameLabel")}>
 							{(props) => (
 								<input
 									{...props}
@@ -180,14 +208,14 @@ function JoinPage() {
 							disabled={busy}
 							className="h-10 w-full"
 						>
-							参加する
+							{t("orgs.joinSubmit")}
 						</Button>
 						<button
 							type="button"
 							onClick={() => setFound(null)}
 							className="text-sm font-bold text-primary underline underline-offset-4 hover:text-primary-strong"
 						>
-							コードを入れ直す
+							{t("orgs.joinReenterCode")}
 						</button>
 					</form>
 				)}

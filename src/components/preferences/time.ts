@@ -26,21 +26,49 @@ export const timeOptions = (unitMinutes: number, includeEndOfDay: boolean) => {
 	return options;
 };
 
-const rangeFormatter = new Intl.DateTimeFormat("ja-JP", {
-	timeZone: "Asia/Tokyo",
-	month: "numeric",
-	day: "numeric",
-	hour: "2-digit",
-	minute: "2-digit",
-});
-const timeFormatter = new Intl.DateTimeFormat("ja-JP", {
-	timeZone: "Asia/Tokyo",
-	hour: "2-digit",
-	minute: "2-digit",
-});
+const formatters = new Map<
+	string,
+	{ range: Intl.DateTimeFormat; time: Intl.DateTimeFormat }
+>();
+/** 言語ごとの書き方（日本時間）。作るのは言語ごとに 1 回 */
+const formattersFor = (intlLocale: string) => {
+	let found = formatters.get(intlLocale);
+	if (!found) {
+		found = {
+			range: new Intl.DateTimeFormat(intlLocale, {
+				timeZone: "Asia/Tokyo",
+				month: "numeric",
+				day: "numeric",
+				hour: "2-digit",
+				minute: "2-digit",
+				hourCycle: "h23",
+			}),
+			time: new Intl.DateTimeFormat(intlLocale, {
+				timeZone: "Asia/Tokyo",
+				hour: "2-digit",
+				minute: "2-digit",
+				hourCycle: "h23",
+			}),
+		};
+		formatters.set(intlLocale, found);
+	}
+	return found;
+};
 
-/** 「11/20 12:00〜13:00」のような表示（日をまたぐときは終わりにも日付を付ける） */
-export const formatRange = (range: { start: number; end: number }): string => {
+/** 範囲の「〜」。日本語・中国語は「〜」、ほかは「–」 */
+const rangeSeparator = (intlLocale: string) =>
+	/^(ja|zh)\b/.test(intlLocale) ? "〜" : "–";
+
+/**
+ * 「11/20 12:00〜13:00」のような表示（日をまたぐときは終わりにも日付を付ける）。
+ * intlLocale は Intl のロケール（useIntlLocale() のもの）。省けば日本語
+ */
+export const formatRange = (
+	range: { start: number; end: number },
+	intlLocale = "ja-JP",
+): string => {
+	const { range: rangeFormatter, time: timeFormatter } =
+		formattersFor(intlLocale);
 	const sameDay = splitJst(range.start).date === splitJst(range.end - 1).date;
 	const endsAtMidnight = splitJst(range.end).minutes === 0;
 	const end = !sameDay
@@ -48,5 +76,5 @@ export const formatRange = (range: { start: number; end: number }): string => {
 		: endsAtMidnight
 			? "24:00"
 			: timeFormatter.format(range.end);
-	return `${rangeFormatter.format(range.start)}〜${end}`;
+	return `${rangeFormatter.format(range.start)}${rangeSeparator(intlLocale)}${end}`;
 };

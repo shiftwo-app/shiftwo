@@ -1,5 +1,6 @@
 // シフトの入力の形と、時間帯の業務ルール。クライアントからも読めるよう、サーバー専用の import はしない
 import { z } from "zod";
+import { type Translate, translatorFor } from "../lib/i18n/translate";
 import { ShiftStatus } from "../types";
 
 const isoDateTime = z.iso
@@ -32,11 +33,13 @@ export type ShiftInput = z.infer<typeof shiftInputSchema>;
  * @param start シフトの開始時刻
  * @param end シフトの終了時刻
  * @param timeUnitMinutes 設定されている時間粒度（分）
+ * @param t メッセージを引く関数（サーバーでは serverT。既定は日本語）
  */
 export const validateShiftTimeRange = (
 	start: Date,
 	end: Date,
 	timeUnitMinutes: number,
+	t: Translate = translatorFor("ja"),
 ): string[] => {
 	const errors: string[] = [];
 
@@ -46,13 +49,13 @@ export const validateShiftTimeRange = (
 	const unitMs = timeUnitMinutes * 60_000;
 
 	if (end.getTime() <= start.getTime()) {
-		errors.push("終了時刻は開始時刻より後にしてください");
+		errors.push(t("board.errorTimeOrder"));
 	}
 	if (start.getTime() % unitMs !== 0) {
-		errors.push(`開始時刻は ${timeUnitMinutes} 分単位で指定してください`);
+		errors.push(t("board.errorStartUnit", { minutes: timeUnitMinutes }));
 	}
 	if (end.getTime() % unitMs !== 0) {
-		errors.push(`終了時刻は ${timeUnitMinutes} 分単位で指定してください`);
+		errors.push(t("board.errorEndUnit", { minutes: timeUnitMinutes }));
 	}
 
 	return errors;

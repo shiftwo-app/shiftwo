@@ -4,6 +4,7 @@
 //               ほかの人の希望と、締切のあとの直しは「全員の希望を扱える人」だけ
 //   全員の希望を扱える人 … 団体全体の希望は staff.manage、テナント・イベントの希望は、その単位での shift.edit
 //   締切・期間を決める人 … 団体は org.settings、テナントは tenant.manage、イベントは event.manage
+import { serverT } from "../lib/i18n/request-locale.server";
 import { hasPermission, type Permission } from "../lib/org/permissions";
 import {
 	effectivePreference,
@@ -12,6 +13,7 @@ import {
 	type PreferenceLevel,
 	type PreferenceScope,
 	preferenceInputSchema,
+	preferenceIssueMessage,
 	preferenceScopeKey,
 	type TimeRangeMs,
 	validatePreference,
@@ -76,7 +78,9 @@ export const requirePreferenceContext = async (
 				eventId: null,
 			},
 			scopeKey: "org",
-			label: `団体全体（${membership.organization.name}）`,
+			label: serverT("preferences.scopeLabelOrg", {
+				name: membership.organization.name,
+			}),
 			permissions,
 			canManageAll: hasPermission(permissions, "staff.manage"),
 			canSetDeadline: hasPermission(permissions, "org.settings"),
@@ -114,7 +118,9 @@ export const requirePreferenceContext = async (
 			scope,
 			ids,
 			scopeKey: preferenceScopeKey(ids),
-			label: `テナント（${access.tenant.name}）`,
+			label: serverT("preferences.scopeLabelTenant", {
+				name: access.tenant.name,
+			}),
 			permissions: access.permissions,
 			canManageAll: hasPermission(access.permissions, "shift.edit"),
 			canSetDeadline: hasPermission(access.member.permissions, "tenant.manage"),
@@ -134,7 +140,10 @@ export const requirePreferenceContext = async (
 		scope,
 		ids,
 		scopeKey: preferenceScopeKey(ids),
-		label: `イベント（${access.tenant.name} / ${access.event.name}）`,
+		label: serverT("preferences.scopeLabelEvent", {
+			tenant: access.tenant.name,
+			event: access.event.name,
+		}),
 		permissions: access.permissions,
 		canManageAll: hasPermission(access.permissions, "shift.edit"),
 		canSetDeadline: hasPermission(access.permissions, "event.manage"),
@@ -327,15 +336,13 @@ const editRefusal = async (
 		where: { id: staffId, organizationId: context.ids.organizationId },
 		select: { id: true, name: true, memberId: true },
 	});
-	if (!staff) return fail("スタッフが見つかりません");
+	if (!staff) return fail(serverT("preferences.staffNotFound"));
 	if (context.canManageAll) return { ok: true, staff };
 	if (staff.memberId !== context.membership.member.id) {
-		return fail("ほかの人の希望は直せません");
+		return fail(serverT("preferences.othersForbidden"));
 	}
 	if (isPastDeadline(context.deadline, now)) {
-		return fail(
-			"締切を過ぎたので、希望は変えられません。変えたいときはシフトを組む人に頼んでください",
-		);
+		return fail(serverT("preferences.pastDeadlineError"));
 	}
 	return { ok: true, staff };
 };
@@ -351,7 +358,11 @@ export const savePreference = async (
 	if (!allowed.ok) return allowed;
 	const parsed = preferenceInputSchema.safeParse(body);
 	if (!parsed.success) {
-		return fail(...parsed.error.issues.map((issue) => issue.message));
+		return fail(
+			...parsed.error.issues.map((issue) =>
+				preferenceIssueMessage(issue.message, serverT),
+			),
+		);
 	}
 	const input = parsed.data;
 	const breaks = input.breaks.map((b) => ({
@@ -361,8 +372,8 @@ export const savePreference = async (
 	if (!context.positionsEnabled && input.positionIds.length > 0) {
 		return fail(
 			context.scope.level === "org"
-				? "団体全体の希望では、持ち場は選べません（テナント・イベントの希望で選んでください）"
-				: "ここでは持ち場を使っていないので、持ち場は選べません",
+				? serverT("preferences.orgNoPositions")
+				: serverT("preferences.positionsDisabled"),
 		);
 	}
 	const errors = validatePreference(
@@ -376,6 +387,7 @@ export const savePreference = async (
 					}
 				: null,
 		},
+		serverT,
 	);
 	if (errors.length > 0) return fail(...errors);
 
@@ -390,7 +402,7 @@ export const savePreference = async (
 			},
 		});
 		if (found !== input.positionIds.length) {
-			return fail("選んだ持ち場が見つかりません");
+			return fail(serverT("preferences.positionNotFound"));
 		}
 	}
 
@@ -450,13 +462,13 @@ export const setPreferenceSettings = async (
 	},
 ): Promise<{ ok: true } | Fail> => {
 	if (!context.canSetDeadline) {
-		return fail("締切を決める権限がありません");
+		return fail(serverT("preferences.noDeadlinePermission"));
 	}
 	const { organizationId, tenantId, eventId } = context.ids;
 	if (eventId) {
 		const period = settings.period ?? null;
 		if (period && period.end <= period.start) {
-			return fail("イベントの終わりは始まりより後にしてください");
+			return fail(serverT("preferences.eventEndBeforeStart"));
 		}
 		await prisma.event.updateMany({
 			where: { id: eventId, organizationId },

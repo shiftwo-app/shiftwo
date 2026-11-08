@@ -1,0 +1,55 @@
+import type { Messages } from "../define";
+import type ja from "./ja";
+
+export default {
+	loginTitle: "登入 Shiftwo",
+	loginSendLabel: "寄送登入郵件",
+	loginDiscordLabel: "使用 Discord 登入",
+	signupTitle: "註冊 Shiftwo",
+	signupSendLabel: "寄送註冊郵件",
+	signupDiscordLabel: "使用 Discord 註冊",
+	emailInvalid: "請檢查電子郵件地址的格式",
+	emailSendFailed: "無法寄送郵件。請檢查電子郵件地址後再試一次。",
+	codeInvalid: "驗證碼不正確或已過期",
+	or: "或",
+	emailLabel: "電子郵件地址",
+	codeSent: "已寄送郵件至 {email}。請開啟郵件中的連結，或輸入驗證碼。",
+	codeLabel: "驗證碼（6 位）",
+	signIn: "登入",
+	changeEmail: "更換電子郵件地址",
+	resend: "重新寄送",
+	discordEmailNotVerified:
+		"你的 Discord 電子郵件地址尚未驗證。請先在 Discord 中驗證電子郵件地址，然後再試一次。",
+	discordLoginFailed:
+		"登入失敗。請確認你的 Discord 電子郵件地址已驗證，然後再試一次。",
+	signupPrompt: "第一次使用？",
+	signupLink: "註冊",
+	loginPrompt: "已有帳號？",
+	signupStepAccount: "使用 Discord 或電子郵件地址（驗證碼）建立帳號",
+	signupStepName: "設定你的名字",
+	signupStepOrg: "建立組織，或使用邀請碼加入組織",
+	verifyLinkUnusable: "此連結無法使用（已過期或已使用）。請重新寄送登入郵件。",
+	verifyLinkInvalid: "連結不正確。",
+	verifyNotRequestedHere: "此瀏覽器沒有向 {email} 寄送過登入郵件。",
+	verifyNotYoursHint:
+		"如果這不是你自己寄送的郵件，請關閉此頁面（這可能是讓你登入他人帳號的手法）。",
+	verifyYoursHint:
+		"如果是你自己寄送的，請在寄送郵件的瀏覽器中輸入驗證碼，或在此瀏覽器中從登入頁面重新開始。",
+	verifyAs: "將以 {email} 的身分登入。",
+	verifySubmit: "登入",
+	backToLogin: "前往登入頁面",
+	welcomePageTitle: "歡迎",
+	welcomeTitle: "歡迎使用 Shiftwo",
+	welcomeBody:
+		"已使用 {email} 建立帳號。請先設定你的名字。在組織中使用的顯示名稱，之後可以依組織分別修改。",
+	nameLabel: "名字",
+	welcomeSubmit: "開始使用",
+	welcomeNext: "設定名字後，就可以建立組織，或使用邀請碼加入組織。",
+	welcomeSwitchAccount: "使用其他帳號登入（登出）",
+	loginEmailSubject: "登入 {app}（驗證碼 {otp}）",
+	loginEmailIntro: "要登入 {app}，請使用以下任一方式。",
+	loginEmailOpenLink: "■ 開啟連結",
+	loginEmailEnterCode: "■ 輸入驗證碼",
+	loginEmailExpires: "兩者都會在 {minutes} 分鐘後失效。",
+	loginEmailIgnore: "如果不是你本人操作，請忽略此郵件。",
+} satisfies Messages<typeof ja>;

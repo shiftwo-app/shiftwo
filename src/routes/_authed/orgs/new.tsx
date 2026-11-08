@@ -7,17 +7,28 @@ import Button from "../../../components/ui/Button";
 import Field from "../../../components/ui/Field";
 import PageHeader from "../../../components/ui/PageHeader";
 import Section from "../../../components/ui/Section";
+import { useT } from "../../../lib/i18n/react";
+import { translate } from "../../../lib/i18n/translate";
 import { NAME_MAX_LENGTH } from "../../../lib/profile";
 import { createOrganizationFn } from "../../../server/org.functions";
 
 export const Route = createFileRoute("/_authed/orgs/new")({
-	head: () => ({ meta: [{ title: "団体を作る | シフトヲ" }] }),
+	head: ({ match }) => ({
+		meta: [
+			{
+				title: translate(match.context.locale, "shell.pageTitle", {
+					page: translate(match.context.locale, "orgs.create"),
+				}),
+			},
+		],
+	}),
 	component: NewOrgPage,
 });
 
 function NewOrgPage() {
 	const { user } = Route.useRouteContext();
 	const router = useRouter();
+	const t = useT();
 	const create = useServerFn(createOrganizationFn);
 	const [name, setName] = useState("");
 	const [slug, setSlug] = useState("");
@@ -40,7 +51,7 @@ function NewOrgPage() {
 			});
 		} catch (error) {
 			console.error(error);
-			setErrors(["作れませんでした。時間をおいて、もう一度試してください"]);
+			setErrors([t("orgs.createFailed")]);
 		} finally {
 			setBusy(false);
 		}
@@ -48,14 +59,14 @@ function NewOrgPage() {
 
 	return (
 		<main className="mx-auto max-w-5xl px-4 py-8 sm:px-6">
-			<PageHeader title="団体を作る" />
+			<PageHeader title={t("orgs.create")} />
 			<form onSubmit={submit}>
 				<Section
 					id="new-org-basics"
-					title="団体"
-					description="団体の名前と、団体のページの URL を決めます。"
+					title={t("orgs.newBasicsTitle")}
+					description={t("orgs.newBasicsDescription")}
 				>
-					<Field label="団体名" hint="例：技術カンファレンス 2026 運営">
+					<Field label={t("orgs.nameLabel")} hint={t("orgs.nameHint")}>
 						{(props) => (
 							<input
 								{...props}
@@ -67,10 +78,7 @@ function NewOrgPage() {
 							/>
 						)}
 					</Field>
-					<Field
-						label="URL"
-						hint="/o/ のあとに付く名前。半角の英小文字・数字・ハイフン"
-					>
+					<Field label={t("orgs.slugLabel")} hint={t("orgs.slugHint")}>
 						{(props) => (
 							<div className="flex w-full max-w-md items-stretch">
 								<span
@@ -97,10 +105,10 @@ function NewOrgPage() {
 				</Section>
 				<Section
 					id="new-org-you"
-					title="あなた"
-					description="団体の中では、この名前で表示されます。"
+					title={t("orgs.newYouTitle")}
+					description={t("orgs.newYouDescription")}
 				>
-					<Field label="この団体でのあなたの表示名">
+					<Field label={t("orgs.displayNameLabel")}>
 						{(props) => (
 							<input
 								{...props}
@@ -124,7 +132,7 @@ function NewOrgPage() {
 						</Alert>
 					)}
 					<Button type="submit" variant="primary" disabled={busy}>
-						作る
+						{t("orgs.createSubmit")}
 					</Button>
 				</div>
 			</form>

@@ -1,5 +1,6 @@
 import { useState } from "react";
 import Button from "../ui/Button";
+import { useT } from "../../lib/i18n/react";
 
 /**
  * 消すなど、取り消せない操作のボタン。1 回目で「本当に〜」に変わり、2 回目で実行する
@@ -14,6 +15,7 @@ const ConfirmButton = ({
 	confirmLabel: string;
 	onConfirm: () => void;
 }) => {
+	const t = useT();
 	const [armed, setArmed] = useState(false);
 	return armed ? (
 		<span className="inline-flex flex-wrap items-center gap-2">
@@ -29,7 +31,7 @@ const ConfirmButton = ({
 				{confirmLabel}
 			</button>
 			<Button variant="ghost" size="sm" onClick={() => setArmed(false)}>
-				やめる
+				{t("common.cancel")}
 			</Button>
 		</span>
 	) : (

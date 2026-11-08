@@ -1,5 +1,6 @@
 import { useServerFn } from "@tanstack/react-start";
 import { useCallback, useEffect, useId, useState } from "react";
+import type { ReactNode } from "react";
 import {
 	getDiscordGuildSettings,
 	setDiscordGuild,
@@ -8,8 +9,21 @@ import Alert from "../ui/Alert";
 import Button from "../ui/Button";
 import Section from "../ui/Section";
 import type { RunMutation } from "./useMutationRunner";
+import { useT } from "../../lib/i18n/react";
 
 type Settings = Awaited<ReturnType<typeof getDiscordGuildSettings>>;
+
+/** メッセージの {link} などの所に、リンクなどの部品を差し込む */
+const withSlot = (message: string, slot: string, node: ReactNode) => {
+	const [before, after = ""] = message.split(slot);
+	return (
+		<>
+			{before}
+			{node}
+			{after}
+		</>
+	);
+};
 
 /**
  * 団体の参加の条件にする Discord サーバーを選ぶ（団体の設定の権限）。
@@ -24,6 +38,7 @@ const DiscordGuildSection = ({
 }) => {
 	const load = useServerFn(getDiscordGuildSettings);
 	const save = useServerFn(setDiscordGuild);
+	const t = useT();
 	const id = useId();
 	const [settings, setSettings] = useState<Settings | null>(null);
 	const [selected, setSelected] = useState("");
@@ -46,31 +61,30 @@ const DiscordGuildSection = ({
 	return (
 		<Section
 			id={`${id}-h`}
-			title="Discord サーバー"
-			description={
-				<>
-					サーバーを指定すると、そのサーバーのメンバーだけが参加し、シフトを見られます。ゲストのロールなど、
-					免除の権限があるロールの人は、メンバーでなくても参加できます（
-					<a
-						href="/help/discord-server"
-						className="text-primary underline underline-offset-2 hover:text-primary-strong"
-					>
-						くわしく
-					</a>
-					）。
-				</>
-			}
+			title={t("settings.discordTitle")}
+			description={withSlot(
+				t("settings.discordDescription"),
+				"{link}",
+				<a
+					href="/help/discord-server"
+					className="text-primary underline underline-offset-2 hover:text-primary-strong"
+				>
+					{t("settings.discordLearnMore")}
+				</a>,
+			)}
 		>
 			{!settings ? (
-				<p className="text-sm text-ink-muted">読み込んでいます…</p>
+				<p className="text-sm text-ink-muted">{t("common.loading")}</p>
 			) : !settings.discordConfigured ? (
 				<p className="text-sm text-ink-muted">
-					このシフトヲでは、Discord の連携は使えません。
+					{t("settings.discordNotConfigured")}
 				</p>
 			) : (
 				<div className="space-y-4 text-sm">
 					<div className="rounded-lg border border-line bg-surface px-4 py-3">
-						<p className="text-xs font-bold text-ink-muted">今の設定</p>
+						<p className="text-xs font-bold text-ink-muted">
+							{t("settings.discordCurrent")}
+						</p>
 						<p className="mt-1 flex flex-wrap items-center gap-2 text-ink">
 							{settings.current ? (
 								<>
@@ -85,40 +99,40 @@ const DiscordGuildSection = ({
 										/>
 									)}
 									<span>
-										<strong>{settings.current.name}</strong> のメンバーだけ
+										{withSlot(
+											t("settings.discordMembersOnly"),
+											"{name}",
+											<strong>{settings.current.name}</strong>,
+										)}
 									</span>
 								</>
 							) : (
-								<strong>
-									条件なし（招待コードがあれば誰でも参加できます）
-								</strong>
+								<strong>{t("settings.discordNoConditionCurrent")}</strong>
 							)}
 						</p>
 					</div>
 					{!settings.linked ? (
 						<Alert tone="info">
-							サーバーを選ぶには、先に
-							<a
-								href="/account"
-								className="text-primary underline underline-offset-2 hover:text-primary-strong"
-							>
-								アカウントの設定
-							</a>
-							で Discord を連携してください。
+							{withSlot(
+								t("settings.discordLinkFirst"),
+								"{link}",
+								<a
+									href="/account"
+									className="text-primary underline underline-offset-2 hover:text-primary-strong"
+								>
+									{t("settings.discordAccountSettings")}
+								</a>,
+							)}
 						</Alert>
 					) : settings.guilds === null ? (
-						<Alert tone="error">
-							Discord
-							からサーバーの一覧を読めませんでした。時間をおくか、Discord
-							を連携し直してください。
-						</Alert>
+						<Alert tone="error">{t("settings.discordGuildsError")}</Alert>
 					) : (
 						<div className="flex flex-col gap-1">
 							<label
 								htmlFor={`${id}-guild`}
 								className="text-sm font-bold text-ink"
 							>
-								サーバー
+								{t("settings.discordServer")}
 							</label>
 							<div className="flex flex-wrap items-center gap-2">
 								<select
@@ -127,7 +141,7 @@ const DiscordGuildSection = ({
 									onChange={(event) => setSelected(event.target.value)}
 									className="control min-w-0 flex-1 sm:max-w-xs"
 								>
-									<option value="">条件なし</option>
+									<option value="">{t("settings.discordNoCondition")}</option>
 									{settings.guilds.map((guild) => (
 										<option key={guild.id} value={guild.id}>
 											{guild.name}
@@ -138,13 +152,13 @@ const DiscordGuildSection = ({
 									variant="primary"
 									onClick={() => void apply(selected || null)}
 								>
-									保存
+									{t("common.save")}
 								</Button>
 							</div>
 						</div>
 					)}
 					<p className="text-xs leading-relaxed text-ink-muted">
-						選べるのは、あなたが参加しているサーバーだけです。指定すると、今いるメンバーも次のログインから確かめます。
+						{t("settings.discordNote")}
 					</p>
 				</div>
 			)}

@@ -7,17 +7,20 @@ import type {
 	StaffInput,
 	TenantInput,
 } from "../lib/manage-schemas";
+import type { MessageKey } from "../lib/i18n/messages";
+import { serverT } from "../lib/i18n/request-locale.server";
 import { canGrant, parsePermissions } from "../lib/org/permissions";
 import { isPrismaError, PRISMA_ERROR } from "../lib/prisma-errors";
 import { prisma } from "../lib/prisma.server";
 import type { Actor, Result } from "./org.server";
 import type { ShiftScopeIds } from "./shifts.server";
 
-const fail = (...errors: string[]): { ok: false; errors: string[] } => ({
+/** 失敗を返す。メッセージはキーで受け取り、このリクエストの言語の文章にする */
+const fail = (...keys: MessageKey[]): { ok: false; errors: string[] } => ({
 	ok: false,
-	errors,
+	errors: keys.map((key) => serverT(key)),
 });
-const SLUG_TAKEN = "この URL はすでに使われています";
+const SLUG_TAKEN: MessageKey = "settings.errorSlugTaken";
 
 /** 一意の制約（URL 名の重なり）を、画面に出せるエラーにする。ほかは投げ直す */
 const slugTaken = (error: unknown) => {
@@ -53,7 +56,7 @@ export const updateTenant = async (
 			where: { id: tenantId, organizationId },
 			data: input,
 		});
-		if (result.count === 0) return fail("テナントが見つかりません");
+		if (result.count === 0) return fail("settings.errorTenantNotFound");
 		return { ok: true, slug: input.slug };
 	} catch (error) {
 		return slugTaken(error);
@@ -87,7 +90,7 @@ export const updateEvent = async (
 			where: { id: eventId, ...ids },
 			data: input,
 		});
-		if (result.count === 0) return fail("イベントが見つかりません");
+		if (result.count === 0) return fail("settings.errorEventNotFound");
 		return { ok: true, slug: input.slug };
 	} catch (error) {
 		return slugTaken(error);
@@ -102,7 +105,9 @@ export const deleteEvent = async (
 	const result = await prisma.event.deleteMany({
 		where: { id: eventId, ...ids },
 	});
-	return result.count === 0 ? fail("イベントが見つかりません") : { ok: true };
+	return result.count === 0
+		? fail("settings.errorEventNotFound")
+		: { ok: true };
 };
 
 // ---- 持ち場（日常シフトならテナント、イベントならそのイベントのもの） ----
@@ -124,7 +129,9 @@ export const updatePosition = async (
 		where: { id: positionId, ...scope },
 		data: input,
 	});
-	return result.count === 0 ? fail("持ち場が見つかりません") : { ok: true };
+	return result.count === 0
+		? fail("settings.errorPositionNotFound")
+		: { ok: true };
 };
 
 /** 持ち場を消す（その持ち場のシフトも消える） */
@@ -135,7 +142,9 @@ export const deletePosition = async (
 	const result = await prisma.position.deleteMany({
 		where: { id: positionId, ...scope },
 	});
-	return result.count === 0 ? fail("持ち場が見つかりません") : { ok: true };
+	return result.count === 0
+		? fail("settings.errorPositionNotFound")
+		: { ok: true };
 };
 
 // ---- スタッフ（団体全体） ----
@@ -147,7 +156,7 @@ const memberBelongs = async (organizationId: string, memberId: string | null) =>
 
 const staffMemberTaken = (error: unknown) => {
 	if (isPrismaError(error, PRISMA_ERROR.uniqueViolation)) {
-		return fail("このメンバーは、すでにほかのスタッフに紐づいています");
+		return fail("settings.errorStaffMemberTaken");
 	}
 	throw error;
 };
@@ -157,7 +166,7 @@ export const createStaff = async (
 	input: StaffInput,
 ): Promise<Result> => {
 	if (!(await memberBelongs(organizationId, input.memberId))) {
-		return fail("メンバーが見つかりません");
+		return fail("settings.errorMemberNotFound");
 	}
 	try {
 		await prisma.staff.create({
@@ -180,14 +189,16 @@ export const updateStaff = async (
 	input: StaffInput,
 ): Promise<Result> => {
 	if (!(await memberBelongs(organizationId, input.memberId))) {
-		return fail("メンバーが見つかりません");
+		return fail("settings.errorMemberNotFound");
 	}
 	try {
 		const result = await prisma.staff.updateMany({
 			where: { id: staffId, organizationId },
 			data: { name: input.name, memberId: input.memberId },
 		});
-		return result.count === 0 ? fail("スタッフが見つかりません") : { ok: true };
+		return result.count === 0
+			? fail("settings.errorStaffNotFound")
+			: { ok: true };
 	} catch (error) {
 		return staffMemberTaken(error);
 	}
@@ -201,7 +212,9 @@ export const deleteStaff = async (
 	const result = await prisma.staff.deleteMany({
 		where: { id: staffId, organizationId },
 	});
-	return result.count === 0 ? fail("スタッフが見つかりません") : { ok: true };
+	return result.count === 0
+		? fail("settings.errorStaffNotFound")
+		: { ok: true };
 };
 
 // ---- テナント・イベントでのロールの割り当て ----
@@ -223,25 +236,25 @@ export const setScopedRoles = async (
 			where: { id: memberId, organizationId },
 			select: { id: true },
 		});
-		if (!member) return fail("メンバーが見つかりません");
+		if (!member) return fail("settings.errorMemberNotFound");
 		const tenant = await tx.tenant.findFirst({
 			where: { id: target.tenantId, organizationId },
 			select: { id: true },
 		});
-		if (!tenant) return fail("テナントが見つかりません");
+		if (!tenant) return fail("settings.errorTenantNotFound");
 		if (target.eventId) {
 			const event = await tx.event.findFirst({
 				where: { id: target.eventId, tenantId: tenant.id, organizationId },
 				select: { id: true },
 			});
-			if (!event) return fail("イベントが見つかりません");
+			if (!event) return fail("settings.errorEventNotFound");
 		}
 
 		const wanted = [...new Set(roleIds)];
 		const found = await tx.orgRole.count({
 			where: { organizationId, id: { in: wanted } },
 		});
-		if (found !== wanted.length) return fail("ロールが見つかりません");
+		if (found !== wanted.length) return fail("settings.errorRoleNotFound");
 
 		const current = target.eventId
 			? (
@@ -267,9 +280,7 @@ export const setScopedRoles = async (
 				(r) => !canGrant(actor.permissions, parsePermissions(r.permissions)),
 			)
 		) {
-			return fail(
-				"自分が持っていない権限を含むロールは、付けたり外したりできません",
-			);
+			return fail("settings.errorScopedRoleForbidden");
 		}
 
 		if (target.eventId) {

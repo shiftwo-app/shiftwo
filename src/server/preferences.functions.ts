@@ -1,5 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
+import { serverT } from "../lib/i18n/request-locale.server";
 import { isPastDeadline, preferenceScopeSchema } from "../lib/preferences";
 import { requireUserMiddleware } from "./auth-middleware";
 import { OrgAccessError } from "./org-access.server";
@@ -20,7 +21,11 @@ import {
 const orgSlug = z.string().min(1);
 const isoOrNull = z.iso.datetime({ offset: true }).nullable();
 
-const notFoundResult = { ok: false as const, errors: ["見つかりません"] };
+/** 見つからないときの結果（リクエストの言語で） */
+const notFoundResult = () => ({
+	ok: false as const,
+	errors: [serverT("preferences.notFound")],
+});
 
 /** 見つからない（所属していない・単位がない）を null にする。ほかは投げ直す */
 const orNull = async <T>(load: () => Promise<T>): Promise<T | null> => {
@@ -93,7 +98,7 @@ export const savePreferenceFn = createServerFn({ method: "POST" })
 		const preference = await orNull(() =>
 			requirePreferenceContext(context.user.id, data.orgSlug, data.scope),
 		);
-		if (!preference) return notFoundResult;
+		if (!preference) return notFoundResult();
 		return savePreference(preference, data.staffId, data.input);
 	});
 
@@ -111,7 +116,7 @@ export const removePreferenceFn = createServerFn({ method: "POST" })
 		const preference = await orNull(() =>
 			requirePreferenceContext(context.user.id, data.orgSlug, data.scope),
 		);
-		if (!preference) return notFoundResult;
+		if (!preference) return notFoundResult();
 		return removePreference(preference, data.staffId);
 	});
 
@@ -141,7 +146,7 @@ export const setPreferenceSettingsFn = createServerFn({ method: "POST" })
 		const preference = await orNull(() =>
 			requirePreferenceContext(context.user.id, data.orgSlug, data.scope),
 		);
-		if (!preference) return notFoundResult;
+		if (!preference) return notFoundResult();
 		return setPreferenceSettings(preference, {
 			deadline: data.deadline ? new Date(data.deadline) : null,
 			period: data.period
