@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vite-plus/test";
-import { type Role, type Shift, ShiftStatus, type Staff } from "../../types";
+import {
+	type Position,
+	type Shift,
+	ShiftStatus,
+	type Staff,
+} from "../../types";
 import {
 	assignLanes,
 	buildRows,
@@ -21,7 +26,7 @@ const ms = (time: string) => at(time).getTime();
 const shift = (
 	id: string,
 	staffId: string,
-	roleId: string,
+	positionId: string,
 	start: string,
 	end: string,
 ): Shift => ({
@@ -30,13 +35,13 @@ const shift = (
 	tenantId: "tenant",
 	eventId: null,
 	staffId,
-	roleId,
+	positionId,
 	timeRange: { start: at(start), end: at(end) },
-	isPreferredRole: true,
+	isPreferredPosition: true,
 	status: ShiftStatus.confirmed,
 });
 
-const roles: Role[] = [
+const positions: Position[] = [
 	{
 		id: "r1",
 		organizationId: "org",
@@ -135,8 +140,8 @@ describe("buildRows", () => {
 		shift("c", "s1", "r2", "13:00", "14:00"),
 	];
 
-	it("役割別は役割ごとに 1 行で、重なるシフトは段を分ける", () => {
-		const rows = buildRows("role", shifts, roles, staffs);
+	it("持ち場別は持ち場ごとに 1 行で、重なるシフトは段を分ける", () => {
+		const rows = buildRows("position", shifts, positions, staffs);
 		expect(rows.map((row) => row.requiredCount)).toEqual([2, 1]);
 		expect(rows.map((row) => row.label)).toEqual(["受付", "司会"]);
 		expect(rows[0].laneCount).toBe(2);
@@ -148,7 +153,7 @@ describe("buildRows", () => {
 	});
 
 	it("スタッフ別はスタッフごとに 1 行。シフトのない行も 1 段で残す", () => {
-		const rows = buildRows("staff", [shifts[0]], roles, staffs);
+		const rows = buildRows("staff", [shifts[0]], positions, staffs);
 		expect(
 			rows.map((row) => [row.label, row.items.length, row.laneCount]),
 		).toEqual([

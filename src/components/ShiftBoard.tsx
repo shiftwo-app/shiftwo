@@ -8,7 +8,7 @@ import {
 	updateShift,
 } from "../server/shifts.functions";
 import type { ShiftScopeParams } from "../lib/shift-scope";
-import type { Role, Shift, ShiftStatus, Staff } from "../types";
+import type { Position, Shift, ShiftStatus, Staff } from "../types";
 import ShiftForm, { type ShiftFormValue } from "./ShiftForm";
 import ShiftTimeline from "./ShiftTimeline";
 import { listShiftDays, toMs } from "./timeline/layout";
@@ -26,12 +26,12 @@ const toPayload = (
 	range?: { start: number; end: number },
 ): ShiftPayload => ({
 	staffId: shift.staffId,
-	roleId: shift.roleId,
+	positionId: shift.positionId,
 	timeRange: {
 		start: new Date(range?.start ?? toMs(shift.timeRange.start)).toISOString(),
 		end: new Date(range?.end ?? toMs(shift.timeRange.end)).toISOString(),
 	},
-	isPreferredRole: shift.isPreferredRole,
+	isPreferredPosition: shift.isPreferredPosition,
 	status: shift.status as ShiftStatus,
 });
 
@@ -43,7 +43,7 @@ const DEFAULT_START_HOUR_MS = 9 * 60 * 60_000;
  */
 const ShiftBoard = ({
 	shifts,
-	roles,
+	positions,
 	staffs,
 	timeUnitMinutes,
 	newShiftStatus,
@@ -51,14 +51,14 @@ const ShiftBoard = ({
 	canEdit,
 }: {
 	shifts: Shift[];
-	roles: Role[];
+	positions: Position[];
 	staffs: Staff[];
 	timeUnitMinutes: number;
 	/** この画面で作るシフトの status */
 	newShiftStatus: ShiftStatus;
 	/** シフトの単位（団体・テナント・イベント）。保存はこの単位に対して行う */
 	scope: ShiftScopeParams;
-	/** 編集できる役割か（できなければ編集モードを出さない。守りはサーバー側） */
+	/** 編集できる権限か（できなければ編集モードを出さない。守りはサーバー側） */
 	canEdit: boolean;
 }) => {
 	const router = useRouter();
@@ -213,7 +213,7 @@ const ShiftBoard = ({
 
 			{canEdit && editMode && (
 				<ShiftForm
-					roles={roles}
+					positions={positions}
 					staffs={staffs}
 					timeUnitMinutes={timeUnitMinutes}
 					defaultStart={
@@ -228,7 +228,7 @@ const ShiftBoard = ({
 
 			<ShiftTimeline
 				shifts={shifts}
-				roles={roles}
+				positions={positions}
 				staffs={staffs}
 				timeUnitMinutes={timeUnitMinutes}
 				editing={

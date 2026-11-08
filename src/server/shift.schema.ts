@@ -8,12 +8,12 @@ const isoDateTime = z.iso
 
 export const shiftInputSchema = z.object({
 	staffId: z.uuid(),
-	roleId: z.uuid(),
+	positionId: z.uuid(),
 	timeRange: z.object({
 		start: isoDateTime,
 		end: isoDateTime,
 	}),
-	isPreferredRole: z.boolean(),
+	isPreferredPosition: z.boolean(),
 	// 省いたとき、作成では DB の既定値（draft）、更新では今の値のままにする
 	status: z.enum(ShiftStatus).optional(),
 });

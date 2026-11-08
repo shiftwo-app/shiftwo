@@ -1,5 +1,5 @@
 import type { ShiftScopeParams } from "../lib/shift-scope";
-import type { Role, Shift, Staff } from "../types";
+import type { Position, Shift, Staff } from "../types";
 import { ShiftStatus } from "../types";
 import ShiftBoard from "./ShiftBoard";
 
@@ -13,7 +13,7 @@ const ShiftBoardPage = ({
 	title: string;
 	board: {
 		shifts: Shift[];
-		roles: Role[];
+		positions: Position[];
 		staffs: Staff[];
 		timeUnitMinutes: number;
 		canEdit: boolean;
@@ -23,16 +23,16 @@ const ShiftBoardPage = ({
 }) => (
 	<main className="space-y-4 p-4">
 		<h1 className="text-xl font-bold">{title}</h1>
-		{board.roles.length === 0 && (
+		{board.positions.length === 0 && (
 			<p className="text-sm text-gray-600">
 				{scope.eventSlug
-					? "このイベントの役割がまだありません。"
-					: "日常シフトの役割がまだありません。"}
+					? "このイベントの持ち場がまだありません。"
+					: "日常シフトの持ち場がまだありません。"}
 			</p>
 		)}
 		<ShiftBoard
 			shifts={board.shifts}
-			roles={board.roles}
+			positions={board.positions}
 			staffs={board.staffs}
 			timeUnitMinutes={board.timeUnitMinutes}
 			newShiftStatus={status}

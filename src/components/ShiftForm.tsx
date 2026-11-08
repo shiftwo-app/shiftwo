@@ -1,6 +1,6 @@
 import { useId, useState } from "react";
 import type { FormEvent } from "react";
-import type { Role, Staff } from "../types";
+import type { Position, Staff } from "../types";
 import {
 	fromDateTimeInputValue,
 	toDateTimeInputValue,
@@ -10,9 +10,9 @@ import { MINUTE_MS } from "./timeline/layout";
 /** 作成フォームで決めた値（status は画面の側で付ける） */
 export type ShiftFormValue = {
 	staffId: string;
-	roleId: string;
+	positionId: string;
 	timeRange: { start: string; end: string };
-	isPreferredRole: boolean;
+	isPreferredPosition: boolean;
 };
 
 /**
@@ -20,14 +20,14 @@ export type ShiftFormValue = {
  * 時刻は日本時間として扱い、入力の刻みは時間粒度に合わせる
  */
 const ShiftForm = ({
-	roles,
+	positions,
 	staffs,
 	timeUnitMinutes,
 	defaultStart,
 	busy,
 	onSubmit,
 }: {
-	roles: Role[];
+	positions: Position[];
 	staffs: Staff[];
 	timeUnitMinutes: number;
 	/** 開始の初期値（ms） */
@@ -38,28 +38,28 @@ const ShiftForm = ({
 }) => {
 	const id = useId();
 	const [staffId, setStaffId] = useState(staffs[0]?.id ?? "");
-	const [roleId, setRoleId] = useState(roles[0]?.id ?? "");
+	const [positionId, setPositionId] = useState(positions[0]?.id ?? "");
 	const [start, setStart] = useState(toDateTimeInputValue(defaultStart));
 	const [end, setEnd] = useState(
 		toDateTimeInputValue(defaultStart + 60 * MINUTE_MS),
 	);
-	const [isPreferredRole, setIsPreferredRole] = useState(true);
+	const [isPreferredPosition, setIsPreferredPosition] = useState(true);
 	const [formError, setFormError] = useState<string | null>(null);
 
 	const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
 		event.preventDefault();
 		const startIso = fromDateTimeInputValue(start);
 		const endIso = fromDateTimeInputValue(end);
-		if (!staffId || !roleId || !startIso || !endIso) {
-			setFormError("スタッフ・役割・開始・終了をすべて入力してください");
+		if (!staffId || !positionId || !startIso || !endIso) {
+			setFormError("スタッフ・持ち場・開始・終了をすべて入力してください");
 			return;
 		}
 		setFormError(null);
 		await onSubmit({
 			staffId,
-			roleId,
+			positionId,
 			timeRange: { start: startIso, end: endIso },
-			isPreferredRole,
+			isPreferredPosition,
 		});
 	};
 
@@ -87,17 +87,17 @@ const ShiftForm = ({
 					))}
 				</select>
 			</label>
-			<label htmlFor={`${id}-role`} className={field}>
-				役割
+			<label htmlFor={`${id}-position`} className={field}>
+				持ち場
 				<select
-					id={`${id}-role`}
-					value={roleId}
-					onChange={(event) => setRoleId(event.target.value)}
+					id={`${id}-position`}
+					value={positionId}
+					onChange={(event) => setPositionId(event.target.value)}
 					className={control}
 				>
-					{roles.map((role) => (
-						<option key={role.id} value={role.id}>
-							{role.name}
+					{positions.map((position) => (
+						<option key={position.id} value={position.id}>
+							{position.name}
 						</option>
 					))}
 				</select>
@@ -127,10 +127,10 @@ const ShiftForm = ({
 			<label className="flex items-center gap-1 pb-1 text-sm">
 				<input
 					type="checkbox"
-					checked={isPreferredRole}
-					onChange={(event) => setIsPreferredRole(event.target.checked)}
+					checked={isPreferredPosition}
+					onChange={(event) => setIsPreferredPosition(event.target.checked)}
 				/>
-				希望どおりの役割
+				希望どおりの持ち場
 			</label>
 			<button
 				type="submit"

@@ -48,12 +48,12 @@ describe("validateShiftTimeRange（秒・ミリ秒）", () => {
 describe("shiftInputSchema", () => {
 	const valid = {
 		staffId: "1aa4fead-237e-419c-b102-15eb477468a2",
-		roleId: "a0c45d77-cf0d-4a34-91ca-6c9ced8c94e9",
+		positionId: "a0c45d77-cf0d-4a34-91ca-6c9ced8c94e9",
 		timeRange: {
 			start: "2026-11-20T09:00:00+09:00",
 			end: "2026-11-20T12:00:00+09:00",
 		},
-		isPreferredRole: true,
+		isPreferredPosition: true,
 	};
 
 	it("正しい入力を受け付け、時刻を Date にする", () => {

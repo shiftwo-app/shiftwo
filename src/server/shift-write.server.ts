@@ -1,6 +1,6 @@
 // シフトの作成・更新・削除。入力を検証してから保存する。
-// どの操作もシフトの単位（団体・テナント・イベント）の中だけで行い、ほかの単位のスタッフ・役割・シフトには触れない。
-// 日常シフト（eventId なし）にはテナントの役割、イベントのシフトにはそのイベントの役割しか使えない。
+// どの操作もシフトの単位（団体・テナント・イベント）の中だけで行い、ほかの単位のスタッフ・持ち場・シフトには触れない。
+// 日常シフト（eventId なし）にはテナントの持ち場、イベントのシフトにはそのイベントの持ち場しか使えない。
 // API（server route）と server function の両方から使うので、結果は HTTP に依存しない形で返す
 import { z } from "zod";
 import { can, type MemberRole } from "../lib/org/permissions";
@@ -90,29 +90,29 @@ export const saveShift = async (
 		});
 	}
 
-	// スタッフは団体のもの、役割はこの単位（日常シフトならテナント、イベントならそのイベント）のものかを確かめる
+	// スタッフは団体のもの、持ち場はこの単位（日常シフトならテナント、イベントならそのイベント）のものかを確かめる
 	// （ほかの団体・テナント・イベントの ID を混ぜられないように）
 	const { organizationId, tenantId, eventId } = access;
-	const [staffCount, roleCount] = await Promise.all([
+	const [staffCount, positionCount] = await Promise.all([
 		prisma.staff.count({ where: { id: input.staffId, organizationId } }),
-		prisma.role.count({
-			where: { id: input.roleId, organizationId, tenantId, eventId },
+		prisma.position.count({
+			where: { id: input.positionId, organizationId, tenantId, eventId },
 		}),
 	]);
-	if (staffCount === 0 || roleCount === 0) {
-		return fail(400, "Staff or role does not exist", {
-			errors: ["スタッフか役割が見つかりません"],
+	if (staffCount === 0 || positionCount === 0) {
+		return fail(400, "Staff or position does not exist", {
+			errors: ["スタッフか持ち場が見つかりません"],
 		});
 	}
 
 	const data = {
 		staffId: input.staffId,
-		roleId: input.roleId,
+		positionId: input.positionId,
 		timeRange: {
 			start: input.timeRange.start.toISOString(),
 			end: input.timeRange.end.toISOString(),
 		},
-		isPreferredRole: input.isPreferredRole,
+		isPreferredPosition: input.isPreferredPosition,
 		status: input.status,
 	};
 
