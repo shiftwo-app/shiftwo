@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import ShiftTimeline from "../components/ShiftTimeline";
+import ShiftBoard from "../components/ShiftBoard";
 import { getShiftBoard } from "../server/shifts.functions";
 import { ShiftStatus } from "../types";
 
@@ -15,11 +15,12 @@ function HomePage() {
 		<main className="space-y-4 p-4">
 			<h1 className="text-xl font-bold">Shift Management</h1>
 			{shiftSetting && (
-				<ShiftTimeline
+				<ShiftBoard
 					shifts={shifts}
 					roles={roles}
 					staffs={staffs}
 					timeUnitMinutes={shiftSetting.timeUnitMinutes}
+					newShiftStatus={ShiftStatus.confirmed}
 				/>
 			)}
 		</main>

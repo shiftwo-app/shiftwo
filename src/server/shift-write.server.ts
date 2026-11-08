@@ -1,47 +1,72 @@
-// シフトの作成・更新。入力を検証してから保存し、結果を HTTP の応答にする
+// シフトの作成・更新・削除。入力を検証してから保存する。
+// API（server route）と server function の両方から使うので、結果は HTTP に依存しない形で返す
 import { z } from "zod";
 import { Prisma } from "../generated/prisma/client";
 import { prisma } from "../lib/prisma.server";
+import type { Shift } from "../types";
 import { shiftInputSchema, validateShiftTimeRange } from "./shift.schema";
 
-const badRequest = (message: string, issues?: unknown) =>
-	Response.json({ message, issues }, { status: 400 });
+export type ShiftWriteError = {
+	ok: false;
+	status: 400 | 404 | 409;
+	message: string;
+	/** 画面に出せるエラーメッセージ（時間帯のルール違反など） */
+	errors?: string[];
+	issues?: unknown;
+};
+
+export type ShiftWriteResult = { ok: true; shift: Shift } | ShiftWriteError;
+
+const fail = (
+	status: ShiftWriteError["status"],
+	message: string,
+	extra: Partial<ShiftWriteError> = {},
+): ShiftWriteError => ({ ok: false, status, message, ...extra });
+
+/** Prisma の「見つからない」「参照先がない」を、入力の誤りとして返す。それ以外は投げ直す */
+const toWriteError = (error: unknown): ShiftWriteError => {
+	if (error instanceof Prisma.PrismaClientKnownRequestError) {
+		// P2025: 対象のシフトがない / P2003: staffId・roleId の参照先がない
+		if (error.code === "P2025") return fail(404, "Shift not found");
+		if (error.code === "P2003") {
+			return fail(400, "Staff or role does not exist", {
+				errors: ["スタッフか役割が見つかりません"],
+			});
+		}
+	}
+	throw error;
+};
 
 /**
- * リクエストの body を検証してシフトを保存する。
- * id があれば更新（PUT）、なければ作成（POST）
+ * 入力を検証してシフトを保存する。id があれば更新、なければ作成。
+ * 想定外の失敗（DB に繋がらないなど）は投げる
  */
-export const writeShift = async (
-	request: Request,
+export const saveShift = async (
+	body: unknown,
 	id?: string,
-): Promise<Response> => {
-	let body: unknown;
-	try {
-		body = await request.json();
-	} catch {
-		return badRequest("Request body must be JSON");
-	}
-
+): Promise<ShiftWriteResult> => {
 	const parsed = shiftInputSchema.safeParse(body);
 	if (!parsed.success) {
-		return badRequest("Invalid shift", z.flattenError(parsed.error));
+		return fail(400, "Invalid shift", {
+			issues: z.flattenError(parsed.error),
+			errors: ["入力の形が正しくありません"],
+		});
 	}
 	const input = parsed.data;
 
 	const setting = await prisma.shiftSetting.findFirst();
-	if (!setting) {
-		return Response.json(
-			{ message: "Shift setting is not configured" },
-			{ status: 409 },
-		);
-	}
+	if (!setting) return fail(409, "Shift setting is not configured");
+
 	const ruleErrors = validateShiftTimeRange(
 		input.timeRange.start,
 		input.timeRange.end,
 		setting.timeUnitMinutes,
 	);
 	if (ruleErrors.length > 0) {
-		return badRequest("Invalid time range", { formErrors: ruleErrors });
+		return fail(400, "Invalid time range", {
+			issues: { formErrors: ruleErrors },
+			errors: ruleErrors,
+		});
 	}
 
 	const data = {
@@ -59,21 +84,67 @@ export const writeShift = async (
 		const shift = id
 			? await prisma.shift.update({ where: { id }, data })
 			: await prisma.shift.create({ data });
-		return Response.json(shift, { status: id ? 200 : 201 });
+		return { ok: true, shift: shift as unknown as Shift };
 	} catch (error) {
-		if (error instanceof Prisma.PrismaClientKnownRequestError) {
-			// P2025: 更新するシフトがない / P2003: staffId・roleId の参照先がない
-			if (error.code === "P2025") {
-				return Response.json({ message: "Shift not found" }, { status: 404 });
-			}
-			if (error.code === "P2003") {
-				return badRequest("Staff or role does not exist");
-			}
-		}
+		return toWriteError(error);
+	}
+};
+
+/** シフトを消す。消したシフトを返す（取り消しで元に戻すため） */
+export const removeShift = async (id: string): Promise<ShiftWriteResult> => {
+	try {
+		const shift = await prisma.shift.delete({ where: { id } });
+		return { ok: true, shift: shift as unknown as Shift };
+	} catch (error) {
+		return toWriteError(error);
+	}
+};
+
+const toResponse = (result: ShiftWriteResult, okStatus: number) =>
+	result.ok
+		? Response.json(result.shift, { status: okStatus })
+		: Response.json(
+				{ message: result.message, issues: result.issues },
+				{ status: result.status },
+			);
+
+/**
+ * API 用：リクエストの body を検証してシフトを保存する。
+ * id があれば更新（PUT）、なければ作成（POST）
+ */
+export const writeShift = async (
+	request: Request,
+	id?: string,
+): Promise<Response> => {
+	let body: unknown;
+	try {
+		body = await request.json();
+	} catch {
+		return Response.json(
+			{ message: "Request body must be JSON" },
+			{ status: 400 },
+		);
+	}
+	try {
+		return toResponse(await saveShift(body, id), id ? 200 : 201);
+	} catch (error) {
 		console.error(error);
 		return Response.json(
 			{ message: id ? "Error updating shift" : "Error creating shift" },
 			{ status: 500 },
 		);
+	}
+};
+
+/** API 用：シフトを消す（DELETE） */
+export const deleteShiftResponse = async (id: string): Promise<Response> => {
+	try {
+		const result = await removeShift(id);
+		return result.ok
+			? new Response(null, { status: 204 })
+			: toResponse(result, 204);
+	} catch (error) {
+		console.error(error);
+		return Response.json({ message: "Error deleting shift" }, { status: 500 });
 	}
 };
