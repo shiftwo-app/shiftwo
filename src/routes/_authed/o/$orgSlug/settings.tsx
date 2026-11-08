@@ -3,6 +3,7 @@ import { useServerFn } from "@tanstack/react-start";
 import Avatar from "../../../../components/Avatar";
 import AvatarUploader from "../../../../components/AvatarUploader";
 import DiscordGuildSection from "../../../../components/manage/DiscordGuildSection";
+import PositionsToggle from "../../../../components/manage/PositionsToggle";
 import StaffSection from "../../../../components/manage/StaffSection";
 import TenantsSection from "../../../../components/manage/TenantsSection";
 import ErrorList from "../../../../components/manage/ErrorList";
@@ -175,6 +176,19 @@ function SettingsPage() {
 				)}
 				{hasPermission(perms, "org.settings") && (
 					<DiscordGuildSection orgSlug={organization.slug} run={run} />
+				)}
+				{hasPermission(perms, "org.settings") && (
+					<Section
+						id="org-positions-h"
+						title="持ち場"
+						description="使わないときは、シフトを人と時間だけで組みます（持ち場の選択・持ち場別の表示・必要な人数・希望の持ち場を出しません）。団体の基本の設定で、テナントやイベントごとに変えられます。"
+					>
+						<PositionsToggle
+							scope={{ orgSlug: organization.slug }}
+							value={organization.positionsEnabled}
+							run={run}
+						/>
+					</Section>
 				)}
 				{hasPermission(perms, "tenant.manage") && (
 					<TenantsSection

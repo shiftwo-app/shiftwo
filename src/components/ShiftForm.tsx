@@ -11,7 +11,8 @@ import Button from "./ui/Button";
 /** 作成フォームで決めた値（status は画面の側で付ける） */
 export type ShiftFormValue = {
 	staffId: string;
-	positionId: string;
+	/** 持ち場を使わない単位では null */
+	positionId: string | null;
 	timeRange: { start: string; end: string };
 	isPreferredPosition: boolean;
 };
@@ -22,6 +23,7 @@ export type ShiftFormValue = {
  */
 const ShiftForm = ({
 	positions,
+	positionsEnabled = true,
 	staffs,
 	timeUnitMinutes,
 	defaultStart,
@@ -29,6 +31,8 @@ const ShiftForm = ({
 	onSubmit,
 }: {
 	positions: Position[];
+	/** 持ち場を使うか。使わないなら、持ち場を選ばせない */
+	positionsEnabled?: boolean;
 	staffs: Staff[];
 	timeUnitMinutes: number;
 	/** 開始の初期値（ms） */
@@ -51,16 +55,21 @@ const ShiftForm = ({
 		event.preventDefault();
 		const startIso = fromDateTimeInputValue(start);
 		const endIso = fromDateTimeInputValue(end);
-		if (!staffId || !positionId || !startIso || !endIso) {
-			setFormError("スタッフ・持ち場・開始・終了をすべて入力してください");
+		if (!staffId || (positionsEnabled && !positionId) || !startIso || !endIso) {
+			setFormError(
+				positionsEnabled
+					? "スタッフ・持ち場・開始・終了をすべて入力してください"
+					: "スタッフ・開始・終了をすべて入力してください",
+			);
 			return;
 		}
 		setFormError(null);
 		await onSubmit({
 			staffId,
-			positionId,
+			positionId: positionsEnabled ? positionId : null,
 			timeRange: { start: startIso, end: endIso },
-			isPreferredPosition,
+			// 持ち場を使わないなら、持ち場の希望は問わない
+			isPreferredPosition: positionsEnabled ? isPreferredPosition : true,
 		});
 	};
 
@@ -91,21 +100,23 @@ const ShiftForm = ({
 						))}
 					</select>
 				</label>
-				<label htmlFor={`${id}-position`} className={field}>
-					持ち場
-					<select
-						id={`${id}-position`}
-						value={positionId}
-						onChange={(event) => setPositionId(event.target.value)}
-						className={control}
-					>
-						{positions.map((position) => (
-							<option key={position.id} value={position.id}>
-								{position.name}
-							</option>
-						))}
-					</select>
-				</label>
+				{positionsEnabled && (
+					<label htmlFor={`${id}-position`} className={field}>
+						持ち場
+						<select
+							id={`${id}-position`}
+							value={positionId}
+							onChange={(event) => setPositionId(event.target.value)}
+							className={control}
+						>
+							{positions.map((position) => (
+								<option key={position.id} value={position.id}>
+									{position.name}
+								</option>
+							))}
+						</select>
+					</label>
+				)}
 				<label htmlFor={`${id}-start`} className={field}>
 					開始
 					<input
@@ -128,15 +139,17 @@ const ShiftForm = ({
 						className={control}
 					/>
 				</label>
-				<label className="flex h-9 items-center gap-2 text-sm text-ink">
-					<input
-						type="checkbox"
-						className="size-4 accent-primary"
-						checked={isPreferredPosition}
-						onChange={(event) => setIsPreferredPosition(event.target.checked)}
-					/>
-					希望どおりの持ち場
-				</label>
+				{positionsEnabled && (
+					<label className="flex h-9 items-center gap-2 text-sm text-ink">
+						<input
+							type="checkbox"
+							className="size-4 accent-primary"
+							checked={isPreferredPosition}
+							onChange={(event) => setIsPreferredPosition(event.target.checked)}
+						/>
+						希望どおりの持ち場
+					</label>
+				)}
 				<Button type="submit" variant="primary" disabled={busy}>
 					作る
 				</Button>

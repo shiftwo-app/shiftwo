@@ -311,7 +311,7 @@ function StaffPreferenceRow({
 						? view.effective.breaks.map(formatRange).join("、")
 						: "なし"}
 				</dd>
-				{level !== "org" && (
+				{page.positionsEnabled && (
 					<>
 						<dt className="text-ink-muted">持ち場</dt>
 						<dd>{names.length > 0 ? names.join("、") : "なし"}</dd>

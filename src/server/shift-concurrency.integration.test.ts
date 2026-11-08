@@ -23,6 +23,7 @@ describe.skipIf(!hasDatabase)("同時編集（DB）", async () => {
 		eventId: null;
 		permissions: Permission[];
 		timeUnitMinutes: number;
+		positionsEnabled: boolean;
 	};
 	let staffId = "";
 	let positionId = "";
@@ -75,6 +76,7 @@ describe.skipIf(!hasDatabase)("同時編集（DB）", async () => {
 			eventId: null,
 			permissions: editor,
 			timeUnitMinutes: 15,
+			positionsEnabled: true,
 		};
 		staffId = (
 			await prisma.staff.create({

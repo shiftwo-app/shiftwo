@@ -47,6 +47,8 @@ export type PreferenceContext = {
 	/** イベントの期間（決まっていなければ null。団体・テナントでは常に null） */
 	period: { start: Date; end: Date } | null;
 	timeUnitMinutes: number;
+	/** 持ち場の希望を受け付けるか（団体全体の希望と、持ち場を使わない単位では受け付けない） */
+	positionsEnabled: boolean;
 };
 
 const notFound = () => new OrgAccessError(404, "Not found");
@@ -81,6 +83,7 @@ export const requirePreferenceContext = async (
 			deadline: org.preferenceDeadline,
 			period: null,
 			timeUnitMinutes: ORG_TIME_UNIT_MINUTES,
+			positionsEnabled: false,
 		};
 	}
 
@@ -118,6 +121,7 @@ export const requirePreferenceContext = async (
 			deadline: tenant.preferenceDeadline,
 			period: null,
 			timeUnitMinutes: access.tenant.timeUnitMinutes,
+			positionsEnabled: access.positionsEnabled,
 		};
 	}
 	if (!access.event) throw notFound();
@@ -140,12 +144,13 @@ export const requirePreferenceContext = async (
 				? { start: event.startsAt, end: event.endsAt }
 				: null,
 		timeUnitMinutes: access.timeUnitMinutes,
+		positionsEnabled: access.positionsEnabled,
 	};
 };
 
 /** その単位で選べる持ち場（団体全体では選べない） */
 export const selectablePositions = (context: PreferenceContext) =>
-	context.scope.level === "org"
+	!context.positionsEnabled
 		? Promise.resolve([])
 		: prisma.position.findMany({
 				where: {
@@ -353,9 +358,11 @@ export const savePreference = async (
 		start: Date.parse(b.start),
 		end: Date.parse(b.end),
 	}));
-	if (context.scope.level === "org" && input.positionIds.length > 0) {
+	if (!context.positionsEnabled && input.positionIds.length > 0) {
 		return fail(
-			"団体全体の希望では、持ち場は選べません（テナント・イベントの希望で選んでください）",
+			context.scope.level === "org"
+				? "団体全体の希望では、持ち場は選べません（テナント・イベントの希望で選んでください）"
+				: "ここでは持ち場を使っていないので、持ち場は選べません",
 		);
 	}
 	const errors = validatePreference(

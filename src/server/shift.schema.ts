@@ -8,7 +8,8 @@ const isoDateTime = z.iso
 
 export const shiftInputSchema = z.object({
 	staffId: z.uuid(),
-	positionId: z.uuid(),
+	// 持ち場を使わない単位では null（使う単位では必須。saveShift が確かめる）
+	positionId: z.uuid().nullable(),
 	timeRange: z.object({
 		start: isoDateTime,
 		end: isoDateTime,

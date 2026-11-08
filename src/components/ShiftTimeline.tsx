@@ -52,6 +52,8 @@ interface ShiftTimelineProps {
 	editing?: TimelineEditing;
 	/** 希望と違う割り当て（FR-4-E）：シフトの ID → 理由。シフトを編集できる人にだけ届く */
 	preferenceConflicts?: Record<string, string[]>;
+	/** 持ち場を使うか。使わないなら、スタッフ別だけを出し、必要人数も出さない */
+	positionsEnabled?: boolean;
 }
 
 /** 1 目盛りの幅（px）。ズームを変えると 1 分あたりの幅が変わる */
@@ -164,8 +166,11 @@ const ShiftTimeline = ({
 	timeUnitMinutes,
 	editing,
 	preferenceConflicts,
+	positionsEnabled = true,
 }: ShiftTimelineProps) => {
-	const [axis, setAxis] = useState<TimelineAxis>("position");
+	const [selectedAxis, setAxis] = useState<TimelineAxis>("position");
+	// 持ち場を使わない単位では、スタッフ別だけ
+	const axis: TimelineAxis = positionsEnabled ? selectedAxis : "staff";
 	const [zoom, setZoom] = useState<ZoomMinutes>(toZoom(timeUnitMinutes));
 	const zoomSelectId = useId();
 	const now = useNow();
@@ -238,26 +243,28 @@ const ShiftTimeline = ({
 						))}
 					</div>
 				)}
-				<fieldset className={SEGMENT_GROUP}>
-					<legend className="sr-only">縦軸</legend>
-					{(Object.keys(AXIS_LABELS) as TimelineAxis[]).map((value) => (
-						<label
-							key={value}
-							// ラジオボタンは見えなくしても残し、キーボードと読み上げはそのまま使えるようにする
-							className={`${segmentItem(axis === value)} has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-1 has-[:focus-visible]:outline-primary`}
-						>
-							<input
-								type="radio"
-								name="timeline-axis"
-								value={value}
-								checked={axis === value}
-								onChange={() => setAxis(value)}
-								className="sr-only"
-							/>
-							{AXIS_LABELS[value]}
-						</label>
-					))}
-				</fieldset>
+				{positionsEnabled && (
+					<fieldset className={SEGMENT_GROUP}>
+						<legend className="sr-only">縦軸</legend>
+						{(Object.keys(AXIS_LABELS) as TimelineAxis[]).map((value) => (
+							<label
+								key={value}
+								// ラジオボタンは見えなくしても残し、キーボードと読み上げはそのまま使えるようにする
+								className={`${segmentItem(axis === value)} has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-1 has-[:focus-visible]:outline-primary`}
+							>
+								<input
+									type="radio"
+									name="timeline-axis"
+									value={value}
+									checked={axis === value}
+									onChange={() => setAxis(value)}
+									className="sr-only"
+								/>
+								{AXIS_LABELS[value]}
+							</label>
+						))}
+					</fieldset>
+				)}
 				<label
 					htmlFor={zoomSelectId}
 					className="flex items-center gap-2 text-xs text-ink-muted"
@@ -448,21 +455,24 @@ const ShiftTimeline = ({
 						/>
 						希望外の割り当て
 					</li>
-					<li className="flex items-center gap-1.5">
-						<span
-							aria-hidden
-							className="inline-block h-3 w-5 rounded-sm bg-danger-soft ring-1 ring-danger/40"
-						/>
-						人が足りない時間帯
-					</li>
+					{positionsEnabled && (
+						<li className="flex items-center gap-1.5">
+							<span
+								aria-hidden
+								className="inline-block h-3 w-5 rounded-sm bg-danger-soft ring-1 ring-danger/40"
+							/>
+							人が足りない時間帯
+						</li>
+					)}
 					<li className="flex items-center gap-1.5">
 						<span aria-hidden className="inline-block h-3 w-0.5 bg-brand" />
 						いま
 					</li>
 				</ul>
 				<p>
-					持ち場別の行の上の数字は「入っている人数 / 必要な人数」です。⌘ / Ctrl
-					を押しながらホイール（ピンチ）でズームできます。
+					{positionsEnabled &&
+						"持ち場別の行の上の数字は「入っている人数 / 必要な人数」です。"}
+					⌘ / Ctrl を押しながらホイール（ピンチ）でズームできます。
 					{editing &&
 						" 編集モードでは、シフトをドラッグで移動、右端のドラッグで長さを変えられます。キーボードでは ←→ で移動、Shift+←→ で長さ、Delete で削除です。"}
 				</p>

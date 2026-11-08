@@ -272,3 +272,16 @@ describe("coverageSegments（FR-4-D）", () => {
 		expect(coverageSegments([], range)).toEqual([segment("09:00", "18:00", 0)]);
 	});
 });
+
+describe("持ち場のないシフト", () => {
+	it("持ち場別では、最後の「持ち場なし」の行にまとめる", () => {
+		const rows = buildRows(
+			"position",
+			[{ ...shift("x", "staff-1", "p1", "09:00", "10:00"), positionId: null }],
+			[],
+			[],
+		);
+		expect(rows.map((row) => row.label)).toEqual(["持ち場なし"]);
+		expect(rows[0].items[0].position).toBeUndefined();
+	});
+});

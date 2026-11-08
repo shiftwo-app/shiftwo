@@ -57,6 +57,8 @@ model Event {
   name            String
   // 時間粒度の上書き（null ならテナントの値を使う）
   timeUnitMinutes Int?
+  // 持ち場を使うかの上書き（null ならテナントの設定のまま）
+  positionsEnabled Boolean?
   // 開催期間（任意）。決めておくと、希望の休憩が期間の外にあるとき断る
   startsAt        DateTime?
   endsAt          DateTime?
@@ -93,9 +95,10 @@ model Shift {
   // 団体を消したときに一緒に消えるよう Cascade（スタッフ・役割を消すと、そのシフトも消える）
   staff           Staff     @relation(fields: [staffId], references: [id], onDelete: Cascade)
   staffId         String
-  position        Position  @relation(fields: [positionId], references: [id], onDelete: Cascade)
+  // 持ち場。持ち場を使わない単位（positionsEnabled がオフ）では null
+  position        Position? @relation(fields: [positionId], references: [id], onDelete: Cascade)
   // DB の列名は以前の名前（roleId）のまま
-  positionId      String    @map("roleId")
+  positionId      String?   @map("roleId")
   timeRange       Json // TimeRange (start, end)
   // 希望どおりの持ち場か（DB の列名は以前の名前のまま）
   isPreferredPosition Boolean @map("isPreferredRole")
@@ -121,6 +124,8 @@ model Tenant {
   name            String
   // 時間粒度（分）。イベントで上書きできる
   timeUnitMinutes Int
+  // 持ち場を使うか（null なら団体の設定のまま）。イベントで上書きできる
+  positionsEnabled Boolean?
   // このテナントの希望の締切（null なら締切なし）
   preferenceDeadline DateTime?
   preferences     StaffPreference[]
@@ -175,6 +180,8 @@ model Organization {
   discordGuildId   String?
   discordGuildName String?
   discordGuildIcon String?
+  // 持ち場を使うか（団体の基本。テナント・イベントで上書きできる）。オフなら、シフトは人と時間だけで組む
+  positionsEnabled Boolean    @default(true)
   // 団体全体の希望の締切（null なら締切なし）
   preferenceDeadline DateTime?
   preferences  StaffPreference[]

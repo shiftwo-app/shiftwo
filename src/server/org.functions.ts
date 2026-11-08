@@ -129,16 +129,24 @@ export const getOrganization = createServerFn({ method: "GET" })
 				guildName: suspended.organization.discordGuildName,
 			};
 		}
-		const tenants = await prisma.tenant.findMany({
-			where: { organizationId: membership.organization.id },
-			select: { slug: true, name: true },
-			orderBy: { createdAt: "asc" },
-		});
+		const [tenants, settings] = await Promise.all([
+			prisma.tenant.findMany({
+				where: { organizationId: membership.organization.id },
+				select: { slug: true, name: true },
+				orderBy: { createdAt: "asc" },
+			}),
+			prisma.organization.findUniqueOrThrow({
+				where: { id: membership.organization.id },
+				select: { positionsEnabled: true },
+			}),
+		]);
 		return {
 			status: "member" as const,
 			organization: {
 				slug: membership.organization.slug,
 				name: membership.organization.name,
+				/** 持ち場を使うか（団体の基本の設定） */
+				positionsEnabled: settings.positionsEnabled,
 			},
 			member: membership.member,
 			// テナントが 1 つなら、テナントを選ぶ手順は出さない

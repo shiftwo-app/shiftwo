@@ -66,6 +66,10 @@ export const getTenantContext = createServerFn({ method: "GET" })
 			/** このテナントでの権限（設定へのリンクを出すかに使う。守りはサーバー側） */
 			permissions: access.permissions,
 			timeUnitMinutes: access.timeUnitMinutes,
+			/** このテナントで持ち場を使うか（決まったもの）と、テナントの上書きの設定・団体の基本の設定 */
+			positionsEnabled: access.positionsEnabled,
+			positionsOverride: access.tenant.positionsEnabled,
+			organizationPositionsEnabled: access.organizationPositionsEnabled,
 		};
 	});
 
@@ -85,6 +89,11 @@ export const getEventContext = createServerFn({ method: "GET" })
 			/** このイベントでの権限（設定へのリンクを出すかに使う。守りはサーバー側） */
 			permissions: access.permissions,
 			timeUnitMinutes: access.timeUnitMinutes,
+			/** このイベントで持ち場を使うか（決まったもの）と、イベントの上書きの設定・テナントまでで決まる値 */
+			positionsEnabled: access.positionsEnabled,
+			positionsOverride: access.event.positionsEnabled,
+			inheritedPositionsEnabled:
+				access.tenant.positionsEnabled ?? access.organizationPositionsEnabled,
 		};
 	});
 
@@ -131,6 +140,8 @@ export const getShiftBoard = createServerFn({ method: "GET" })
 			...board,
 			timeUnitMinutes: access.timeUnitMinutes,
 			canEdit,
+			/** この単位で持ち場を使うか（使わないなら、シフトは人と時間だけ） */
+			positionsEnabled: access.positionsEnabled,
 			/**
 			 * 希望と違う割り当て（FR-4-E）：シフトの ID → 理由。希望の中身（休憩・持ち場）は本人とシフトを組む人のものなので、
 			 * シフトを編集できる人にだけ返す
@@ -169,6 +180,7 @@ const writeAccess = async (
 			...toIds(access),
 			permissions: access.permissions,
 			timeUnitMinutes: access.timeUnitMinutes,
+			positionsEnabled: access.positionsEnabled,
 		};
 	} catch (error) {
 		if (error instanceof OrgAccessError) return null;

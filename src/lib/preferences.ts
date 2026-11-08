@@ -186,11 +186,13 @@ const conflictTimeFormatter = new Intl.DateTimeFormat("ja-JP", {
  * - 休憩・参加できない時間と重なる
  */
 export const preferenceConflicts = (
-	shift: { positionId: string; start: number; end: number },
+	shift: { positionId: string | null; start: number; end: number },
 	preference: { breaks: TimeRangeMs[]; positionIds: string[] },
 ): string[] => {
 	const reasons: string[] = [];
+	// 持ち場のないシフト（持ち場を使わない単位）は、持ち場の希望を問わない
 	if (
+		shift.positionId &&
 		preference.positionIds.length > 0 &&
 		!preference.positionIds.includes(shift.positionId)
 	) {
