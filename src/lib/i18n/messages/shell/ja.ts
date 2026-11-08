@@ -20,4 +20,8 @@ export default {
 	tabSettingsMembers: "設定・メンバー",
 	breadcrumbLabel: "いまいる場所",
 	memberWithRole: "{name}（{role}）",
+	menuOpen: "メニューを開く",
+	menuClose: "メニューを閉じる",
+	menuTitle: "メニュー",
+	menuAccount: "アカウント",
 } as const;

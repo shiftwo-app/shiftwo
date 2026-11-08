@@ -78,4 +78,6 @@ export default {
 	errorPositionRequired: "请选择岗位",
 	errorStaffOrPositionMissing: "找不到工作人员或岗位",
 	errorNotFound: "找不到",
+	zoomIn: "放大",
+	zoomOut: "缩小",
 } satisfies Messages<typeof ja>;

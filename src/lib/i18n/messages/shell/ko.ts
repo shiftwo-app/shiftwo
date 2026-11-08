@@ -22,4 +22,8 @@ export default {
 	tabSettingsMembers: "설정·멤버",
 	breadcrumbLabel: "현재 위치",
 	memberWithRole: "{name} ({role})",
+	menuOpen: "메뉴 열기",
+	menuClose: "메뉴 닫기",
+	menuTitle: "메뉴",
+	menuAccount: "계정",
 } satisfies Messages<typeof ja>;

@@ -22,4 +22,8 @@ export default {
 	tabSettingsMembers: "设置与成员",
 	breadcrumbLabel: "当前位置",
 	memberWithRole: "{name}（{role}）",
+	menuOpen: "打开菜单",
+	menuClose: "关闭菜单",
+	menuTitle: "菜单",
+	menuAccount: "账户",
 } satisfies Messages<typeof ja>;

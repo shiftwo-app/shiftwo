@@ -22,4 +22,8 @@ export default {
 	tabSettingsMembers: "設定與成員",
 	breadcrumbLabel: "目前位置",
 	memberWithRole: "{name}（{role}）",
+	menuOpen: "開啟選單",
+	menuClose: "關閉選單",
+	menuTitle: "選單",
+	menuAccount: "帳戶",
 } satisfies Messages<typeof ja>;

@@ -37,6 +37,7 @@ import { roomColor, roomsOf } from "../lib/timetable";
 import { applyDrag, type DragMode } from "./timeline/snap";
 import {
 	accumulateWheelZoom,
+	pinchZoomDirection,
 	wheelDeltaToPx,
 	zoomedScrollOffset,
 } from "./timeline/wheelZoom";
@@ -169,6 +170,68 @@ const useWheelZoom = (
 	}, [scrollRef, setZoom, pendingScrollRef]);
 };
 
+/**
+ * タッチのピンチでズームする（FR-3-3）。2 本の指の間隔が 1.25 倍（または 1/1.25）になるごとに 1 段。
+ * 指のあいだに見えていた時刻が、ズームしても同じ位置に来るようにする
+ */
+const usePinchZoom = (
+	scrollRef: RefObject<HTMLDivElement | null>,
+	zoom: ZoomMinutes,
+	setZoom: (zoom: ZoomMinutes) => void,
+	pendingScrollRef: RefObject<number | null>,
+) => {
+	const zoomRef = useRef(zoom);
+	zoomRef.current = zoom;
+
+	useEffect(() => {
+		const el = scrollRef.current;
+		if (!el) return;
+		let startDistance = 0;
+		const distanceOf = (touches: TouchList) =>
+			Math.hypot(
+				touches[0]!.clientX - touches[1]!.clientX,
+				touches[0]!.clientY - touches[1]!.clientY,
+			);
+		const handleStart = (event: TouchEvent) => {
+			if (event.touches.length === 2) startDistance = distanceOf(event.touches);
+		};
+		const handleMove = (event: TouchEvent) => {
+			if (event.touches.length !== 2 || startDistance === 0) return;
+			event.preventDefault();
+			const distance = distanceOf(event.touches);
+			const direction = pinchZoomDirection(startDistance, distance);
+			if (direction === 0) return;
+			startDistance = distance;
+			const current = zoomRef.current;
+			const next = stepZoom(current, direction);
+			if (next === current) return;
+			const midX = (event.touches[0]!.clientX + event.touches[1]!.clientX) / 2;
+			pendingScrollRef.current = zoomedScrollOffset(
+				el.scrollLeft,
+				midX - el.getBoundingClientRect().left,
+				headerWidthOf(el),
+				TICK_WIDTH_PX / current,
+				TICK_WIDTH_PX / next,
+			);
+			zoomRef.current = next;
+			setZoom(next);
+		};
+		const handleEnd = (event: TouchEvent) => {
+			if (event.touches.length < 2) startDistance = 0;
+		};
+		el.addEventListener("touchstart", handleStart, { passive: true });
+		el.addEventListener("touchmove", handleMove, { passive: false });
+		el.addEventListener("touchend", handleEnd, { passive: true });
+		el.addEventListener("touchcancel", handleEnd, { passive: true });
+		return () => {
+			el.removeEventListener("touchstart", handleStart);
+			el.removeEventListener("touchmove", handleMove);
+			el.removeEventListener("touchend", handleEnd);
+			el.removeEventListener("touchcancel", handleEnd);
+		};
+	}, [scrollRef, setZoom, pendingScrollRef]);
+};
+
 const ShiftTimeline = ({
 	shifts,
 	positions,
@@ -190,6 +253,7 @@ const ShiftTimeline = ({
 	const scrollRef = useRef<HTMLDivElement>(null);
 	const pendingScrollRef = useRef<number | null>(null);
 	useWheelZoom(scrollRef, zoom, setZoom, pendingScrollRef);
+	usePinchZoom(scrollRef, zoom, setZoom, pendingScrollRef);
 
 	// ズームを当てた後、wheel のときに決めたスクロール位置に合わせる（描画と同じコミットで）
 	useLayoutEffect(() => {
@@ -340,29 +404,51 @@ const ShiftTimeline = ({
 						{t("timetable.overlayToggle")}
 					</label>
 				)}
-				<label
-					htmlFor={zoomSelectId}
-					className="flex items-center gap-2 text-xs text-ink-muted"
-				>
-					{t("board.zoomLabel")}
-					<select
-						id={zoomSelectId}
-						value={zoom}
-						onChange={(event) => setZoom(toZoom(Number(event.target.value)))}
-						className="control h-8 py-0 text-xs tabular"
+				<div className="flex items-center gap-1">
+					{/* ピンチを使えない人のためのズームのボタン（FR-3-8） */}
+					<button
+						type="button"
+						aria-label={t("board.zoomOut")}
+						disabled={zoom === ZOOM_OPTIONS[ZOOM_OPTIONS.length - 1]}
+						onClick={() => setZoom(stepZoom(zoom, 1))}
+						className="inline-flex size-8 items-center justify-center rounded-md border border-line-strong text-ink hover:bg-surface-sunken disabled:opacity-40"
 					>
-						{ZOOM_OPTIONS.map((option) => (
-							<option key={option} value={option}>
-								{t("board.zoomOption", { minutes: option })}
-							</option>
-						))}
-					</select>
-				</label>
+						<span aria-hidden>−</span>
+					</button>
+					<label
+						htmlFor={zoomSelectId}
+						className="flex items-center gap-2 text-xs text-ink-muted"
+					>
+						{t("board.zoomLabel")}
+						<select
+							id={zoomSelectId}
+							value={zoom}
+							onChange={(event) => setZoom(toZoom(Number(event.target.value)))}
+							className="control h-8 py-0 text-xs tabular"
+						>
+							{ZOOM_OPTIONS.map((option) => (
+								<option key={option} value={option}>
+									{t("board.zoomOption", { minutes: option })}
+								</option>
+							))}
+						</select>
+					</label>
+					<button
+						type="button"
+						aria-label={t("board.zoomIn")}
+						disabled={zoom === ZOOM_OPTIONS[0]}
+						onClick={() => setZoom(stepZoom(zoom, -1))}
+						className="inline-flex size-8 items-center justify-center rounded-md border border-line-strong text-ink hover:bg-surface-sunken disabled:opacity-40"
+					>
+						<span aria-hidden>+</span>
+					</button>
+				</div>
 			</div>
 
 			<div
 				ref={scrollRef}
-				className={`overflow-x-auto rounded-lg border border-line bg-surface ${HEADER_WIDTH_CLASS}`}
+				// ピンチはこの中では自分で扱う（ブラウザがページごと拡大しないように）。スクロールはそのまま
+				className={`touch-pan-x touch-pan-y overflow-x-auto rounded-lg border border-line bg-surface ${HEADER_WIDTH_CLASS}`}
 			>
 				<div
 					className="relative"

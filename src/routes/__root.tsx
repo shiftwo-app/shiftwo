@@ -4,7 +4,7 @@ import {
 	Outlet,
 	Scripts,
 } from "@tanstack/react-router";
-import type { ReactNode } from "react";
+import { type ReactNode, useEffect } from "react";
 import { getCurrentLocale } from "../lib/i18n/current-locale";
 import { I18nProvider, useT } from "../lib/i18n/react";
 import { translate } from "../lib/i18n/translate";
@@ -44,6 +44,9 @@ export const Route = createRootRoute({
 			},
 			{ rel: "stylesheet", href: styles },
 			{ rel: "icon", href: "/favicon.ico" },
+			// ホーム画面に追加できるようにする（FR-3-5）
+			{ rel: "manifest", href: "/manifest.webmanifest" },
+			{ rel: "apple-touch-icon", href: "/apple-touch-icon.png" },
 		],
 	}),
 	component: RootComponent,
@@ -72,7 +75,18 @@ function NotFound() {
 	);
 }
 
+/** Service Worker を登録する（FR-3-5。本番の build だけ。開発中は Vite の読み直しの邪魔になるので使わない） */
+const useServiceWorker = () => {
+	useEffect(() => {
+		if (!import.meta.env.PROD || !("serviceWorker" in navigator)) return;
+		navigator.serviceWorker.register("/sw.js").catch((error: unknown) => {
+			console.error("Service Worker を登録できませんでした", error);
+		});
+	}, []);
+};
+
 function RootComponent() {
+	useServiceWorker();
 	return (
 		<RootDocument>
 			<Outlet />

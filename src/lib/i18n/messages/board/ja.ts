@@ -84,4 +84,6 @@ export default {
 	errorPositionRequired: "持ち場を選んでください",
 	errorStaffOrPositionMissing: "スタッフか持ち場が見つかりません",
 	errorNotFound: "見つかりません",
+	zoomIn: "拡大",
+	zoomOut: "縮小",
 } as const;

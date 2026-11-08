@@ -79,4 +79,6 @@ export default {
 	errorPositionRequired: "포지션을 선택해 주세요",
 	errorStaffOrPositionMissing: "스태프나 포지션을 찾을 수 없어요",
 	errorNotFound: "찾을 수 없어요",
+	zoomIn: "확대",
+	zoomOut: "축소",
 } satisfies Messages<typeof ja>;

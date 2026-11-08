@@ -63,3 +63,22 @@ export const zoomedScrollOffset = (
 	const anchorUnits = (scroll + anchorPx - fixedPx) / fromScale;
 	return Math.max(0, anchorUnits * toScale + fixedPx - anchorPx);
 };
+
+/** ピンチで 1 段ズームする、指の間隔の変わり方（はじめの間隔に対する比） */
+export const PINCH_ZOOM_RATIO = 1.25;
+
+/**
+ * ピンチ（2 本の指）の間隔の変わり方から、ズームを 1 段進めるかを決める（FR-3-3）。
+ * 指を広げたら拡大（-1）、狭めたら縮小（+1）、まだ足りなければ 0
+ */
+export const pinchZoomDirection = (
+	startDistance: number,
+	currentDistance: number,
+	ratio: number = PINCH_ZOOM_RATIO,
+): -1 | 0 | 1 => {
+	if (startDistance <= 0) return 0;
+	const scale = currentDistance / startDistance;
+	if (scale >= ratio) return -1;
+	if (scale <= 1 / ratio) return 1;
+	return 0;
+};
