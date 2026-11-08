@@ -156,6 +156,10 @@ model Organization {
   id           String         @id @default(uuid())
   slug         String         @unique
   name         String
+  // 参加の条件にする Discord サーバー（null なら条件なし）。名前とアイコンは設定したときの表示用
+  discordGuildId   String?
+  discordGuildName String?
+  discordGuildIcon String?
   createdAt    DateTime       @default(now())
   updatedAt    DateTime       @updatedAt
   members      Member[]
@@ -213,6 +217,10 @@ model Member {
   // オーナーは常に全権限を持ち、外せない
   isOwner        Boolean      @default(false)
   displayName    String
+  // 団体の Discord サーバーを抜けて、見られなくなった日時（メンバー情報は残し、戻れば null に戻す）
+  guildSuspendedAt DateTime?
+  // 表示に使うアイコン（団体が Discord サーバーを指定していればそのサーバーでのアイコン、なければ Discord のアイコン）
+  avatarUrl      String?
   createdAt      DateTime     @default(now())
   updatedAt      DateTime     @updatedAt
   roles          MemberRoleAssignment[]

@@ -37,7 +37,9 @@ function AuthedLayout() {
 			<header className="flex items-center justify-between border-b px-4 py-2">
 				<span className="font-bold">shiftwo</span>
 				<div className="flex items-center gap-3 text-sm">
-					<span>{user.name || user.email}</span>
+					<a href="/account" className="underline-offset-2 hover:underline">
+						{user.name || user.email}
+					</a>
 					<button
 						type="button"
 						onClick={signOut}

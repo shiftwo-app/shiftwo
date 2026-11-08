@@ -32,13 +32,14 @@ export class OrgAccessError extends Error {
 	}
 }
 
-/** その人のその団体での所属を返す。所属していなければ null */
+/** その人のその団体での所属を返す。所属していない（Discord サーバーの条件で見られなくなっている）なら null */
 export const findMembership = async (
 	userId: string,
 	orgSlug: string,
 ): Promise<OrgMembership | null> => {
 	const member = await prisma.member.findFirst({
-		where: { userId, organization: { slug: orgSlug } },
+		// 団体の Discord サーバーを抜けて見られなくなっている所属は、所属していないものとして扱う
+		where: { userId, organization: { slug: orgSlug }, guildSuspendedAt: null },
 		select: {
 			id: true,
 			isOwner: true,
@@ -131,3 +132,19 @@ export const withOrgApi =
 		}
 		return handler({ ...ctx, membership });
 	};
+
+/** Discord サーバーの条件で見られなくなっている所属（本人にだけ理由を見せるため） */
+export const findSuspendedMembership = (userId: string, orgSlug: string) =>
+	prisma.member.findFirst({
+		where: {
+			userId,
+			organization: { slug: orgSlug },
+			guildSuspendedAt: { not: null },
+		},
+		select: {
+			id: true,
+			organization: {
+				select: { id: true, slug: true, name: true, discordGuildName: true },
+			},
+		},
+	});

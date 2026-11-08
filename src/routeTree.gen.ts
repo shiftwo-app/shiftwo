@@ -14,10 +14,13 @@ import { Route as LoginRouteImport } from './routes/login'
 import { Route as SignupRouteImport } from './routes/signup'
 import { Route as WelcomeRouteImport } from './routes/welcome'
 import { Route as AuthedIndexRouteImport } from './routes/_authed/index'
+import { Route as AuthedAccountRouteImport } from './routes/_authed/account'
 import { Route as AuthedJoinRouteImport } from './routes/_authed/join'
+import { Route as HelpDiscordServerRouteImport } from './routes/help/discord-server'
 import { Route as LoginVerifyRouteImport } from './routes/login_.verify'
 import { Route as AuthedOOrgSlugRouteImport } from './routes/_authed/o/$orgSlug'
 import { Route as AuthedOrgsNewRouteImport } from './routes/_authed/orgs/new'
+import { Route as AuthedSuspendedOrgSlugRouteImport } from './routes/_authed/suspended/$orgSlug'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
 import { Route as AuthedOOrgSlugIndexRouteImport } from './routes/_authed/o/$orgSlug/index'
 import { Route as AuthedOOrgSlugSettingsRouteImport } from './routes/_authed/o/$orgSlug/settings'
@@ -62,10 +65,20 @@ const AuthedIndexRoute = AuthedIndexRouteImport.update({
   path: '/',
   getParentRoute: () => AuthedRoute,
 } as any)
+const AuthedAccountRoute = AuthedAccountRouteImport.update({
+  id: '/account',
+  path: '/account',
+  getParentRoute: () => AuthedRoute,
+} as any)
 const AuthedJoinRoute = AuthedJoinRouteImport.update({
   id: '/join',
   path: '/join',
   getParentRoute: () => AuthedRoute,
+} as any)
+const HelpDiscordServerRoute = HelpDiscordServerRouteImport.update({
+  id: '/help/discord-server',
+  path: '/help/discord-server',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const LoginVerifyRoute = LoginVerifyRouteImport.update({
   id: '/login_/verify',
@@ -80,6 +93,11 @@ const AuthedOOrgSlugRoute = AuthedOOrgSlugRouteImport.update({
 const AuthedOrgsNewRoute = AuthedOrgsNewRouteImport.update({
   id: '/orgs/new',
   path: '/orgs/new',
+  getParentRoute: () => AuthedRoute,
+} as any)
+const AuthedSuspendedOrgSlugRoute = AuthedSuspendedOrgSlugRouteImport.update({
+  id: '/suspended/$orgSlug',
+  path: '/suspended/$orgSlug',
   getParentRoute: () => AuthedRoute,
 } as any)
 const ApiAuthSplatRoute = ApiAuthSplatRouteImport.update({
@@ -198,10 +216,13 @@ export interface FileRoutesByFullPath {
   '/login': typeof LoginRoute
   '/signup': typeof SignupRoute
   '/welcome': typeof WelcomeRoute
+  '/account': typeof AuthedAccountRoute
   '/join': typeof AuthedJoinRoute
+  '/help/discord-server': typeof HelpDiscordServerRoute
   '/login/verify': typeof LoginVerifyRoute
   '/o/$orgSlug': typeof AuthedOOrgSlugRouteWithChildren
   '/orgs/new': typeof AuthedOrgsNewRoute
+  '/suspended/$orgSlug': typeof AuthedSuspendedOrgSlugRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/o/$orgSlug/settings': typeof AuthedOOrgSlugSettingsRoute
   '/api/o/$orgSlug/staff': typeof ApiOOrgSlugStaffRoute
@@ -226,10 +247,13 @@ export interface FileRoutesByTo {
   '/login': typeof LoginRoute
   '/signup': typeof SignupRoute
   '/welcome': typeof WelcomeRoute
+  '/account': typeof AuthedAccountRoute
   '/join': typeof AuthedJoinRoute
+  '/help/discord-server': typeof HelpDiscordServerRoute
   '/login/verify': typeof LoginVerifyRoute
   '/': typeof AuthedIndexRoute
   '/orgs/new': typeof AuthedOrgsNewRoute
+  '/suspended/$orgSlug': typeof AuthedSuspendedOrgSlugRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/o/$orgSlug/settings': typeof AuthedOOrgSlugSettingsRoute
   '/api/o/$orgSlug/staff': typeof ApiOOrgSlugStaffRoute
@@ -254,11 +278,14 @@ export interface FileRoutesById {
   '/login': typeof LoginRoute
   '/signup': typeof SignupRoute
   '/welcome': typeof WelcomeRoute
+  '/_authed/account': typeof AuthedAccountRoute
   '/_authed/join': typeof AuthedJoinRoute
+  '/help/discord-server': typeof HelpDiscordServerRoute
   '/login_/verify': typeof LoginVerifyRoute
   '/_authed/': typeof AuthedIndexRoute
   '/_authed/o/$orgSlug': typeof AuthedOOrgSlugRouteWithChildren
   '/_authed/orgs/new': typeof AuthedOrgsNewRoute
+  '/_authed/suspended/$orgSlug': typeof AuthedSuspendedOrgSlugRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/_authed/o/$orgSlug/settings': typeof AuthedOOrgSlugSettingsRoute
   '/api/o/$orgSlug/staff': typeof ApiOOrgSlugStaffRoute
@@ -286,10 +313,13 @@ export interface FileRouteTypes {
     | '/login'
     | '/signup'
     | '/welcome'
+    | '/account'
     | '/join'
+    | '/help/discord-server'
     | '/login/verify'
     | '/o/$orgSlug'
     | '/orgs/new'
+    | '/suspended/$orgSlug'
     | '/api/auth/$'
     | '/o/$orgSlug/settings'
     | '/api/o/$orgSlug/staff'
@@ -314,10 +344,13 @@ export interface FileRouteTypes {
     | '/login'
     | '/signup'
     | '/welcome'
+    | '/account'
     | '/join'
+    | '/help/discord-server'
     | '/login/verify'
     | '/'
     | '/orgs/new'
+    | '/suspended/$orgSlug'
     | '/api/auth/$'
     | '/o/$orgSlug/settings'
     | '/api/o/$orgSlug/staff'
@@ -341,11 +374,14 @@ export interface FileRouteTypes {
     | '/login'
     | '/signup'
     | '/welcome'
+    | '/_authed/account'
     | '/_authed/join'
+    | '/help/discord-server'
     | '/login_/verify'
     | '/_authed/'
     | '/_authed/o/$orgSlug'
     | '/_authed/orgs/new'
+    | '/_authed/suspended/$orgSlug'
     | '/api/auth/$'
     | '/_authed/o/$orgSlug/settings'
     | '/api/o/$orgSlug/staff'
@@ -372,6 +408,7 @@ export interface RootRouteChildren {
   LoginRoute: typeof LoginRoute
   SignupRoute: typeof SignupRoute
   WelcomeRoute: typeof WelcomeRoute
+  HelpDiscordServerRoute: typeof HelpDiscordServerRoute
   LoginVerifyRoute: typeof LoginVerifyRoute
   ApiAuthSplatRoute: typeof ApiAuthSplatRoute
   ApiOOrgSlugStaffRoute: typeof ApiOOrgSlugStaffRoute
@@ -420,12 +457,26 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthedIndexRouteImport
       parentRoute: typeof AuthedRoute
     }
+    '/_authed/account': {
+      id: '/_authed/account'
+      path: '/account'
+      fullPath: '/account'
+      preLoaderRoute: typeof AuthedAccountRouteImport
+      parentRoute: typeof AuthedRoute
+    }
     '/_authed/join': {
       id: '/_authed/join'
       path: '/join'
       fullPath: '/join'
       preLoaderRoute: typeof AuthedJoinRouteImport
       parentRoute: typeof AuthedRoute
+    }
+    '/help/discord-server': {
+      id: '/help/discord-server'
+      path: '/help/discord-server'
+      fullPath: '/help/discord-server'
+      preLoaderRoute: typeof HelpDiscordServerRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/login_/verify': {
       id: '/login_/verify'
@@ -446,6 +497,13 @@ declare module '@tanstack/react-router' {
       path: '/orgs/new'
       fullPath: '/orgs/new'
       preLoaderRoute: typeof AuthedOrgsNewRouteImport
+      parentRoute: typeof AuthedRoute
+    }
+    '/_authed/suspended/$orgSlug': {
+      id: '/_authed/suspended/$orgSlug'
+      path: '/suspended/$orgSlug'
+      fullPath: '/suspended/$orgSlug'
+      preLoaderRoute: typeof AuthedSuspendedOrgSlugRouteImport
       parentRoute: typeof AuthedRoute
     }
     '/api/auth/$': {
@@ -646,17 +704,21 @@ const AuthedOOrgSlugRouteWithChildren = AuthedOOrgSlugRoute._addFileChildren(
 )
 
 interface AuthedRouteChildren {
+  AuthedAccountRoute: typeof AuthedAccountRoute
   AuthedJoinRoute: typeof AuthedJoinRoute
   AuthedIndexRoute: typeof AuthedIndexRoute
   AuthedOOrgSlugRoute: typeof AuthedOOrgSlugRouteWithChildren
   AuthedOrgsNewRoute: typeof AuthedOrgsNewRoute
+  AuthedSuspendedOrgSlugRoute: typeof AuthedSuspendedOrgSlugRoute
 }
 
 const AuthedRouteChildren: AuthedRouteChildren = {
+  AuthedAccountRoute: AuthedAccountRoute,
   AuthedJoinRoute: AuthedJoinRoute,
   AuthedIndexRoute: AuthedIndexRoute,
   AuthedOOrgSlugRoute: AuthedOOrgSlugRouteWithChildren,
   AuthedOrgsNewRoute: AuthedOrgsNewRoute,
+  AuthedSuspendedOrgSlugRoute: AuthedSuspendedOrgSlugRoute,
 }
 
 const AuthedRouteWithChildren =
@@ -667,6 +729,7 @@ const rootRouteChildren: RootRouteChildren = {
   LoginRoute: LoginRoute,
   SignupRoute: SignupRoute,
   WelcomeRoute: WelcomeRoute,
+  HelpDiscordServerRoute: HelpDiscordServerRoute,
   LoginVerifyRoute: LoginVerifyRoute,
   ApiAuthSplatRoute: ApiAuthSplatRoute,
   ApiOOrgSlugStaffRoute: ApiOOrgSlugStaffRoute,

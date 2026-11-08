@@ -14,12 +14,14 @@ import {
 	parsePermissions,
 	permissionsOf,
 } from "../lib/org/permissions";
+import { resolveAvatarUrl } from "../lib/avatar";
 import { orgNameSchema, slugSchema } from "../lib/org/slug";
 import { prisma } from "../lib/prisma.server";
 import { nameSchema } from "../lib/profile";
 import { requireUserMiddleware } from "./auth-middleware";
 import {
 	findMembership,
+	findSuspendedMembership,
 	type OrgMembership,
 	requireOrgAccess,
 } from "./org-access.server";
@@ -60,6 +62,7 @@ export const listMyOrganizations = createServerFn({ method: "GET" })
 			select: {
 				isOwner: true,
 				displayName: true,
+				guildSuspendedAt: true,
 				organization: { select: { slug: true, name: true } },
 				roles: {
 					select: { role: { select: { name: true, sortOrder: true } } },
@@ -76,6 +79,8 @@ export const listMyOrganizations = createServerFn({ method: "GET" })
 				.sort((a, b) => a.sortOrder - b.sortOrder)
 				.map((r) => r.name),
 			displayName: member.displayName,
+			/** 団体の Discord サーバーを抜けて、見られなくなっている */
+			suspended: member.guildSuspendedAt !== null,
 		}));
 	});
 
@@ -108,13 +113,29 @@ export const getOrganization = createServerFn({ method: "GET" })
 	}))
 	.handler(async ({ data, context }) => {
 		const membership = await findMembership(context.user.id, data.orgSlug);
-		if (!membership) return null;
+		if (!membership) {
+			// Discord サーバーを抜けて見られなくなっている本人には、理由を見せる（本人の所属なので団体名を出してよい）
+			const suspended = await findSuspendedMembership(
+				context.user.id,
+				data.orgSlug,
+			);
+			if (!suspended) return null;
+			return {
+				status: "suspended" as const,
+				organization: {
+					slug: suspended.organization.slug,
+					name: suspended.organization.name,
+				},
+				guildName: suspended.organization.discordGuildName,
+			};
+		}
 		const tenants = await prisma.tenant.findMany({
 			where: { organizationId: membership.organization.id },
 			select: { slug: true, name: true },
 			orderBy: { createdAt: "asc" },
 		});
 		return {
+			status: "member" as const,
 			organization: {
 				slug: membership.organization.slug,
 				name: membership.organization.name,
@@ -166,6 +187,8 @@ export const listMembers = createServerFn({ method: "GET" })
 				isOwner: true,
 				displayName: true,
 				createdAt: true,
+				avatarUrl: true,
+				user: { select: { image: true } },
 				roles: { select: { roleId: true } },
 			},
 			orderBy: { createdAt: "asc" },
@@ -174,6 +197,7 @@ export const listMembers = createServerFn({ method: "GET" })
 			id: member.id,
 			isOwner: member.isOwner,
 			displayName: member.displayName,
+			avatarUrl: resolveAvatarUrl(member),
 			roleIds: member.roles.map((r) => r.roleId),
 			isMe: member.id === access.member.id,
 		}));

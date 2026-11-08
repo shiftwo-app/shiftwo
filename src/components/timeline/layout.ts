@@ -38,6 +38,8 @@ export type TimelineRow = {
 	id: string;
 	label: string;
 	color?: string;
+	/** スタッフ別の行だけ：スタッフのアイコン */
+	avatarUrl?: string | null;
 	items: TimelineItem[];
 	/** 行の段数。シフトがなくても 1 */
 	laneCount: number;
@@ -194,6 +196,7 @@ const toRow = (
 	lookup: { positions: Map<string, Position>; staffs: Map<string, Staff> },
 	color?: string,
 	requiredCount?: number,
+	avatarUrl?: string | null,
 ): TimelineRow => {
 	const sorted = shifts
 		.map((shift) => ({
@@ -210,7 +213,7 @@ const toRow = (
 		lane: lanes[index] ?? 0,
 	}));
 	const laneCount = Math.max(1, ...items.map((item) => item.lane + 1));
-	return { id, label, color, items, laneCount, requiredCount };
+	return { id, label, color, items, laneCount, requiredCount, avatarUrl };
 };
 
 /**
@@ -245,6 +248,9 @@ export const buildRows = (
 			staff.name,
 			shifts.filter((shift) => shift.staffId === staff.id),
 			lookup,
+			undefined,
+			undefined,
+			(staff as Staff & { avatarUrl?: string | null }).avatarUrl ?? null,
 		),
 	);
 };

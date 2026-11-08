@@ -11,14 +11,32 @@ import { NAME_MAX_LENGTH } from "../../lib/profile";
 import { acceptInviteFn, previewInviteFn } from "../../server/org.functions";
 import type { InvitePreview } from "../../server/org.server";
 
-const reasonMessage = (
-	reason: InviteUnusableReason | "not_found" | "already_member",
-) =>
-	reason === "not_found"
-		? "招待コードが見つかりません。入力を確かめてください"
-		: reason === "already_member"
-			? "すでにこの団体のメンバーです"
-			: INVITE_UNUSABLE_MESSAGES[reason];
+type JoinFailure =
+	| InviteUnusableReason
+	| "not_found"
+	| "already_member"
+	| "discord_required"
+	| "not_in_guild"
+	| "discord_unavailable";
+
+const OTHER_MESSAGES: Record<
+	Exclude<JoinFailure, InviteUnusableReason>,
+	string
+> = {
+	not_found: "招待コードが見つかりません。入力を確かめてください",
+	already_member: "すでにこの団体のメンバーです",
+	discord_required:
+		"この団体に参加するには、Discord の連携が必要です。アカウントの設定で Discord を連携してから、もう一度試してください",
+	not_in_guild:
+		"この団体の Discord サーバーのメンバーではありません。サーバーに参加してから、もう一度試してください",
+	discord_unavailable:
+		"Discord に確かめられませんでした。時間をおいて、もう一度試してください",
+};
+
+const reasonMessage = (reason: JoinFailure) =>
+	reason in OTHER_MESSAGES
+		? OTHER_MESSAGES[reason as keyof typeof OTHER_MESSAGES]
+		: INVITE_UNUSABLE_MESSAGES[reason as InviteUnusableReason];
 
 // 招待コードで団体に参加する。?code= で開けば、コードが入った状態になる
 export const Route = createFileRoute("/_authed/join")({
@@ -119,6 +137,17 @@ function JoinPage() {
 						{found.roleName}」で参加します（招待コード{" "}
 						{formatInviteCode(code.toUpperCase().replace(/[\s-]/g, ""))}）。
 					</p>
+					{found.requiredDiscordGuildName && (
+						<p className="rounded border border-indigo-200 bg-indigo-50 p-2 text-sm">
+							この団体は、Discord サーバー「{found.requiredDiscordGuildName}
+							」のメンバーだけが参加できます。Discord
+							を連携し、そのサーバーに参加している必要があります（
+							<a href="/help/discord-server" className="underline">
+								くわしく
+							</a>
+							）。
+						</p>
+					)}
 					<label htmlFor={`${id}-display`} className="block text-sm">
 						この団体でのあなたの表示名
 					</label>

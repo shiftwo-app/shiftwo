@@ -3,6 +3,7 @@ import {
 	Link,
 	notFound,
 	Outlet,
+	redirect,
 } from "@tanstack/react-router";
 import { memberRoleLabel } from "../../../lib/org/member-label";
 import { getOrganization } from "../../../server/org.functions";
@@ -13,6 +14,13 @@ export const Route = createFileRoute("/_authed/o/$orgSlug")({
 	beforeLoad: async ({ params }) => {
 		const org = await getOrganization({ data: { orgSlug: params.orgSlug } });
 		if (!org) throw notFound();
+		// Discord サーバーを抜けて見られなくなっている本人は、理由のページへ
+		if (org.status === "suspended") {
+			throw redirect({
+				to: "/suspended/$orgSlug",
+				params: { orgSlug: params.orgSlug },
+			});
+		}
 		return org;
 	},
 	head: ({ match }) => ({

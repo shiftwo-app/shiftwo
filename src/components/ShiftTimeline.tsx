@@ -27,6 +27,7 @@ import {
 	ZOOM_OPTIONS,
 	type ZoomMinutes,
 } from "./timeline/layout";
+import Avatar from "./Avatar";
 import { applyDrag, type DragMode } from "./timeline/snap";
 import {
 	accumulateWheelZoom,
@@ -271,6 +272,9 @@ const ShiftTimeline = ({
 									className="sticky left-0 z-10 flex shrink-0 items-center gap-2 border-r bg-background px-2 text-sm"
 									style={{ width: HEADER_WIDTH_PX }}
 								>
+									{axis === "staff" && (
+										<Avatar name={row.label} url={row.avatarUrl} size={22} />
+									)}
 									{row.color && (
 										<span
 											aria-hidden
@@ -538,7 +542,16 @@ const ShiftBlock = ({
 				color: readableTextColor(position?.color),
 			}}
 		>
-			<span className="block truncate font-semibold">{title}</span>
+			<span className="flex items-center gap-1 truncate font-semibold">
+				{axis === "position" && staff && (
+					<Avatar
+						name={staff.name}
+						url={(staff as Staff & { avatarUrl?: string | null }).avatarUrl}
+						size={14}
+					/>
+				)}
+				<span className="truncate">{title}</span>
+			</span>
 			<span className="block truncate">{time}</span>
 			{editing && (
 				<span

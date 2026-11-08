@@ -28,7 +28,14 @@ function OrgListPage() {
 								params={{ orgSlug: org.slug }}
 								className="flex items-center justify-between px-4 py-3 hover:bg-gray-50"
 							>
-								<span className="font-semibold">{org.name}</span>
+								<span className="font-semibold">
+									{org.name}
+									{org.suspended && (
+										<span className="ml-2 rounded bg-amber-100 px-2 py-0.5 text-xs font-normal text-amber-800">
+											Discord サーバーの条件で見られません
+										</span>
+									)}
+								</span>
 								<span className="text-xs text-gray-600">
 									{org.displayName}（{memberRoleLabel(org)}）
 								</span>
