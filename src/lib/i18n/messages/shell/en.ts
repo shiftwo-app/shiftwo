@@ -22,4 +22,8 @@ export default {
 	tabSettingsMembers: "Settings & members",
 	breadcrumbLabel: "You are here",
 	memberWithRole: "{name} ({role})",
+	menuOpen: "Open menu",
+	menuClose: "Close menu",
+	menuTitle: "Menu",
+	menuAccount: "Account",
 } satisfies Messages<typeof ja>;

@@ -80,4 +80,6 @@ export default {
 	errorPositionRequired: "Please choose a position",
 	errorStaffOrPositionMissing: "Staff or position not found",
 	errorNotFound: "Not found",
+	zoomIn: "Zoom in",
+	zoomOut: "Zoom out",
 } satisfies Messages<typeof ja>;

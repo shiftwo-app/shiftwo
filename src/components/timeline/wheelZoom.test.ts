@@ -1,6 +1,7 @@
 // 出典：Love-Rox/kichijitsu の apps/web/src/layout/gridMetrics.test.ts（MIT License）を、横軸向けに直した
 import { describe, expect, it } from "vite-plus/test";
 import {
+	pinchZoomDirection,
 	accumulateWheelZoom,
 	WHEEL_ZOOM_DELTA_PER_STEP,
 	wheelDeltaToPx,
@@ -70,5 +71,14 @@ describe("zoomedScrollOffset", () => {
 
 	it("先頭付近で縮小しても負にならない", () => {
 		expect(zoomedScrollOffset(0, 200, 160, 4, 1)).toBe(0);
+	});
+});
+
+describe("pinchZoomDirection", () => {
+	it("指を広げたら拡大、狭めたら縮小、少しなら何もしない", () => {
+		expect(pinchZoomDirection(100, 130)).toBe(-1);
+		expect(pinchZoomDirection(100, 75)).toBe(1);
+		expect(pinchZoomDirection(100, 110)).toBe(0);
+		expect(pinchZoomDirection(0, 50)).toBe(0);
 	});
 });

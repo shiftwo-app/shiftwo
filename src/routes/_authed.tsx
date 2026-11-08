@@ -7,6 +7,7 @@ import {
 } from "@tanstack/react-router";
 import Logo from "../components/Logo";
 import LanguageSwitcher from "../components/shell/LanguageSwitcher";
+import MobileMenu from "../components/shell/MobileMenu";
 import Button from "../components/ui/Button";
 import { authClient } from "../lib/auth-client";
 import { useT } from "../lib/i18n/react";
@@ -62,7 +63,11 @@ function AuthedLayout() {
 					>
 						<Logo className="h-11 w-auto" />
 					</Link>
-					<div className="flex items-center gap-2 text-sm">
+					<MobileMenu
+						userLabel={user.name || user.email}
+						onSignOut={() => void signOut()}
+					/>
+					<div className="hidden items-center gap-2 text-sm sm:flex">
 						<LanguageSwitcher />
 						<Link
 							to="/account"
