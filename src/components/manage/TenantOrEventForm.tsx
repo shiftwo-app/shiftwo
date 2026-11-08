@@ -1,10 +1,9 @@
 import { useId, useState } from "react";
 import type { FormEvent } from "react";
 import { TIME_UNIT_OPTIONS } from "../../lib/manage-schemas";
+import Button from "../ui/Button";
 
-const control = "rounded border px-2 py-1";
-const primary =
-	"rounded bg-blue-600 px-3 py-1 text-sm font-semibold text-white disabled:opacity-50";
+const fieldLabel = "flex flex-col gap-1 text-sm font-bold text-ink";
 
 export type TenantOrEventValue = {
 	name: string;
@@ -45,53 +44,60 @@ const TenantOrEventForm = ({
 	};
 
 	return (
-		<form onSubmit={submit} className="flex flex-wrap items-end gap-3 text-sm">
-			<label htmlFor={`${id}-name`} className="flex flex-col gap-1">
-				{label}名
-				<input
-					id={`${id}-name`}
-					required
-					maxLength={80}
-					value={name}
-					onChange={(event) => setName(event.target.value)}
-					className={control}
-				/>
-			</label>
-			<label htmlFor={`${id}-slug`} className="flex flex-col gap-1">
-				URL 名（半角の英小文字・数字・ハイフン）
-				<input
-					id={`${id}-slug`}
-					required
-					minLength={3}
-					maxLength={32}
-					value={slug}
-					onChange={(event) => setSlug(event.target.value.toLowerCase())}
-					className={control}
-				/>
-			</label>
-			<label htmlFor={`${id}-unit`} className="flex flex-col gap-1">
-				時間粒度
-				<select
-					id={`${id}-unit`}
-					value={timeUnit ?? ""}
-					onChange={(event) =>
-						setTimeUnit(
-							event.target.value === "" ? null : Number(event.target.value),
-						)
-					}
-					className={control}
-				>
-					{kind === "event" && <option value="">テナントと同じ</option>}
-					{TIME_UNIT_OPTIONS.map((minutes) => (
-						<option key={minutes} value={minutes}>
-							{minutes} 分
-						</option>
-					))}
-				</select>
-			</label>
-			<button type="submit" className={primary}>
+		<form onSubmit={submit} className="space-y-4">
+			<div className="grid gap-4 sm:grid-cols-2">
+				<label htmlFor={`${id}-name`} className={fieldLabel}>
+					{label}名
+					<input
+						id={`${id}-name`}
+						required
+						maxLength={80}
+						value={name}
+						onChange={(event) => setName(event.target.value)}
+						className="control font-normal"
+					/>
+				</label>
+				<label htmlFor={`${id}-slug`} className={fieldLabel}>
+					<span>
+						URL 名
+						<span className="font-normal text-ink-muted">
+							（半角の英小文字・数字・ハイフン）
+						</span>
+					</span>
+					<input
+						id={`${id}-slug`}
+						required
+						minLength={3}
+						maxLength={32}
+						value={slug}
+						onChange={(event) => setSlug(event.target.value.toLowerCase())}
+						className="control font-normal"
+					/>
+				</label>
+				<label htmlFor={`${id}-unit`} className={fieldLabel}>
+					時間粒度
+					<select
+						id={`${id}-unit`}
+						value={timeUnit ?? ""}
+						onChange={(event) =>
+							setTimeUnit(
+								event.target.value === "" ? null : Number(event.target.value),
+							)
+						}
+						className="control font-normal sm:max-w-48"
+					>
+						{kind === "event" && <option value="">テナントと同じ</option>}
+						{TIME_UNIT_OPTIONS.map((minutes) => (
+							<option key={minutes} value={minutes}>
+								{minutes} 分
+							</option>
+						))}
+					</select>
+				</label>
+			</div>
+			<Button type="submit" variant="primary">
 				{submitLabel}
-			</button>
+			</Button>
 		</form>
 	);
 };

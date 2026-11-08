@@ -9,12 +9,13 @@ import {
 	updatePositionFn,
 } from "../../server/manage.functions";
 import type { Position } from "../../types";
+import Button from "../ui/Button";
 import ConfirmButton from "./ConfirmButton";
 import type { RunMutation } from "./useMutationRunner";
 
-const control = "rounded border px-2 py-1";
-const primary =
-	"rounded bg-blue-600 px-3 py-1 text-sm font-semibold text-white disabled:opacity-50";
+// 一覧の行ではラベルを隠し（列が並んで読めるので）、新しく作るフォームでは見せる
+const labelClass = (visible: boolean) =>
+	visible ? "text-sm font-bold text-ink" : "sr-only";
 
 /** 持ち場を 1 つ編集する（なければ新しく作る）フォーム */
 function PositionForm({
@@ -48,34 +49,49 @@ function PositionForm({
 		}
 	};
 
+	const isNew = !position;
 	return (
 		<form
 			onSubmit={submit}
-			className="flex flex-wrap items-center gap-2 text-sm"
+			className="flex flex-wrap items-end gap-x-3 gap-y-2 text-sm"
 		>
-			<label htmlFor={`${id}-name`} className="sr-only">
-				持ち場の名前
-			</label>
-			<input
-				id={`${id}-name`}
-				required
-				maxLength={40}
-				placeholder="持ち場の名前（例：受付）"
-				value={name}
-				onChange={(event) => setName(event.target.value)}
-				className={control}
-			/>
-			<label htmlFor={`${id}-color`} className="sr-only">
-				色
-			</label>
-			<input
-				id={`${id}-color`}
-				type="color"
-				value={color}
-				onChange={(event) => setColor(event.target.value)}
-				className="h-8 w-10 rounded border"
-			/>
-			<label htmlFor={`${id}-required`} className="flex items-center gap-1">
+			<div className="flex flex-col gap-1">
+				<label htmlFor={`${id}-color`} className={labelClass(isNew)}>
+					色
+				</label>
+				{/* ブラウザの色の入力欄はそのまま使い、まわりの枠だけ入力欄にそろえる */}
+				<span className="inline-flex h-[2.125rem] w-11 items-center justify-center rounded-md border border-line-strong bg-surface hover:border-ink-muted focus-within:border-primary">
+					<input
+						id={`${id}-color`}
+						type="color"
+						value={color}
+						onChange={(event) => setColor(event.target.value)}
+						className="h-6 w-8 cursor-pointer rounded-sm border-0 bg-transparent p-0"
+					/>
+				</span>
+			</div>
+			<div className="flex min-w-40 flex-1 flex-col gap-1">
+				<label htmlFor={`${id}-name`} className={labelClass(isNew)}>
+					持ち場の名前
+				</label>
+				<input
+					id={`${id}-name`}
+					required
+					maxLength={40}
+					placeholder="持ち場の名前（例：受付）"
+					value={name}
+					onChange={(event) => setName(event.target.value)}
+					className="control w-full"
+				/>
+			</div>
+			<label
+				htmlFor={`${id}-required`}
+				className={
+					isNew
+						? "flex flex-col gap-1 text-sm font-bold text-ink"
+						: "flex items-center gap-2 text-xs text-ink-muted"
+				}
+			>
 				必要な人数
 				<input
 					id={`${id}-required`}
@@ -84,21 +100,29 @@ function PositionForm({
 					max={99}
 					value={required}
 					onChange={(event) => setRequired(Number(event.target.value))}
-					className={`${control} w-16`}
+					className="control tabular w-20 font-normal"
 				/>
 			</label>
-			<button type="submit" className={primary}>
-				{position ? "保存" : "持ち場を作る"}
-			</button>
-			{position && (
-				<ConfirmButton
-					label="消す"
-					confirmLabel="本当に消す（この持ち場のシフトも消えます）"
-					onConfirm={() =>
-						void run(() => remove({ data: { scope, positionId: position.id } }))
-					}
-				/>
-			)}
+			<div className="flex flex-wrap items-center gap-2">
+				<Button
+					type="submit"
+					variant={isNew ? "primary" : "secondary"}
+					size={isNew ? "md" : "sm"}
+				>
+					{position ? "保存" : "持ち場を作る"}
+				</Button>
+				{position && (
+					<ConfirmButton
+						label="消す"
+						confirmLabel="本当に消す（この持ち場のシフトも消えます）"
+						onConfirm={() =>
+							void run(() =>
+								remove({ data: { scope, positionId: position.id } }),
+							)
+						}
+					/>
+				)}
+			</div>
 		</form>
 	);
 }
@@ -113,19 +137,22 @@ const PositionsEditor = ({
 	positions: Position[];
 	run: RunMutation;
 }) => (
-	<div className="space-y-2">
-		{positions.length === 0 && (
-			<p className="text-sm text-gray-600">まだ持ち場はありません。</p>
+	<div className="space-y-4">
+		{positions.length === 0 ? (
+			<p className="text-sm text-ink-muted">まだ持ち場はありません。</p>
+		) : (
+			<ul className="divide-y divide-line rounded-lg border border-line bg-surface">
+				{positions.map((position) => (
+					<li
+						key={`${position.id}-${position.name}-${position.color}-${position.requiredStaffCount}`}
+						className="px-4 py-3"
+					>
+						<PositionForm scope={scope} position={position} run={run} />
+					</li>
+				))}
+			</ul>
 		)}
-		{positions.map((position) => (
-			<PositionForm
-				key={`${position.id}-${position.name}-${position.color}-${position.requiredStaffCount}`}
-				scope={scope}
-				position={position}
-				run={run}
-			/>
-		))}
-		<div className="rounded border border-dashed p-2">
+		<div className="rounded-lg border border-dashed border-line-strong p-4">
 			<PositionForm scope={scope} run={run} />
 		</div>
 	</div>

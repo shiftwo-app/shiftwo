@@ -1,5 +1,8 @@
 import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
 import { useState } from "react";
+import Logo from "../components/Logo";
+import Alert from "../components/ui/Alert";
+import Button from "../components/ui/Button";
 import { authClient } from "../lib/auth-client";
 import { readOtp } from "../lib/read-otp";
 import { wasLoginRequestedHere } from "../server/session.functions";
@@ -15,7 +18,7 @@ export const Route = createFileRoute("/login_/verify")({
 	}),
 	loaderDeps: ({ search }) => ({ email: search.email }),
 	loader: ({ deps }) => wasLoginRequestedHere({ data: { email: deps.email } }),
-	head: () => ({ meta: [{ title: "ログイン | shiftwo" }] }),
+	head: () => ({ meta: [{ title: "ログイン | シフトヲ" }] }),
 	component: VerifyPage,
 });
 
@@ -42,15 +45,15 @@ function VerifyPage() {
 
 	const body = () => {
 		if (!email || !otp) {
-			return <p className="text-sm">リンクが正しくありません。</p>;
+			return <p className="text-sm text-ink">リンクが正しくありません。</p>;
 		}
 		if (!requestedHere) {
 			return (
 				<div
 					role="alert"
-					className="space-y-2 rounded border border-amber-400 bg-amber-50 p-3 text-sm"
+					className="space-y-2 rounded-md border border-warn/40 bg-warn-soft px-3 py-2 text-sm leading-relaxed text-ink"
 				>
-					<p className="font-semibold">
+					<p className="font-bold">
 						このブラウザからは、{email} にログイン用のメールを送っていません。
 					</p>
 					<p>
@@ -64,35 +67,45 @@ function VerifyPage() {
 		}
 		return (
 			<>
-				<p className="text-sm">{email} としてログインします。</p>
-				<button
-					type="button"
+				<p className="text-sm text-ink">
+					<span className="font-bold break-all">{email}</span>{" "}
+					としてログインします。
+				</p>
+				<Button
+					variant="primary"
 					onClick={signIn}
 					disabled={busy}
-					className="w-full rounded bg-blue-600 px-4 py-2 font-semibold text-white disabled:opacity-50"
+					className="h-10 w-full"
 				>
 					ログインする
-				</button>
+				</Button>
 			</>
 		);
 	};
 
 	return (
-		<main className="mx-auto max-w-sm space-y-6 p-6">
-			<h1 className="text-2xl font-bold">shiftwo にログイン</h1>
-			{body()}
-			{error && (
-				<p role="alert" className="text-sm text-red-700">
-					{error}
+		<main className="px-4 py-12 sm:py-20">
+			<div className="mx-auto max-w-sm space-y-8">
+				<Logo className="mx-auto h-16 w-auto text-ink" />
+				<div className="space-y-6">
+					<h1 className="text-center text-2xl leading-tight font-bold tracking-tight text-ink">
+						シフトヲにログイン
+					</h1>
+					<div className="space-y-5 rounded-xl border border-line bg-surface p-6">
+						{body()}
+						{error && <Alert tone="error">{error}</Alert>}
+					</div>
+				</div>
+				<p className="text-center text-sm">
+					<Link
+						to="/login"
+						search={{ redirect: "/" }}
+						className="font-bold text-primary underline underline-offset-4 hover:text-primary-strong"
+					>
+						ログイン画面へ
+					</Link>
 				</p>
-			)}
-			<Link
-				to="/login"
-				search={{ redirect: "/" }}
-				className="block text-sm underline"
-			>
-				ログイン画面へ
-			</Link>
+			</div>
 		</main>
 	);
 }

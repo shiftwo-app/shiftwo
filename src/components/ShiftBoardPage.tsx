@@ -3,6 +3,8 @@ import type { ShiftScopeParams } from "../lib/shift-scope";
 import type { Position, Shift, Staff } from "../types";
 import { ShiftStatus } from "../types";
 import ShiftBoard from "./ShiftBoard";
+import Alert from "./ui/Alert";
+import PageHeader from "./ui/PageHeader";
 
 /** シフトの画面（日常シフトとイベントで共通）。データは各ルートの loader が用意する */
 const ShiftBoardPage = ({
@@ -24,14 +26,17 @@ const ShiftBoardPage = ({
 	scope: ShiftScopeParams;
 	status: ShiftStatus;
 }) => (
-	<main className="space-y-4 p-4">
-		<h1 className="text-xl font-bold">{title}</h1>
+	<main className="mx-auto max-w-7xl px-4 py-6 sm:px-6">
+		<PageHeader
+			title={title}
+			description={`${board.canEdit ? "編集できます" : "閲覧だけできます"}・時間は ${board.timeUnitMinutes} 分きざみ`}
+		/>
 		{board.positions.length === 0 && (
-			<p className="text-sm text-gray-600">
+			<Alert tone="info" className="mb-4">
 				{scope.eventSlug
 					? "このイベントの持ち場がまだありません。"
 					: "日常シフトの持ち場がまだありません。"}
-			</p>
+			</Alert>
 		)}
 		<ShiftBoard
 			shifts={board.shifts}

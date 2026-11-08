@@ -1,14 +1,21 @@
+import Alert from "../ui/Alert";
+
 /** 操作のエラーを画面の上に出す */
-const ErrorList = ({ errors }: { errors: string[] }) =>
+const ErrorList = ({
+	errors,
+	className = "",
+}: {
+	errors: string[];
+	className?: string;
+}) =>
 	errors.length > 0 ? (
-		<ul
-			role="alert"
-			className="rounded border border-red-300 bg-red-50 p-2 text-sm text-red-800"
-		>
-			{errors.map((message) => (
-				<li key={message}>{message}</li>
-			))}
-		</ul>
+		<Alert tone="error" className={className}>
+			<ul className="space-y-0.5">
+				{errors.map((message) => (
+					<li key={message}>{message}</li>
+				))}
+			</ul>
+		</Alert>
 	) : null;
 
 export default ErrorList;

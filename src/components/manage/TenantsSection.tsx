@@ -1,6 +1,9 @@
 import { Link } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
+import { useId } from "react";
 import { createTenantFn } from "../../server/manage.functions";
+import { buttonClass } from "../ui/Button";
+import Section from "../ui/Section";
 import TenantOrEventForm from "./TenantOrEventForm";
 import type { RunMutation } from "./useMutationRunner";
 
@@ -15,28 +18,43 @@ const TenantsSection = ({
 	run: RunMutation;
 }) => {
 	const createTenant = useServerFn(createTenantFn);
+	const id = useId();
 	return (
-		<section className="space-y-3">
-			<h2 className="text-lg font-semibold">テナント（{tenants.length}）</h2>
-			<ul className="divide-y rounded border text-sm">
-				{tenants.map((tenant) => (
-					<li
-						key={tenant.slug}
-						className="flex items-center justify-between px-3 py-2"
-					>
-						<span className="font-semibold">{tenant.name}</span>
-						<Link
-							to="/o/$orgSlug/t/$tenantSlug/settings"
-							params={{ orgSlug, tenantSlug: tenant.slug }}
-							className="underline"
+		<Section
+			id={`${id}-h`}
+			title={`テナント（${tenants.length}）`}
+			description="店舗など、シフトを組む単位です。日常シフトの持ち場やイベントは、テナントごとに持ちます。"
+		>
+			{tenants.length > 0 && (
+				<ul className="divide-y divide-line overflow-hidden rounded-lg border border-line bg-surface text-sm">
+					{tenants.map((tenant) => (
+						<li
+							key={tenant.slug}
+							className="flex items-center justify-between gap-3 px-4 py-2.5"
 						>
-							設定
-						</Link>
-					</li>
-				))}
-			</ul>
-			<div className="space-y-2 rounded border border-dashed p-3">
-				<h3 className="text-sm font-semibold">テナントを作る（店舗など）</h3>
+							<span className="min-w-0">
+								<span className="block truncate font-bold text-ink">
+									{tenant.name}
+								</span>
+								<span className="block truncate text-xs text-ink-muted">
+									{tenant.slug}
+								</span>
+							</span>
+							<Link
+								to="/o/$orgSlug/t/$tenantSlug/settings"
+								params={{ orgSlug, tenantSlug: tenant.slug }}
+								className={buttonClass("ghost", "sm")}
+							>
+								設定
+							</Link>
+						</li>
+					))}
+				</ul>
+			)}
+			<div className="space-y-3 rounded-lg border border-dashed border-line-strong p-4">
+				<h3 className="text-sm font-bold text-ink">
+					テナントを作る（店舗など）
+				</h3>
 				<TenantOrEventForm
 					kind="tenant"
 					submitLabel="作る"
@@ -55,7 +73,7 @@ const TenantsSection = ({
 					}
 				/>
 			</div>
-		</section>
+		</Section>
 	);
 };
 

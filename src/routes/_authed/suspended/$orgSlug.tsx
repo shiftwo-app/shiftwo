@@ -6,6 +6,9 @@ import {
 } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useState } from "react";
+import Alert from "../../../components/ui/Alert";
+import Badge from "../../../components/ui/Badge";
+import Button from "../../../components/ui/Button";
 import { recheckMyGuildMembership } from "../../../server/discord.functions";
 import { getOrganization } from "../../../server/org.functions";
 
@@ -22,7 +25,7 @@ export const Route = createFileRoute("/_authed/suspended/$orgSlug")({
 		}
 		return { suspended: org };
 	},
-	head: () => ({ meta: [{ title: "見られません | shiftwo" }] }),
+	head: () => ({ meta: [{ title: "見られません | シフトヲ" }] }),
 	component: SuspendedPage,
 });
 
@@ -55,37 +58,41 @@ function SuspendedPage() {
 		}
 	};
 
+	const textLink =
+		"font-bold text-primary underline underline-offset-4 hover:text-primary-strong";
+
 	return (
-		<main className="mx-auto max-w-md space-y-4 p-6">
-			<h1 className="text-2xl font-bold">{suspended.organization.name}</h1>
-			<p className="text-sm">
-				この団体は、Discord サーバー「{suspended.guildName ?? "指定のサーバー"}
-				」のメンバーだけが見られます。サーバーを抜けたか、Discord
-				の連携が切れているため、今は見られません。
-				メンバーの情報は残っているので、サーバーに戻れば、また見られるようになります。
-			</p>
-			<button
-				type="button"
-				onClick={onRecheck}
-				disabled={busy}
-				className="rounded bg-blue-600 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
-			>
-				もう一度確かめる
-			</button>
-			{message && (
-				<p role="alert" className="text-sm text-red-700">
-					{message}
+		<main className="mx-auto max-w-2xl px-4 py-12 sm:px-6">
+			<article className="space-y-6">
+				<header className="space-y-2">
+					<Badge tone="warn">今は見られません</Badge>
+					<h1 className="text-2xl leading-tight font-bold tracking-tight text-ink">
+						{suspended.organization.name}
+					</h1>
+				</header>
+				<p className="text-base leading-loose text-ink">
+					この団体は、Discord サーバー「
+					{suspended.guildName ?? "指定のサーバー"}
+					」のメンバーだけが見られます。サーバーを抜けたか、Discord
+					の連携が切れているため、今は見られません。
+					メンバーの情報は残っているので、サーバーに戻れば、また見られるようになります。
 				</p>
-			)}
-			<p className="text-sm">
-				<a href="/account" className="underline">
-					アカウントの設定（Discord の連携）
-				</a>
-				・
-				<a href="/help/discord-server" className="underline">
-					くわしく
-				</a>
-			</p>
+				<div className="space-y-4">
+					<Button variant="primary" onClick={onRecheck} disabled={busy}>
+						もう一度確かめる
+					</Button>
+					{message && <Alert tone="error">{message}</Alert>}
+				</div>
+				<p className="border-t border-line pt-6 text-sm text-ink-muted">
+					<a href="/account" className={textLink}>
+						アカウントの設定（Discord の連携）
+					</a>
+					・
+					<a href="/help/discord-server" className={textLink}>
+						くわしく
+					</a>
+				</p>
+			</article>
 		</main>
 	);
 }

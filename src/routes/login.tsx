@@ -1,5 +1,7 @@
 import { createFileRoute, Link, redirect } from "@tanstack/react-router";
 import EmailOrDiscordAuth from "../components/auth/EmailOrDiscordAuth";
+import Logo from "../components/Logo";
+import Alert from "../components/ui/Alert";
 import { safeRedirectPath } from "../lib/safe-redirect";
 import { getLoginMethods, getSession } from "../server/session.functions";
 
@@ -16,7 +18,7 @@ export const Route = createFileRoute("/login")({
 		if (await getSession()) throw redirect({ href: search.redirect });
 	},
 	loader: () => getLoginMethods(),
-	head: () => ({ meta: [{ title: "ログイン | shiftwo" }] }),
+	head: () => ({ meta: [{ title: "ログイン | シフトヲ" }] }),
 	component: LoginPage,
 });
 
@@ -30,30 +32,28 @@ function LoginPage() {
 	const { redirect: redirectTo, error } = Route.useSearch();
 	const methods = Route.useLoaderData();
 	return (
-		<main className="mx-auto max-w-sm space-y-6 p-6">
-			{error && (
-				<p
-					role="alert"
-					className="rounded border border-red-300 bg-red-50 p-3 text-sm text-red-800"
-				>
-					{loginErrorMessage(error)}
+		<main className="px-4 py-12 sm:py-20">
+			<div className="mx-auto max-w-sm space-y-8">
+				<Logo className="mx-auto h-16 w-auto text-ink" />
+				<EmailOrDiscordAuth
+					mode="login"
+					redirectTo={redirectTo}
+					discordEnabled={methods.discord}
+					notice={
+						error && <Alert tone="error">{loginErrorMessage(error)}</Alert>
+					}
+				/>
+				<p className="text-center text-sm text-ink-muted">
+					はじめての方は{" "}
+					<Link
+						to="/signup"
+						search={{ redirect: redirectTo }}
+						className="font-bold text-primary underline underline-offset-4 hover:text-primary-strong"
+					>
+						新規登録
+					</Link>
 				</p>
-			)}
-			<EmailOrDiscordAuth
-				mode="login"
-				redirectTo={redirectTo}
-				discordEnabled={methods.discord}
-			/>
-			<p className="text-sm">
-				はじめての方は{" "}
-				<Link
-					to="/signup"
-					search={{ redirect: redirectTo }}
-					className="underline"
-				>
-					新規登録
-				</Link>
-			</p>
+			</div>
 		</main>
 	);
 }

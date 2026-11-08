@@ -1,6 +1,9 @@
 import { createFileRoute, useRouter } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import ErrorList from "../../../../../../components/manage/ErrorList";
+import Alert from "../../../../../../components/ui/Alert";
+import PageHeader from "../../../../../../components/ui/PageHeader";
+import Section from "../../../../../../components/ui/Section";
 import PositionsEditor from "../../../../../../components/manage/PositionsEditor";
 import ScopedRolesEditor from "../../../../../../components/manage/ScopedRolesEditor";
 import TenantOrEventForm from "../../../../../../components/manage/TenantOrEventForm";
@@ -46,70 +49,68 @@ function TenantSettingsPage() {
 	);
 
 	return (
-		<main className="mx-auto max-w-3xl space-y-8 p-4">
-			<h1 className="text-xl font-bold">テナントの設定</h1>
-			<ErrorList errors={errors} />
-			{canManageTenant && (
-				<section className="space-y-3">
-					<h2 className="text-lg font-semibold">テナント</h2>
-					<TenantOrEventForm
-						kind="tenant"
-						initial={tenant}
-						submitLabel="保存"
-						onSubmit={async (value) => {
-							let newSlug: string | null = null;
-							const ok = await run(async () => {
-								const result = await updateTenant({
-									data: {
-										...scope,
-										tenant: {
-											...value,
-											timeUnitMinutes: value.timeUnitMinutes ?? 15,
+		<main className="mx-auto max-w-5xl px-4 py-6 sm:px-6">
+			<PageHeader title="テナントの設定" />
+			<ErrorList errors={errors} className="mb-6" />
+			<div>
+				{canManageTenant && (
+					<Section id="tenant-settings-basic" title="テナント">
+						<TenantOrEventForm
+							kind="tenant"
+							initial={tenant}
+							submitLabel="保存"
+							onSubmit={async (value) => {
+								let newSlug: string | null = null;
+								const ok = await run(async () => {
+									const result = await updateTenant({
+										data: {
+											...scope,
+											tenant: {
+												...value,
+												timeUnitMinutes: value.timeUnitMinutes ?? 15,
+											},
 										},
-									},
+									});
+									if (result.ok) newSlug = result.slug;
+									return result;
 								});
-								if (result.ok) newSlug = result.slug;
-								return result;
-							});
-							// URL 名を変えたら、新しい URL へ
-							if (ok && newSlug && newSlug !== tenant.slug) {
-								await router.navigate({
-									to: "/o/$orgSlug/t/$tenantSlug/settings",
-									params: { orgSlug: params.orgSlug, tenantSlug: newSlug },
-								});
-							}
-							return ok;
-						}}
-					/>
-				</section>
-			)}
-			{canManagePositions && (
-				<section className="space-y-3">
-					<h2 className="text-lg font-semibold">日常シフトの持ち場</h2>
-					<p className="text-sm text-gray-600">
-						イベントの持ち場は、イベントの設定で別に決めます。
-					</p>
-					<PositionsEditor scope={scope} positions={positions} run={run} />
-				</section>
-			)}
-			{assignments && (
-				<section className="space-y-3">
-					<h2 className="text-lg font-semibold">
-						このテナントでのロールの割り当て
-					</h2>
-					<p className="text-sm text-gray-600">
-						ここで割り当てたロールの、シフトに関わる権限（シフトの閲覧・編集・確定、持ち場・イベントの管理）が、
-						このテナントとその下のイベントで上乗せされます（店長など）。
-					</p>
-					<ScopedRolesEditor
-						scope={scope}
-						assignments={assignments}
-						run={run}
-					/>
-				</section>
-			)}
+								// URL 名を変えたら、新しい URL へ
+								if (ok && newSlug && newSlug !== tenant.slug) {
+									await router.navigate({
+										to: "/o/$orgSlug/t/$tenantSlug/settings",
+										params: { orgSlug: params.orgSlug, tenantSlug: newSlug },
+									});
+								}
+								return ok;
+							}}
+						/>
+					</Section>
+				)}
+				{canManagePositions && (
+					<Section
+						id="tenant-settings-positions"
+						title="日常シフトの持ち場"
+						description="イベントの持ち場は、イベントの設定で別に決めます。"
+					>
+						<PositionsEditor scope={scope} positions={positions} run={run} />
+					</Section>
+				)}
+				{assignments && (
+					<Section
+						id="tenant-settings-roles"
+						title="このテナントでのロールの割り当て"
+						description="ここで割り当てたロールの、シフトに関わる権限（シフトの閲覧・編集・確定、持ち場・イベントの管理）が、このテナントとその下のイベントで上乗せされます（店長など）。"
+					>
+						<ScopedRolesEditor
+							scope={scope}
+							assignments={assignments}
+							run={run}
+						/>
+					</Section>
+				)}
+			</div>
 			{!canManageTenant && !canManagePositions && !assignments && (
-				<p className="text-sm">このテナントの設定を変える権限がありません。</p>
+				<Alert tone="info">このテナントの設定を変える権限がありません。</Alert>
 			)}
 		</main>
 	);

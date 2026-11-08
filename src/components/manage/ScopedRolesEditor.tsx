@@ -28,19 +28,24 @@ const ScopedRolesEditor = ({
 }) => {
 	const setRoles = useServerFn(setScopedRolesFn);
 	return (
-		<ul className="divide-y rounded border text-sm">
+		<ul className="divide-y divide-line rounded-lg border border-line bg-surface text-sm">
 			{assignments.members.map((member) => (
-				<li key={member.id} className="space-y-1 px-3 py-2">
-					<div className="font-semibold">
-						{member.displayName}
+				<li
+					key={member.id}
+					className="flex flex-col gap-2 px-4 py-3 md:flex-row md:items-start md:gap-4"
+				>
+					<div className="min-w-0 md:w-44 md:shrink-0 md:pt-1">
+						<span className="block truncate font-bold text-ink">
+							{member.displayName}
+						</span>
 						{member.isOwner && (
-							<span className="ml-2 text-xs font-normal text-gray-500">
+							<span className="block text-xs text-ink-muted">
 								オーナー（常に全権限）
 							</span>
 						)}
 					</div>
 					{!member.isOwner && (
-						<fieldset className="flex flex-wrap gap-3">
+						<fieldset className="flex min-w-0 flex-wrap gap-2">
 							<legend className="sr-only">
 								{member.displayName}に割り当てるロール
 							</legend>
@@ -49,7 +54,11 @@ const ScopedRolesEditor = ({
 								return (
 									<label
 										key={role.id}
-										className={`flex items-center gap-1 text-xs ${role.grantable ? "" : "text-gray-400"}`}
+										className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs leading-5 ${
+											role.grantable
+												? `cursor-pointer text-ink ${checked ? "border-primary/40 bg-primary-soft" : "border-line bg-surface hover:border-line-strong"}`
+												: "cursor-not-allowed border-line bg-surface-sunken text-ink-muted"
+										}`}
 										title={
 											role.grantable
 												? undefined
@@ -60,6 +69,7 @@ const ScopedRolesEditor = ({
 											type="checkbox"
 											checked={checked}
 											disabled={!role.grantable}
+											className="size-3.5 accent-primary"
 											onChange={() =>
 												void run(() =>
 													setRoles({
@@ -73,6 +83,11 @@ const ScopedRolesEditor = ({
 													}),
 												)
 											}
+										/>
+										<span
+											aria-hidden="true"
+											className="size-2 rounded-full"
+											style={{ backgroundColor: role.color }}
 										/>
 										{role.name}
 									</label>
