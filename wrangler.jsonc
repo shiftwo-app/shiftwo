@@ -1,0 +1,48 @@
+// Cloudflare Workers の設定（pnpm dev:cloudflare / build:cloudflare / deploy:cloudflare で使う）。
+// 自分のアカウントで動かすときは name と vars を直す。D1 と R2 は ID を書かなければ、
+// はじめての deploy で wrangler が作る（dev ではローカルに作る）。詳しくは README の「Cloudflare で動かす」
+{
+	"$schema": "./node_modules/wrangler/config-schema.json",
+	"name": "shiftwo",
+	"main": "./src/server.ts",
+	"compatibility_date": "2026-11-08",
+	// AsyncLocalStorage（リクエストごとの DB の接続）と process.env に要る
+	"compatibility_flags": ["nodejs_compat"],
+	"observability": { "enabled": true },
+	"upload_source_maps": true,
+	// assets は書かない（@cloudflare/vite-plugin が build のときに足す）
+
+	// 秘密でない設定。秘密の値（BETTER_AUTH_SECRET・DISCORD_CLIENT_SECRET）は
+	// `pnpm wrangler secret put <名前>` で入れる（ローカルでは .dev.vars）
+	"vars": {
+		"BETTER_AUTH_URL": "https://shiftwo.example.workers.dev",
+		// sqlite は D1、postgresql は Hyperdrive（下の hyperdrive を有効にする）
+		"DATABASE_PROVIDER": "sqlite",
+		"MAIL_TRANSPORT": "cloudflare",
+		// Email Service に登録したドメインの、送り主のアドレス
+		"MAIL_FROM": "noreply@example.com",
+		"MAIL_FROM_NAME": "shiftwo",
+		"STORAGE_DRIVER": "r2",
+	},
+
+	// DATABASE_PROVIDER=sqlite のときの DB。マイグレーションは Prisma が作った SQL をそのまま使う
+	// （pnpm d1:migrate:local / d1:migrate:remote）
+	"d1_databases": [
+		{
+			"binding": "DB",
+			"database_name": "shiftwo",
+			"migrations_dir": "prisma/migrations/sqlite",
+			"migrations_pattern": "prisma/migrations/sqlite/*/migration.sql",
+		},
+	],
+	// DATABASE_PROVIDER=postgresql のときは、こちらを有効にする（`pnpm wrangler hyperdrive create` で作った ID）。
+	// ローカルでは CLOUDFLARE_HYPERDRIVE_LOCAL_CONNECTION_STRING_HYPERDRIVE の Postgres につなぐ
+	// "hyperdrive": [{ "binding": "HYPERDRIVE", "id": "<HYPERDRIVE_ID>" }],
+
+	// アップロードしたアイコンの保存先（STORAGE_DRIVER=r2）
+	"r2_buckets": [{ "binding": "BUCKET" }],
+
+	// ログインのメール（MAIL_TRANSPORT=cloudflare。Cloudflare Email Service。Workers Paid が要る）。
+	// ローカルの dev では送らずに、送ろうとした内容をターミナルに出す
+	"send_email": [{ "name": "EMAIL" }],
+}
