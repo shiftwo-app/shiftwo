@@ -5,7 +5,7 @@ import type {
 	ShiftSetting as PrismaShiftSetting,
 	Event as PrismaEvent,
 	Room as PrismaRoom,
-} from "@prisma/client";
+} from "../generated/prisma/client";
 
 export type Staff = PrismaStaff;
 export type Role = PrismaRole;

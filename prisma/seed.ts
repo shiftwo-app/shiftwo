@@ -1,6 +1,12 @@
-import { PrismaClient, ShiftStatus } from "@prisma/client";
+import { PrismaPg } from "@prisma/adapter-pg";
+import { PrismaClient, ShiftStatus } from "../src/generated/prisma/client.ts";
+import { loadEnvFileIfExists } from "../src/lib/load-env.ts";
 
-const prisma = new PrismaClient();
+loadEnvFileIfExists();
+
+const prisma = new PrismaClient({
+	adapter: new PrismaPg({ connectionString: process.env.DATABASE_URL }),
+});
 
 async function main() {
 	// 既存データのクリーンアップ
