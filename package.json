@@ -5,7 +5,8 @@
 	"type": "module",
 	"imports": {
 		"#platform": "./src/platform/node.server.ts",
-		"#cloudflare-database": "./src/platform/cloudflare-d1.server.ts"
+		"#cloudflare-database": "./src/platform/cloudflare-d1.server.ts",
+		"#worker-exports": "./src/platform/worker-exports.node.ts"
 	},
 	"scripts": {
 		"dev": "vp dev",

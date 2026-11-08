@@ -1,3 +1,4 @@
+import type { RealtimeTransport } from "../lib/realtime/types";
 import type { ShiftScopeParams } from "../lib/shift-scope";
 import type { Position, Shift, Staff } from "../types";
 import { ShiftStatus } from "../types";
@@ -17,6 +18,7 @@ const ShiftBoardPage = ({
 		staffs: Staff[];
 		timeUnitMinutes: number;
 		canEdit: boolean;
+		liveTransport: RealtimeTransport;
 	};
 	scope: ShiftScopeParams;
 	status: ShiftStatus;
@@ -38,6 +40,7 @@ const ShiftBoardPage = ({
 			newShiftStatus={status}
 			scope={scope}
 			canEdit={board.canEdit}
+			liveTransport={board.liveTransport}
 		/>
 	</main>
 );

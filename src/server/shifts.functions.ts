@@ -1,4 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
+import { platform } from "#platform";
 import { z } from "zod";
 import { hasPermission } from "../lib/org/permissions";
 import { prisma } from "../lib/prisma.server";
@@ -102,13 +103,15 @@ export const getShiftBoard = createServerFn({ method: "GET" })
 			...board,
 			timeUnitMinutes: access.timeUnitMinutes,
 			canEdit: hasPermission(access.permissions, "shift.edit"),
+			/** ほかの人の変更を受け取る方式（同時編集） */
+			liveTransport: platform.realtime.transport,
 		};
 	});
 
 /** 画面に返す結果。issues（zod の詳細）は返さず、画面に出せる errors だけにする */
 export type ShiftMutationResult =
 	| { ok: true; shift: Shift }
-	| { ok: false; message: string; errors: string[] };
+	| { ok: false; message: string; errors: string[]; conflict?: boolean };
 
 const toMutationResult = (result: ShiftWriteResult): ShiftMutationResult =>
 	result.ok
@@ -117,6 +120,7 @@ const toMutationResult = (result: ShiftWriteResult): ShiftMutationResult =>
 				ok: false,
 				message: result.message,
 				errors: result.errors ?? [result.message],
+				conflict: result.conflict,
 			};
 
 /** この単位のメンバーかを確かめる。書き込みの権限は saveShift / removeShift が見る */
@@ -144,6 +148,9 @@ const notFoundResult: ShiftMutationResult = {
 };
 
 const requireId = (value: unknown): string => z.string().min(1).parse(value);
+/** 読んだときの version（画面から必ず送る。保存のときに、今の version と同じかを確かめる） */
+const requireVersion = (value: unknown): number =>
+	z.number().int().min(1).parse(value);
 
 /** シフトを作る。入力の検証と権限の確認は saveShift が行う（イベントかどうかは、単位で決まる） */
 export const createShift = createServerFn({ method: "POST" })
@@ -161,26 +168,37 @@ export const createShift = createServerFn({ method: "POST" })
 /** シフトを更新する */
 export const updateShift = createServerFn({ method: "POST" })
 	.middleware([requireUserMiddleware])
-	.validator((data: { scope: unknown; id: unknown; input: unknown }) => ({
-		scope: parseScope(data.scope),
-		id: requireId(data.id),
-		input: data.input,
-	}))
+	.validator(
+		(data: {
+			scope: unknown;
+			id: unknown;
+			version: unknown;
+			input: unknown;
+		}) => ({
+			scope: parseScope(data.scope),
+			id: requireId(data.id),
+			version: requireVersion(data.version),
+			input: data.input,
+		}),
+	)
 	.handler(async ({ data, context }) => {
 		const access = await writeAccess(context.user.id, data.scope);
 		if (!access) return notFoundResult;
-		return toMutationResult(await saveShift(access, data.input, data.id));
+		return toMutationResult(
+			await saveShift(access, data.input, data.id, data.version),
+		);
 	});
 
 /** シフトを消す */
 export const deleteShift = createServerFn({ method: "POST" })
 	.middleware([requireUserMiddleware])
-	.validator((data: { scope: unknown; id: unknown }) => ({
+	.validator((data: { scope: unknown; id: unknown; version: unknown }) => ({
 		scope: parseScope(data.scope),
 		id: requireId(data.id),
+		version: requireVersion(data.version),
 	}))
 	.handler(async ({ data, context }) => {
 		const access = await writeAccess(context.user.id, data.scope);
 		if (!access) return notFoundResult;
-		return toMutationResult(await removeShift(access, data.id));
+		return toMutationResult(await removeShift(access, data.id, data.version));
 	});

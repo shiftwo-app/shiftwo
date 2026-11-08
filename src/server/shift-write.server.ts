@@ -2,10 +2,15 @@
 // どの操作もシフトの単位（団体・テナント・イベント）の中だけで行い、ほかの単位のスタッフ・持ち場・シフトには触れない。
 // 日常シフト（eventId なし）にはテナントの持ち場、イベントのシフトにはそのイベントの持ち場しか使えない。
 // API（server route）と server function の両方から使うので、結果は HTTP に依存しない形で返す
+import { platform } from "#platform";
 import { z } from "zod";
 import { hasPermission, type Permission } from "../lib/org/permissions";
 import { isPrismaError, PRISMA_ERROR } from "../lib/prisma-errors";
 import { prisma } from "../lib/prisma.server";
+import {
+	type ShiftBoardEvent,
+	shiftBoardChannel,
+} from "../lib/shift-board-live";
 import { type Shift, ShiftStatus } from "../types";
 import { shiftInputSchema, validateShiftTimeRange } from "./shift.schema";
 import type { ShiftScopeIds } from "./shifts.server";
@@ -23,6 +28,8 @@ export type ShiftWriteError = {
 	/** 画面に出せるエラーメッセージ（時間帯のルール違反など） */
 	errors?: string[];
 	issues?: unknown;
+	/** 読んだあとに、ほかの人が先に変えていた（409） */
+	conflict?: boolean;
 };
 
 export type ShiftWriteResult = { ok: true; shift: Shift } | ShiftWriteError;
@@ -39,6 +46,19 @@ const forbiddenEdit = () =>
 	fail(403, "Forbidden", { errors: ["シフトを編集する権限がありません"] });
 const forbiddenConfirm = () =>
 	fail(403, "Forbidden", { errors: ["確定したシフトを扱う権限がありません"] });
+const conflict = () =>
+	fail(409, "Shift was changed by someone else", {
+		conflict: true,
+		errors: [
+			"ほかの人が先にこのシフトを変更しました。最新の内容を表示したので、もう一度操作してください",
+		],
+	});
+
+/** 同じ単位を見ている人に、シフトが変わったことを知らせる（応答は待たせない） */
+const announce = (access: ShiftScopeIds, event: ShiftBoardEvent) =>
+	platform.runInBackground("シフトの変更を知らせられませんでした", () =>
+		platform.realtime.publish(shiftBoardChannel(access), JSON.stringify(event)),
+	);
 
 /** Prisma の「見つからない」を 404 にする。それ以外は投げ直す */
 const toWriteError = (error: unknown): ShiftWriteError => {
@@ -56,12 +76,14 @@ const inScope = (access: ShiftScopeIds, id: string) => ({
 
 /**
  * 入力を検証してシフトを保存する。id があれば更新、なければ作成。
+ * 更新で expectedVersion を渡すと、今の version がそれと同じときだけ保存する（違えば 409）。
  * 想定外の失敗（DB に繋がらないなど）は投げる
  */
 export const saveShift = async (
 	access: ShiftWriteAccess,
 	body: unknown,
 	id?: string,
+	expectedVersion?: number,
 ): Promise<ShiftWriteResult> => {
 	if (!hasPermission(access.permissions, "shift.edit")) return forbiddenEdit();
 	const parsed = shiftInputSchema.safeParse(body);
@@ -126,11 +148,33 @@ export const saveShift = async (
 			if (existing.status === ShiftStatus.confirmed && !canConfirm) {
 				return forbiddenConfirm();
 			}
-			const shift = await prisma.shift.update({ where: { id }, data });
+			// version の確かめと書き込みを 1 つの文で行う（確かめたあとに割り込まれない。D1 でも同じ）
+			const { count } = await prisma.shift.updateMany({
+				where: {
+					...inScope(access, id),
+					...(expectedVersion === undefined
+						? {}
+						: { version: expectedVersion }),
+				},
+				data: { ...data, version: { increment: 1 } },
+			});
+			if (count === 0) return conflict();
+			const shift = await prisma.shift.findUnique({ where: { id } });
+			if (!shift) return notFound();
+			announce(access, {
+				type: "shift.changed",
+				shiftId: id,
+				version: shift.version,
+			});
 			return { ok: true, shift: shift as unknown as Shift };
 		}
 		const shift = await prisma.shift.create({
 			data: { ...data, organizationId, tenantId, eventId },
+		});
+		announce(access, {
+			type: "shift.changed",
+			shiftId: shift.id,
+			version: shift.version,
 		});
 		return { ok: true, shift: shift as unknown as Shift };
 	} catch (error) {
@@ -138,16 +182,17 @@ export const saveShift = async (
 	}
 };
 
-/** シフトを消す。消したシフトを返す（取り消しで元に戻すため） */
+/**
+ * シフトを消す。消したシフトを返す（取り消しで元に戻すため）。
+ * expectedVersion を渡すと、今の version がそれと同じときだけ消す（違えば 409）
+ */
 export const removeShift = async (
 	access: ShiftWriteAccess,
 	id: string,
+	expectedVersion?: number,
 ): Promise<ShiftWriteResult> => {
 	if (!hasPermission(access.permissions, "shift.edit")) return forbiddenEdit();
-	const existing = await prisma.shift.findFirst({
-		where: inScope(access, id),
-		select: { status: true },
-	});
+	const existing = await prisma.shift.findFirst({ where: inScope(access, id) });
 	if (!existing) return notFound();
 	if (
 		existing.status === ShiftStatus.confirmed &&
@@ -155,12 +200,16 @@ export const removeShift = async (
 	) {
 		return forbiddenConfirm();
 	}
-	try {
-		const shift = await prisma.shift.delete({ where: { id } });
-		return { ok: true, shift: shift as unknown as Shift };
-	} catch (error) {
-		return toWriteError(error);
+	if (expectedVersion !== undefined && existing.version !== expectedVersion) {
+		return conflict();
 	}
+	// 読んだときの version のままのときだけ消す（読んだあとに変えられていたら、消さない）
+	const { count } = await prisma.shift.deleteMany({
+		where: { ...inScope(access, id), version: existing.version },
+	});
+	if (count === 0) return conflict();
+	announce(access, { type: "shift.changed", shiftId: id, version: null });
+	return { ok: true, shift: existing as unknown as Shift };
 };
 
 const toResponse = (result: ShiftWriteResult, okStatus: number) =>
@@ -171,8 +220,17 @@ const toResponse = (result: ShiftWriteResult, okStatus: number) =>
 				{ status: result.status },
 			);
 
+/** API の body の version（あれば、その version のときだけ更新する） */
+const versionOf = (body: unknown): number | undefined => {
+	const version = (body as { version?: unknown } | null)?.version;
+	return typeof version === "number" && Number.isInteger(version)
+		? version
+		: undefined;
+};
+
 /**
  * API 用：リクエストの body を検証してシフトを保存する。
+ * body に version を入れると、その version のときだけ更新する（違えば 409）。
  * id があれば更新（PUT）、なければ作成（POST）
  */
 export const writeShift = async (
@@ -190,7 +248,10 @@ export const writeShift = async (
 		);
 	}
 	try {
-		return toResponse(await saveShift(access, body, id), id ? 200 : 201);
+		return toResponse(
+			await saveShift(access, body, id, versionOf(body)),
+			id ? 200 : 201,
+		);
 	} catch (error) {
 		console.error(error);
 		return Response.json(

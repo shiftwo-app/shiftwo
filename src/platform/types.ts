@@ -3,6 +3,7 @@
 // Cloudflare 向けの build（CLOUDFLARE=1）では vite.config.ts の alias で ./cloudflare.server.ts に差し替わる
 import type { Database } from "../lib/database";
 import type { MailTransport } from "../lib/mail/mailer.server";
+import type { Realtime } from "../lib/realtime/types";
 import type { BlobStore } from "../lib/storage/blob-store";
 
 export type Platform = {
@@ -22,4 +23,6 @@ export type Platform = {
 	 * Workers では waitUntil に載せないと、応答を返した時点で止められてしまう。失敗はログに出す
 	 */
 	runInBackground(label: string, task: () => Promise<unknown>): void;
+	/** 変更を、同じものを見ている人に配る（同時編集） */
+	realtime: Realtime;
 };

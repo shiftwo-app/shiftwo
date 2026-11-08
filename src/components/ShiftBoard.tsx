@@ -1,25 +1,43 @@
 import { useRouter } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
 	createShift,
 	deleteShift,
 	type ShiftMutationResult,
 	updateShift,
 } from "../server/shifts.functions";
+import type { RealtimeTransport } from "../lib/realtime/types";
 import type { ShiftScopeParams } from "../lib/shift-scope";
 import type { Position, Shift, ShiftStatus, Staff } from "../types";
 import ShiftForm, { type ShiftFormValue } from "./ShiftForm";
 import ShiftTimeline from "./ShiftTimeline";
 import { listShiftDays, toMs } from "./timeline/layout";
+import { type LiveStatus, useShiftBoardLive } from "./useShiftBoardLive";
 
 type ShiftPayload = ShiftFormValue & { status: ShiftStatus };
 
 /** 取り消し（FR-4-G）のために覚えておく、直前の 1 手 */
 type LastAction =
-	| { type: "update"; id: string; before: ShiftPayload; label: string }
-	| { type: "create"; id: string; label: string }
+	| {
+			type: "update";
+			id: string;
+			/** 自分が変えたあとの version（そのあとにほかの人が変えていたら、元に戻さない） */
+			version: number;
+			before: ShiftPayload;
+			label: string;
+	  }
+	| { type: "create"; id: string; version: number; label: string }
 	| { type: "delete"; before: ShiftPayload; label: string };
+
+/** ほかの人の変更が続けて届いたとき、まとめて 1 回だけ読み直すための待ち時間 */
+const REFRESH_DEBOUNCE_MS = 200;
+
+const LIVE_LABEL: Record<LiveStatus, string> = {
+	connecting: "接続中…",
+	live: "ほかの人の変更をすぐに反映します",
+	offline: "ほかの人の変更を受け取れていません（つなぎ直しています）",
+};
 
 const toPayload = (
 	shift: Shift,
@@ -39,7 +57,9 @@ const DEFAULT_START_HOUR_MS = 9 * 60 * 60_000;
 
 /**
  * タイムラインと、その編集（閲覧 / 編集モード FR-4-F・作成 FR-4-B・取り消し FR-4-G）をまとめる。
- * 保存は server function で行い、保存できたら loader を読み直す
+ * 保存は server function で行い、保存できたら loader を読み直す。
+ * 同時編集：ほかの人の変更が届いたら読み直す。保存は、読んだときの version のままのときだけ通る
+ * （先に変えられていたら、知らせて読み直す）
  */
 const ShiftBoard = ({
 	shifts,
@@ -49,6 +69,7 @@ const ShiftBoard = ({
 	newShiftStatus,
 	scope,
 	canEdit,
+	liveTransport,
 }: {
 	shifts: Shift[];
 	positions: Position[];
@@ -60,6 +81,8 @@ const ShiftBoard = ({
 	scope: ShiftScopeParams;
 	/** 編集できる権限か（できなければ編集モードを出さない。守りはサーバー側） */
 	canEdit: boolean;
+	/** ほかの人の変更を受け取る方式 */
+	liveTransport: RealtimeTransport;
 }) => {
 	const router = useRouter();
 	const create = useServerFn(createShift);
@@ -71,6 +94,18 @@ const ShiftBoard = ({
 	const [errors, setErrors] = useState<string[]>([]);
 	const [lastAction, setLastAction] = useState<LastAction | null>(null);
 
+	// ほかの人の変更が届いたら、まとめて読み直す
+	const refreshTimer = useRef<ReturnType<typeof setTimeout> | undefined>(
+		undefined,
+	);
+	useEffect(() => () => clearTimeout(refreshTimer.current), []);
+	const liveStatus = useShiftBoardLive(scope, liveTransport, () => {
+		clearTimeout(refreshTimer.current);
+		refreshTimer.current = setTimeout(() => {
+			void router.invalidate();
+		}, REFRESH_DEBOUNCE_MS);
+	});
+
 	/** 保存を 1 回行う。できたら onDone を呼んで画面を読み直し、true を返す */
 	const run = async (
 		mutate: () => Promise<ShiftMutationResult>,
@@ -81,6 +116,11 @@ const ShiftBoard = ({
 			const result = await mutate();
 			if (!result.ok) {
 				setErrors(result.errors);
+				// ほかの人が先に変えていたら、最新を見せる（元に戻すも、もう使えない）
+				if (result.conflict) {
+					setLastAction(null);
+					await router.invalidate();
+				}
 				return false;
 			}
 			setErrors([]);
@@ -103,13 +143,15 @@ const ShiftBoard = ({
 					data: {
 						scope,
 						id: shift.id,
+						version: shift.version,
 						input: toPayload(shift, { start, end }),
 					},
 				}),
-			() =>
+			(saved) =>
 				setLastAction({
 					type: "update",
 					id: shift.id,
+					version: saved.version,
 					before: toPayload(shift),
 					label: "時間の変更",
 				}),
@@ -117,7 +159,7 @@ const ShiftBoard = ({
 
 	const handleDelete = (shift: Shift) => {
 		void run(
-			() => remove({ data: { scope, id: shift.id } }),
+			() => remove({ data: { scope, id: shift.id, version: shift.version } }),
 			() =>
 				setLastAction({
 					type: "delete",
@@ -133,7 +175,13 @@ const ShiftBoard = ({
 				create({
 					data: { scope, input: { ...value, status: newShiftStatus } },
 				}),
-			(shift) => setLastAction({ type: "create", id: shift.id, label: "作成" }),
+			(shift) =>
+				setLastAction({
+					type: "create",
+					id: shift.id,
+					version: shift.version,
+					label: "作成",
+				}),
 		);
 
 	const handleUndo = () => {
@@ -144,13 +192,24 @@ const ShiftBoard = ({
 				void run(
 					() =>
 						update({
-							data: { scope, id: lastAction.id, input: lastAction.before },
+							data: {
+								scope,
+								id: lastAction.id,
+								version: lastAction.version,
+								input: lastAction.before,
+							},
 						}),
 					clear,
 				);
 				break;
 			case "create":
-				void run(() => remove({ data: { scope, id: lastAction.id } }), clear);
+				void run(
+					() =>
+						remove({
+							data: { scope, id: lastAction.id, version: lastAction.version },
+						}),
+					clear,
+				);
 				break;
 			case "delete":
 				void run(
@@ -165,6 +224,16 @@ const ShiftBoard = ({
 
 	return (
 		<div className="space-y-3">
+			<p
+				role="status"
+				className="flex items-center gap-2 text-xs text-gray-600"
+			>
+				<span
+					aria-hidden="true"
+					className={`inline-block size-2 rounded-full ${liveStatus === "live" ? "bg-green-500" : liveStatus === "offline" ? "bg-amber-500" : "bg-gray-400"}`}
+				/>
+				{LIVE_LABEL[liveStatus]}
+			</p>
 			{canEdit && (
 				<div className="flex flex-wrap items-center justify-end gap-3">
 					{editMode && (

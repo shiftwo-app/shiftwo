@@ -1,9 +1,12 @@
 // シフトの API（日常シフト /api/o/<団体>/t/<テナント>/shifts と、イベント .../e/<イベント>/shifts）の handler。
 // ログインしていなければ 401、所属していない・テナントやイベントがない → 404、権限が足りない → 403
+import { platform } from "#platform";
 import type { Permission } from "../lib/org/permissions";
+import { shiftBoardChannel } from "../lib/shift-board-live";
 import type { ShiftStatus } from "../types";
 import { orgAccessErrorResponse } from "./org-access.server";
 import { requireScopeAccess, type ScopeAccess } from "./scope-access.server";
+import { forbiddenOrigin, isSameOriginRequest } from "./same-origin.server";
 import { getSessionUserFromHeaders } from "./session.server";
 import {
 	deleteShiftResponse,
@@ -81,3 +84,18 @@ export const deleteShiftHandler = <
 	withScope<P>("shift.view", ({ params, access }) =>
 		deleteShiftResponse(writeAccessOf(access), params.id),
 	);
+
+/**
+ * 同時編集：この単位のシフトの変更を受け取る（GET。Node は SSE、Cloudflare は WebSocket）。
+ * Cookie で認証するので、Origin があれば（WebSocket には必ず付く）このアプリのものに限る
+ * （よそのサイトから、見ている人の Cookie でつながせない）
+ */
+export const liveHandler = <P extends ScopeRouteParams>() => {
+	const handler = withScope<P>("shift.view", ({ request, access }) =>
+		platform.realtime.subscribe(request, shiftBoardChannel(idsOf(access))),
+	);
+	return (ctx: Ctx<P>) =>
+		ctx.request.headers.has("origin") && !isSameOriginRequest(ctx.request)
+			? forbiddenOrigin()
+			: handler(ctx);
+};

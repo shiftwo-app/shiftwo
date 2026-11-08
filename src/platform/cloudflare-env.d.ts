@@ -19,9 +19,36 @@ declare module "cloudflare:workers" {
 				html?: string;
 			}): Promise<{ messageId: string }>;
 		};
+		/** 同時編集の変更を配る Durable Object（ShiftBoardRoom） */
+		SHIFT_BOARD_ROOMS?: {
+			idFromName(name: string): unknown;
+			get(id: unknown): {
+				fetch(request: Request): Promise<Response>;
+				publish(message: string): Promise<void>;
+			};
+		};
 		MAIL_FROM?: string;
 		MAIL_FROM_NAME?: string;
 		STORAGE_DRIVER?: string;
 	};
 	export function waitUntil(promise: Promise<unknown>): void;
+	export abstract class DurableObject<Env = unknown> {
+		protected ctx: DurableObjectStateLike;
+		protected env: Env;
+		constructor(ctx: DurableObjectStateLike, env: Env);
+	}
+}
+
+/** Durable Object の state のうち、使うところだけ */
+type DurableObjectStateLike = {
+	acceptWebSocket(socket: WebSocket, tags?: string[]): void;
+	getWebSockets(tag?: string): WebSocket[];
+	setWebSocketAutoResponse(pair: WebSocketRequestResponsePair): void;
+};
+declare class WebSocketRequestResponsePair {
+	constructor(request: string, response: string);
+}
+declare class WebSocketPair {
+	0: WebSocket;
+	1: WebSocket;
 }

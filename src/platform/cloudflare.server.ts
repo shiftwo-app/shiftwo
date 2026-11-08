@@ -5,6 +5,7 @@ import { env, waitUntil } from "cloudflare:workers";
 import { cloudflareDatabase } from "#cloudflare-database";
 import { parseDatabaseProvider } from "../lib/database-provider";
 import type { MailTransport } from "../lib/mail/mailer.server";
+import { cloudflareRealtime } from "./cloudflare-realtime.server";
 import { createR2BlobStore } from "../lib/storage/r2-store.server";
 import type { Platform } from "./types";
 
@@ -57,6 +58,7 @@ export const platform: Platform = {
 		if (!env.BUCKET) throw missingBinding("BUCKET", "STORAGE_DRIVER=r2");
 		return createR2BlobStore(env.BUCKET);
 	},
+	realtime: cloudflareRealtime,
 	runInBackground(label, task) {
 		// task がその場で投げたエラーも、ここで受け止める
 		waitUntil(
