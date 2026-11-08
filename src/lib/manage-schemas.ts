@@ -55,6 +55,8 @@ export const positionInputSchema = z.object({
 		.int("settings.requiredCountInteger")
 		.min(0, "settings.requiredCountMin")
 		.max(99, "settings.requiredCountMax"),
+	// 休憩の持ち場か（レポートで休憩として数え、充足率には入れない）
+	isBreak: z.boolean(),
 });
 export type PositionInput = z.infer<typeof positionInputSchema>;
 

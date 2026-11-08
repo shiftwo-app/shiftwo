@@ -503,3 +503,27 @@ export const setPositionsSettingFn = createServerFn({ method: "POST" })
 		});
 		return { ok: true };
 	});
+
+/** レポートで、シフトのあいだの空きを休憩とみなす長さ（分）を決める（テナントの管理の権限） */
+export const setBreakGapFn = createServerFn({ method: "POST" })
+	.middleware([requireUserMiddleware])
+	.validator(
+		(data: { orgSlug: unknown; tenantSlug: unknown; minutes: unknown }) => ({
+			orgSlug: slug.parse(data.orgSlug),
+			tenantSlug: slug.parse(data.tenantSlug),
+			minutes: z.number().int().min(1).max(240).parse(data.minutes),
+		}),
+	)
+	.handler(async ({ data, context }) => {
+		await requireOrgAccess(context.user.id, data.orgSlug, "tenant.manage");
+		const access = await requireScopeAccess(
+			context.user.id,
+			{ orgSlug: data.orgSlug, tenantSlug: data.tenantSlug },
+			"shift.view",
+		);
+		await prisma.tenant.updateMany({
+			where: { id: access.tenant.id, organizationId: access.organization.id },
+			data: { breakGapMinutes: data.minutes },
+		});
+		return { ok: true as const };
+	});

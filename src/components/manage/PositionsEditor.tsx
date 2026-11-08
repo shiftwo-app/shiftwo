@@ -36,10 +36,16 @@ function PositionForm({
 	const [name, setName] = useState(position?.name ?? "");
 	const [color, setColor] = useState(position?.color ?? "#3B82F6");
 	const [required, setRequired] = useState(position?.requiredStaffCount ?? 1);
+	const [isBreak, setIsBreak] = useState(position?.isBreak ?? false);
 
 	const submit = async (event: FormEvent<HTMLFormElement>) => {
 		event.preventDefault();
-		const input: PositionInput = { name, color, requiredStaffCount: required };
+		const input: PositionInput = {
+			name,
+			color,
+			requiredStaffCount: required,
+			isBreak,
+		};
 		const ok = await run(() =>
 			position
 				? update({ data: { scope, positionId: position.id, position: input } })
@@ -48,6 +54,7 @@ function PositionForm({
 		if (ok && !position) {
 			setName("");
 			setRequired(1);
+			setIsBreak(false);
 		}
 	};
 
@@ -105,6 +112,15 @@ function PositionForm({
 					className="control tabular w-20 font-normal"
 				/>
 			</label>
+			<label className="flex items-center gap-2 text-xs text-ink-muted">
+				<input
+					type="checkbox"
+					checked={isBreak}
+					onChange={(event) => setIsBreak(event.target.checked)}
+					className="size-4 accent-primary"
+				/>
+				{t("settings.positionIsBreak")}
+			</label>
 			<div className="flex flex-wrap items-center gap-2">
 				<Button
 					type="submit"
@@ -148,7 +164,7 @@ const PositionsEditor = ({
 				<ul className="divide-y divide-line rounded-lg border border-line bg-surface">
 					{positions.map((position) => (
 						<li
-							key={`${position.id}-${position.name}-${position.color}-${position.requiredStaffCount}`}
+							key={`${position.id}-${position.name}-${position.color}-${position.requiredStaffCount}-${position.isBreak}`}
 							className="px-4 py-3"
 						>
 							<PositionForm scope={scope} position={position} run={run} />

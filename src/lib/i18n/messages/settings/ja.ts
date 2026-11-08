@@ -200,4 +200,5 @@ export default {
 		"自分が持っていない権限を含むロールは、付けたり外したりできません",
 	errorLinkForbidden: "メンバーと紐づけるには、メンバーを見る権限が必要です",
 	errorOrgPositionsInherit: "団体では、使うか使わないかを選んでください",
+	positionIsBreak: "休憩として数える",
 } as const;

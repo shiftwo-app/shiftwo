@@ -82,6 +82,10 @@ function OrgLayout() {
 				label: t("shell.tabDraft"),
 				link: { to: "/o/$orgSlug/t/$tenantSlug/e/$eventSlug/draft", params },
 			},
+			{
+				label: t("report.tab"),
+				link: { to: "/o/$orgSlug/t/$tenantSlug/e/$eventSlug/report", params },
+			},
 			...(canOpenSettings
 				? [
 						{
@@ -109,6 +113,10 @@ function OrgLayout() {
 			{
 				label: t("shell.tabDraft"),
 				link: { to: "/o/$orgSlug/t/$tenantSlug/draft", params: tenantParams },
+			},
+			{
+				label: t("report.tab"),
+				link: { to: "/o/$orgSlug/t/$tenantSlug/report", params: tenantParams },
 			},
 			{
 				label: t("shell.tabEvents", { count: tenantContext.events.length }),

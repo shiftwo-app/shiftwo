@@ -192,4 +192,5 @@ export default {
 		"You can't add or remove roles that include permissions you don't have",
 	errorLinkForbidden: "You need permission to view members to link one",
 	errorOrgPositionsInherit: "For the organization, choose on or off",
+	positionIsBreak: "Count as a break",
 } satisfies Messages<typeof ja>;

@@ -1,0 +1,42 @@
+import type { Messages } from "../define";
+import type ja from "./ja";
+
+export default {
+	tab: "Report",
+	titleTenant: "Regular shift report",
+	titleEvent: "Event report",
+	status: "Showing",
+	statusConfirmed: "Published shifts",
+	statusDraft: "Draft",
+	day: "Day",
+	noShifts: "No shifts on this day",
+	fillTitle: "Coverage by position",
+	fillDescription:
+		"Share of the needed staff time that is covered between {start} and {end}. Below 90% is orange, below 70% is red.",
+	fillNone: "No positions have a required number of staff",
+	fillRate: "{rate}%",
+	fillDetail: "{filled} of {needed} needed",
+	fillPositionsOff: "Positions are not used here, so coverage is not shown",
+	staffTitle: "By staff",
+	staffDescription:
+		"Working time and total breaks. Breaks are shifts on break positions plus gaps of {minutes} minutes or more between shifts.",
+	staffSearch: "Find staff",
+	staffSearchPlaceholder: "Type a name to filter",
+	staffNone: "No matching staff",
+	colStaff: "Staff",
+	colWork: "Working time",
+	colBreak: "Breaks",
+	colOverridden: "Against preferences",
+	colShifts: "Shifts",
+	shiftN: "Shift {number}",
+	noPosition: "No position",
+	breakBadge: "Break",
+	overriddenBadge: "Against preferences",
+	exportTitle: "Export CSV",
+	exportPositions: "By position",
+	exportStaff: "By staff",
+	exportMine: "My shifts",
+	breakGapLabel: "Gap counted as a break (minutes)",
+	breakGapSave: "Change",
+	nameSeparator: " / ",
+} satisfies Messages<typeof ja>;

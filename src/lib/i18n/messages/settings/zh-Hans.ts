@@ -178,4 +178,5 @@ export default {
 	errorScopedRoleForbidden: "无法添加或移除包含你没有的权限的角色",
 	errorLinkForbidden: "关联成员需要查看成员的权限",
 	errorOrgPositionsInherit: "对于组织，请选择使用或不使用",
+	positionIsBreak: "计为休息",
 } satisfies Messages<typeof ja>;

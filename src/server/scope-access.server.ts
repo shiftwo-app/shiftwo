@@ -26,6 +26,8 @@ export type ScopeAccess = OrgMembership & {
 		timeUnitMinutes: number;
 		/** 持ち場を使うかの上書き（null なら団体の設定） */
 		positionsEnabled: boolean | null;
+		/** レポートで、シフトのあいだの空きを休憩とみなす長さ（分） */
+		breakGapMinutes: number;
 	};
 	event: {
 		id: string;
@@ -64,6 +66,7 @@ export const findScopeAccess = async (
 			name: true,
 			timeUnitMinutes: true,
 			positionsEnabled: true,
+			breakGapMinutes: true,
 			organization: { select: { positionsEnabled: true } },
 			members: {
 				where: { memberId: membership.member.id },
@@ -109,6 +112,7 @@ export const findScopeAccess = async (
 			name: tenant.name,
 			timeUnitMinutes: tenant.timeUnitMinutes,
 			positionsEnabled: tenant.positionsEnabled,
+			breakGapMinutes: tenant.breakGapMinutes,
 		},
 		event,
 		permissions: scopedPermissions(

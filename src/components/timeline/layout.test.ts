@@ -51,6 +51,7 @@ const positions: Position[] = [
 		name: "受付",
 		color: "#3357FF",
 		requiredStaffCount: 2,
+		isBreak: false,
 	},
 	{
 		id: "r2",
@@ -60,6 +61,7 @@ const positions: Position[] = [
 		name: "司会",
 		color: "#33FFF6",
 		requiredStaffCount: 1,
+		isBreak: false,
 	},
 ];
 const staffs = [

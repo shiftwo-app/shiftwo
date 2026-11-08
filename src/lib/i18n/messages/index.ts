@@ -8,6 +8,7 @@ import common from "./common";
 import errors from "./errors";
 import orgs from "./orgs";
 import preferences from "./preferences";
+import report from "./report";
 import settings from "./settings";
 import shell from "./shell";
 
@@ -20,6 +21,7 @@ const namespaces = {
 	board,
 	settings,
 	preferences,
+	report,
 	errors,
 } as const;
 
