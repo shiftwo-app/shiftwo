@@ -43,5 +43,9 @@ yarn-error.log*
 
 # pnpm
 .pnpm-store/
-# prisma client（prisma generate で作る）
+# prisma client とスキーマ（pnpm prisma:generate で作る）
 /src/generated/
+/prisma/generated-schema/
+# SQLite のマイグレーションを作るときのローカル DB
+/prisma/*.db
+/prisma/*.db-journal

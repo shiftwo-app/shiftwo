@@ -1,7 +1,7 @@
 // シフトの作成・更新・削除。入力を検証してから保存する。
 // API（server route）と server function の両方から使うので、結果は HTTP に依存しない形で返す
 import { z } from "zod";
-import { Prisma } from "../generated/prisma/client";
+import { isPrismaError, PRISMA_ERROR } from "../lib/prisma-errors";
 import { prisma } from "../lib/prisma.server";
 import type { Shift } from "../types";
 import { shiftInputSchema, validateShiftTimeRange } from "./shift.schema";
@@ -25,14 +25,13 @@ const fail = (
 
 /** Prisma の「見つからない」「参照先がない」を、入力の誤りとして返す。それ以外は投げ直す */
 const toWriteError = (error: unknown): ShiftWriteError => {
-	if (error instanceof Prisma.PrismaClientKnownRequestError) {
-		// P2025: 対象のシフトがない / P2003: staffId・roleId の参照先がない
-		if (error.code === "P2025") return fail(404, "Shift not found");
-		if (error.code === "P2003") {
-			return fail(400, "Staff or role does not exist", {
-				errors: ["スタッフか役割が見つかりません"],
-			});
-		}
+	if (isPrismaError(error, PRISMA_ERROR.notFound)) {
+		return fail(404, "Shift not found");
+	}
+	if (isPrismaError(error, PRISMA_ERROR.foreignKeyViolation)) {
+		return fail(400, "Staff or role does not exist", {
+			errors: ["スタッフか役割が見つかりません"],
+		});
 	}
 	throw error;
 };

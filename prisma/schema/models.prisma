@@ -1,21 +1,15 @@
-// prisma/schema.prisma
-generator client {
-  provider = "prisma-client"
-  output   = "../src/generated/prisma"
-  // prisma/seed.ts を Node でそのまま動かせるよう、生成コードの import に .ts を付ける
-  importFileExtension = "ts"
-}
-
-// 接続先は prisma.config.ts（CLI）と src/lib/prisma.server.ts（アプリ）で DATABASE_URL から渡す
-datasource db {
-  provider = "postgresql"
-}
+// shiftwo のモデル定義（Postgres と SQLite / D1 で共通）。
+// generator と datasource は DB ごとに scripts/prisma-schemas.ts が付けて
+// prisma/generated-schema/<provider>/schema.prisma を作る。ここには書かない。
+// 両方の DB で使える書き方だけにすること（配列型 String[] / Json[] や、@db.* の型指定は使えない）
 
 model Staff {
   id              String    @id @default(uuid())
   name            String
   preferredRoles  Role[]    @relation("StaffPreferredRoles")
-  unavailableTimes Json[] // Array of TimeRange (start, end)
+  // TimeRange（start, end）の配列。SQLite（D1）には配列型がないので、Json の中に配列で持つ。
+  // @default("[]") は付けない（SQLite では Prisma が既定値を空文字列で出力してしまう）。作る側で [] を渡す
+  unavailableTimes Json
   shifts          Shift[]
 }
 
@@ -37,7 +31,8 @@ model Event {
 model Room {
   id        String @id @default(uuid())
   name      String
-  timeTable Json[] // Array of TimeRange (start, end)
+  // TimeRange（start, end）の配列（unavailableTimes と同じ理由で Json）
+  timeTable Json
   eventId   String
   event     Event  @relation(fields: [eventId], references: [id])
 }
@@ -50,7 +45,7 @@ model Shift {
   roleId          String
   timeRange       Json // TimeRange (start, end)
   isPreferredRole Boolean
-  status          ShiftStatus @default(draft) // Add this line
+  status          ShiftStatus @default(draft)
 }
 
 enum ShiftStatus {
