@@ -1,6 +1,10 @@
 import { createFileRoute, Link, redirect } from "@tanstack/react-router";
 import EmailOrDiscordAuth from "../components/auth/EmailOrDiscordAuth";
 import Logo from "../components/Logo";
+import LanguageSwitcher from "../components/shell/LanguageSwitcher";
+import type { MessageKey } from "../lib/i18n/messages";
+import { useT } from "../lib/i18n/react";
+import { translate } from "../lib/i18n/translate";
 import { safeRedirectPath } from "../lib/safe-redirect";
 import { getLoginMethods, getSession } from "../server/session.functions";
 
@@ -12,20 +16,29 @@ export const Route = createFileRoute("/signup")({
 		if (await getSession()) throw redirect({ href: search.redirect });
 	},
 	loader: () => getLoginMethods(),
-	head: () => ({ meta: [{ title: "新規登録 | シフトヲ" }] }),
+	head: ({ match }) => ({
+		meta: [
+			{
+				title: translate(match.context.locale, "shell.pageTitle", {
+					page: translate(match.context.locale, "auth.signupLink"),
+				}),
+			},
+		],
+	}),
 	component: SignupPage,
 });
 
 // 登録の流れ（案内板のように、番号を振って並べる）
-const STEPS = [
-	"Discord か、メールアドレス（確認コード）でアカウントを作ります",
-	"名前を決めます",
-	"団体を作るか、招待コードで団体に参加します",
+const STEPS: MessageKey[] = [
+	"auth.signupStepAccount",
+	"auth.signupStepName",
+	"auth.signupStepOrg",
 ];
 
 function SignupPage() {
 	const { redirect: redirectTo } = Route.useSearch();
 	const methods = Route.useLoaderData();
+	const t = useT();
 	return (
 		<main className="px-4 py-12 sm:py-20">
 			<div className="mx-auto max-w-sm space-y-8">
@@ -44,20 +57,21 @@ function SignupPage() {
 							>
 								{index + 1}
 							</span>
-							<span className="pt-0.5">{step}</span>
+							<span className="pt-0.5">{t(step)}</span>
 						</li>
 					))}
 				</ol>
 				<p className="text-center text-sm text-ink-muted">
-					アカウントをお持ちの方は{" "}
+					{t("auth.loginPrompt")}{" "}
 					<Link
 						to="/login"
 						search={{ redirect: redirectTo }}
 						className="font-bold text-primary underline underline-offset-4 hover:text-primary-strong"
 					>
-						ログイン
+						{t("auth.signIn")}
 					</Link>
 				</p>
+				<LanguageSwitcher className="justify-center" />
 			</div>
 		</main>
 	);

@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { platform } from "#platform";
 import { z } from "zod";
+import { serverT } from "../lib/i18n/request-locale.server";
 import { hasPermission } from "../lib/org/permissions";
 import { prisma } from "../lib/prisma.server";
 import { type Shift, ShiftStatus } from "../types";
@@ -116,6 +117,7 @@ const conflictsOf = async (
 				end: new Date(shift.timeRange.end).getTime(),
 			},
 			preference,
+			serverT,
 		);
 		if (reasons.length > 0) conflicts[shift.id] = reasons;
 	}
@@ -188,11 +190,11 @@ const writeAccess = async (
 	}
 };
 
-const notFoundResult: ShiftMutationResult = {
+const notFoundResult = (): ShiftMutationResult => ({
 	ok: false,
 	message: "Not found",
-	errors: ["見つかりません"],
-};
+	errors: [serverT("board.errorNotFound")],
+});
 
 const requireId = (value: unknown): string => z.string().min(1).parse(value);
 /** 読んだときの version（画面から必ず送る。保存のときに、今の version と同じかを確かめる） */
@@ -208,7 +210,7 @@ export const createShift = createServerFn({ method: "POST" })
 	}))
 	.handler(async ({ data, context }) => {
 		const access = await writeAccess(context.user.id, data.scope);
-		if (!access) return notFoundResult;
+		if (!access) return notFoundResult();
 		return toMutationResult(await saveShift(access, data.input));
 	});
 
@@ -230,7 +232,7 @@ export const updateShift = createServerFn({ method: "POST" })
 	)
 	.handler(async ({ data, context }) => {
 		const access = await writeAccess(context.user.id, data.scope);
-		if (!access) return notFoundResult;
+		if (!access) return notFoundResult();
 		return toMutationResult(
 			await saveShift(access, data.input, data.id, data.version),
 		);
@@ -246,6 +248,6 @@ export const deleteShift = createServerFn({ method: "POST" })
 	}))
 	.handler(async ({ data, context }) => {
 		const access = await writeAccess(context.user.id, data.scope);
-		if (!access) return notFoundResult;
+		if (!access) return notFoundResult();
 		return toMutationResult(await removeShift(access, data.id, data.version));
 	});

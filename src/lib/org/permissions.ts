@@ -1,35 +1,46 @@
 // 権限（Discord のようなロール）。ロールごとに権限の項目を設定し、1 人が複数のロールを持てる。権限は足し合わせ。
 // サーバーの権限チェックと、画面の出し分けの両方で使う（画面で隠すのは見た目のためで、守りはサーバーのチェック）
 
+import type { MessageKey } from "../i18n/messages";
+import { type Translate, translatorFor } from "../i18n/translate";
+
+// 画面に出す名前はメッセージのキー（labelKey）で持ち、画面の言語で引く
 export const PERMISSIONS = [
-	{ key: "shift.view", label: "シフトを見る", scoped: true },
-	{ key: "shift.edit", label: "シフトを作る・変える・消す", scoped: true },
-	{ key: "shift.confirm", label: "シフトを確定する", scoped: true },
-	{ key: "position.manage", label: "持ち場を作る・変える", scoped: true },
-	{ key: "event.manage", label: "イベントを作る・設定する", scoped: true },
-	{ key: "staff.manage", label: "スタッフを作る・変える", scoped: false },
-	{ key: "member.view", label: "メンバーを見る", scoped: false },
-	{ key: "invite.manage", label: "招待コードを発行・取り消す", scoped: false },
+	{ key: "shift.view", labelKey: "settings.permShiftView", scoped: true },
+	{ key: "shift.edit", labelKey: "settings.permShiftEdit", scoped: true },
+	{ key: "shift.confirm", labelKey: "settings.permShiftConfirm", scoped: true },
 	{
-		key: "invite.guest",
-		label:
-			"ゲストを招待する（Discord サーバーの参加条件の免除を含むロールの招待コードを発行できる）",
+		key: "position.manage",
+		labelKey: "settings.permPositionManage",
+		scoped: true,
+	},
+	{ key: "event.manage", labelKey: "settings.permEventManage", scoped: true },
+	{ key: "staff.manage", labelKey: "settings.permStaffManage", scoped: false },
+	{ key: "member.view", labelKey: "settings.permMemberView", scoped: false },
+	{
+		key: "invite.manage",
+		labelKey: "settings.permInviteManage",
 		scoped: false,
 	},
+	{ key: "invite.guest", labelKey: "settings.permInviteGuest", scoped: false },
 	{
 		key: "member.manage",
-		label: "メンバーのロールを変える・外す",
+		labelKey: "settings.permMemberManage",
 		scoped: false,
 	},
-	{ key: "role.manage", label: "ロールを作る・変える", scoped: false },
-	{ key: "tenant.manage", label: "テナントを作る・設定する", scoped: false },
-	{ key: "org.settings", label: "団体の設定を変える", scoped: false },
+	{ key: "role.manage", labelKey: "settings.permRoleManage", scoped: false },
 	{
-		key: "guild.bypass",
-		label: "Discord サーバーの参加条件を免除する（ゲスト向け）",
+		key: "tenant.manage",
+		labelKey: "settings.permTenantManage",
 		scoped: false,
 	},
-] as const;
+	{ key: "org.settings", labelKey: "settings.permOrgSettings", scoped: false },
+	{ key: "guild.bypass", labelKey: "settings.permGuildBypass", scoped: false },
+] as const satisfies readonly {
+	key: string;
+	labelKey: MessageKey;
+	scoped: boolean;
+}[];
 
 export type Permission = (typeof PERMISSIONS)[number]["key"];
 
@@ -45,8 +56,18 @@ export const SCOPED_PERMISSIONS: readonly Permission[] = PERMISSIONS.filter(
 	(p) => p.scoped,
 ).map((p) => p.key);
 
+/** 権限の名前（画面の言語で）。t を渡さなければ日本語 */
+export const permissionLabel = (
+	permission: Permission,
+	t: Translate = translatorFor("ja"),
+): string => {
+	const entry = PERMISSIONS.find((p) => p.key === permission);
+	return entry ? t(entry.labelKey) : permission;
+};
+
+/** 権限の名前（日本語）。画面では permissionLabel(p, t) を使う */
 export const PERMISSION_LABELS = Object.fromEntries(
-	PERMISSIONS.map((p) => [p.key, p.label]),
+	PERMISSIONS.map((p) => [p.key, permissionLabel(p.key)]),
 ) as Record<Permission, string>;
 
 const isPermission = (value: unknown): value is Permission =>

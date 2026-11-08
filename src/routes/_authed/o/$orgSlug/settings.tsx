@@ -11,7 +11,7 @@ import Badge from "../../../../components/ui/Badge";
 import Button from "../../../../components/ui/Button";
 import PageHeader from "../../../../components/ui/PageHeader";
 import Section from "../../../../components/ui/Section";
-import { useId, useState } from "react";
+import { useId, useMemo, useState } from "react";
 import type { FormEvent } from "react";
 import {
 	formatInviteCode,
@@ -27,6 +27,7 @@ import {
 	type Permission,
 } from "../../../../lib/org/permissions";
 import { NAME_MAX_LENGTH } from "../../../../lib/profile";
+import { useIntlLocale, useT } from "../../../../lib/i18n/react";
 import {
 	createInviteFn,
 	createRoleFn,
@@ -71,14 +72,6 @@ type RoleRow = Awaited<ReturnType<typeof listRoles>>[number];
 type Run = (
 	action: () => Promise<{ ok: boolean; errors?: string[] }>,
 ) => Promise<boolean>;
-
-const dateFormatter = new Intl.DateTimeFormat("ja-JP", {
-	timeZone: "Asia/Tokyo",
-	month: "numeric",
-	day: "numeric",
-	hour: "2-digit",
-	minute: "2-digit",
-});
 
 // 一覧の入れ物（罫線で行を区切る）
 const listBox = "divide-y divide-line rounded-lg border border-line bg-surface";
@@ -127,6 +120,7 @@ function SettingsPage() {
 	const { organization, member, tenants } = Route.useRouteContext();
 	const { myAvatar, members, roles, invites, staff } = Route.useLoaderData();
 	const router = useRouter();
+	const t = useT();
 	const [errors, setErrors] = useState<string[]>([]);
 	const perms = member.permissions;
 
@@ -136,21 +130,21 @@ function SettingsPage() {
 		try {
 			const result = await action();
 			if (!result.ok) {
-				setErrors(result.errors ?? ["できませんでした"]);
+				setErrors(result.errors ?? [t("settings.failedShort")]);
 				return false;
 			}
 			await router.invalidate();
 			return true;
 		} catch (error) {
 			console.error(error);
-			setErrors(["できませんでした。時間をおいて、もう一度試してください"]);
+			setErrors([t("common.failed")]);
 			return false;
 		}
 	};
 
 	return (
 		<main className="mx-auto max-w-5xl px-4 py-6 sm:px-6">
-			<PageHeader title="設定・メンバー" />
+			<PageHeader title={t("settings.orgSettingsTitle")} />
 			<ErrorList errors={errors} className="mb-6" />
 			<div>
 				<DisplayNameSection
@@ -161,15 +155,15 @@ function SettingsPage() {
 				{myAvatar && (
 					<Section
 						id="org-avatar-h"
-						title="この団体でのあなたのアイコン"
-						description="選ぶと、この団体でだけこのアイコンを使います（ほかの団体やアカウントのアイコンは変わりません）。"
+						title={t("settings.orgAvatarTitle")}
+						description={t("settings.orgAvatarDescription")}
 					>
 						<AvatarUploader
 							endpoint={`/api/o/${encodeURIComponent(organization.slug)}/me/avatar`}
 							name={member.displayName}
 							currentUrl={myAvatar.avatarUrl}
 							hasUploaded={myAvatar.hasOrgAvatar}
-							removeLabel="アカウントのアイコンに戻す"
+							removeLabel={t("settings.orgAvatarRemove")}
 							onChanged={() => router.invalidate()}
 						/>
 					</Section>
@@ -180,8 +174,8 @@ function SettingsPage() {
 				{hasPermission(perms, "org.settings") && (
 					<Section
 						id="org-positions-h"
-						title="持ち場"
-						description="使わないときは、シフトを人と時間だけで組みます（持ち場の選択・持ち場別の表示・必要な人数・希望の持ち場を出しません）。団体の基本の設定で、テナントやイベントごとに変えられます。"
+						title={t("settings.orgPositionsTitle")}
+						description={t("settings.orgPositionsDescription")}
 					>
 						<PositionsToggle
 							scope={{ orgSlug: organization.slug }}
@@ -246,6 +240,7 @@ function DisplayNameSection({
 	run: Run;
 }) {
 	const update = useServerFn(updateMyDisplayName);
+	const t = useT();
 	const id = useId();
 	const [value, setValue] = useState(current);
 	const submit = (event: FormEvent<HTMLFormElement>) => {
@@ -253,10 +248,10 @@ function DisplayNameSection({
 		void run(() => update({ data: { orgSlug, displayName: value } }));
 	};
 	return (
-		<Section id={`${id}-h`} title="この団体でのあなたの表示名">
+		<Section id={`${id}-h`} title={t("settings.displayNameTitle")}>
 			<form onSubmit={submit} className="flex flex-col gap-1">
 				<label htmlFor={`${id}-input`} className="text-sm font-bold text-ink">
-					表示名
+					{t("settings.displayNameLabel")}
 				</label>
 				<div className="flex flex-wrap items-center gap-2">
 					<input
@@ -268,7 +263,7 @@ function DisplayNameSection({
 						className="control min-w-0 flex-1 sm:max-w-xs"
 					/>
 					<Button type="submit" variant="primary">
-						変える
+						{t("settings.displayNameSubmit")}
 					</Button>
 				</div>
 			</form>
@@ -302,10 +297,14 @@ function MembersSection({
 }) {
 	const setRoles = useServerFn(setMemberRolesFn);
 	const remove = useServerFn(removeMember);
+	const t = useT();
 	const id = useId();
 	const roleById = new Map(roles.map((role) => [role.id, role]));
 	return (
-		<Section id={`${id}-h`} title={`メンバー（${members.length} 人）`}>
+		<Section
+			id={`${id}-h`}
+			title={t("settings.membersTitle", { count: members.length })}
+		>
 			<ul className={listBox}>
 				{members.map((m) => {
 					const memberRoles = m.roleIds
@@ -321,15 +320,22 @@ function MembersSection({
 										{m.displayName}
 										{m.isMe && (
 											<span className="font-normal text-ink-muted">
-												（あなた）
+												{t("settings.memberYou")}
 											</span>
 										)}
 									</p>
 									<div className="flex flex-wrap gap-1.5">
 										{m.isOwner ? (
-											<RoleChip role={{ name: "オーナー", color: "#F59E0B" }} />
+											<RoleChip
+												role={{
+													name: t("settings.ownerLabel"),
+													color: "#F59E0B",
+												}}
+											/>
 										) : memberRoles.length === 0 ? (
-											<span className="text-xs text-ink-muted">ロールなし</span>
+											<span className="text-xs text-ink-muted">
+												{t("settings.noRoles")}
+											</span>
 										) : (
 											memberRoles.map((role) => (
 												<RoleChip key={role.id} role={role} />
@@ -348,13 +354,15 @@ function MembersSection({
 											)
 										}
 									>
-										外す
+										{t("settings.removeMember")}
 									</Button>
 								)}
 							</div>
 							{editable && (
 								<fieldset className="flex flex-wrap gap-2 sm:pl-11">
-									<legend className="sr-only">{m.displayName}のロール</legend>
+									<legend className="sr-only">
+										{t("settings.memberRolesLegend", { name: m.displayName })}
+									</legend>
 									{roles.map((role) => {
 										const checked = m.roleIds.includes(role.id);
 										return (
@@ -364,7 +372,7 @@ function MembersSection({
 												title={
 													role.grantable
 														? undefined
-														: "自分が持っていない権限を含むので、付け外しできません"
+														: t("settings.roleNotToggleable")
 												}
 											>
 												<input
@@ -416,6 +424,7 @@ function PermissionCheckboxes({
 	myPermissions: readonly Permission[];
 	disabled?: boolean;
 }) {
+	const t = useT();
 	return (
 		<div className="grid gap-x-6 gap-y-1 md:grid-cols-2">
 			{PERMISSIONS.map((p) => {
@@ -424,7 +433,7 @@ function PermissionCheckboxes({
 					<label
 						key={p.key}
 						className={`flex items-start gap-2 rounded-md px-1.5 py-1 text-sm leading-snug ${mine && !disabled ? "cursor-pointer text-ink hover:bg-surface-sunken" : "cursor-not-allowed text-ink-muted"}`}
-						title={mine ? undefined : "自分が持っていない権限は付けられません"}
+						title={mine ? undefined : t("settings.permissionNotOwned")}
 					>
 						<input
 							type="checkbox"
@@ -439,7 +448,7 @@ function PermissionCheckboxes({
 								)
 							}
 						/>
-						{p.label}
+						{t(p.labelKey)}
 					</label>
 				);
 			})}
@@ -461,6 +470,7 @@ function RoleEditor({
 	const create = useServerFn(createRoleFn);
 	const update = useServerFn(updateRoleFn);
 	const remove = useServerFn(deleteRoleFn);
+	const t = useT();
 	const id = useId();
 	const [name, setName] = useState(role?.name ?? "");
 	const [color, setColor] = useState(role?.color ?? "#6B7280");
@@ -492,7 +502,7 @@ function RoleEditor({
 						htmlFor={`${id}-color`}
 						className={role ? "sr-only" : "text-sm font-bold text-ink"}
 					>
-						色
+						{t("settings.color")}
 					</label>
 					<ColorInput
 						id={`${id}-color`}
@@ -506,13 +516,13 @@ function RoleEditor({
 						htmlFor={`${id}-name`}
 						className={role ? "sr-only" : "text-sm font-bold text-ink"}
 					>
-						ロール名
+						{t("settings.roleName")}
 					</label>
 					<input
 						id={`${id}-name`}
 						required
 						maxLength={40}
-						placeholder="ロール名"
+						placeholder={t("settings.roleName")}
 						value={name}
 						disabled={locked}
 						onChange={(event) => setName(event.target.value)}
@@ -521,14 +531,12 @@ function RoleEditor({
 				</div>
 				{role && (
 					<span className="tabular pb-2 text-xs text-ink-muted">
-						{role.memberCount} 人
+						{t("settings.roleMemberCount", { count: role.memberCount })}
 					</span>
 				)}
 			</div>
 			{locked && (
-				<p className="text-xs text-ink-muted">
-					自分が持っていない権限を含むので、変えられません
-				</p>
+				<p className="text-xs text-ink-muted">{t("settings.roleLocked")}</p>
 			)}
 			<PermissionCheckboxes
 				value={permissions}
@@ -543,7 +551,7 @@ function RoleEditor({
 						variant={role ? "secondary" : "primary"}
 						size={role ? "sm" : "md"}
 					>
-						{role ? "保存" : "ロールを作る"}
+						{role ? t("common.save") : t("settings.roleCreate")}
 					</Button>
 					{role && (
 						<Button
@@ -553,7 +561,7 @@ function RoleEditor({
 								void run(() => remove({ data: { orgSlug, roleId: role.id } }))
 							}
 						>
-							消す
+							{t("common.delete")}
 						</Button>
 					)}
 				</div>
@@ -573,18 +581,13 @@ function RolesSection({
 	myPermissions: readonly Permission[];
 	run: Run;
 }) {
+	const t = useT();
 	const id = useId();
 	return (
 		<Section
 			id={`${id}-h`}
-			title="ロール"
-			description={
-				<>
-					ロールごとに権限を決めます。1
-					人が複数のロールを持て、権限は足し合わせになります。オーナーは常に全権限です。
-					自分が持っていない権限は、ロールに付けたり人に渡したりできません。
-				</>
-			}
+			title={t("settings.rolesTitle")}
+			description={t("settings.rolesDescription")}
 		>
 			{roles.length > 0 && (
 				<ul className={listBox}>
@@ -604,7 +607,7 @@ function RolesSection({
 				</ul>
 			)}
 			<div className={newBox}>
-				<h3 className="text-sm font-bold text-ink">新しいロール</h3>
+				<h3 className="text-sm font-bold text-ink">{t("settings.newRole")}</h3>
 				<RoleEditor orgSlug={orgSlug} myPermissions={myPermissions} run={run} />
 			</div>
 		</Section>
@@ -634,8 +637,22 @@ function InvitesSection({
 }) {
 	const create = useServerFn(createInviteFn);
 	const revoke = useServerFn(revokeInvite);
+	const t = useT();
+	const intlLocale = useIntlLocale();
+	const dateFormatter = useMemo(
+		() =>
+			new Intl.DateTimeFormat(intlLocale, {
+				timeZone: "Asia/Tokyo",
+				month: "numeric",
+				day: "numeric",
+				hour: "2-digit",
+				minute: "2-digit",
+			}),
+		[intlLocale],
+	);
 	const id = useId();
 	const [roleId, setRoleId] = useState(
+		// 団体を作ったときのロール名（DB のデータで、画面の言語では変わらない）で探す
 		grantableRoles.find((role) => role.name === "スタッフ")?.id ??
 			grantableRoles[0]?.id ??
 			"",
@@ -669,11 +686,11 @@ function InvitesSection({
 	};
 
 	return (
-		<Section id={`${id}-h`} title="招待コード">
+		<Section id={`${id}-h`} title={t("settings.invitesTitle")}>
 			<form onSubmit={submit} className={newBox}>
 				<div className="flex flex-wrap items-end gap-x-4 gap-y-3">
 					<label className={`${fieldLabel} min-w-40`} htmlFor={`${id}-role`}>
-						参加したときに付けるロール
+						{t("settings.inviteRole")}
 						<select
 							id={`${id}-role`}
 							value={roleId}
@@ -689,7 +706,7 @@ function InvitesSection({
 					</label>
 					<div className="flex flex-wrap items-end gap-x-3 gap-y-2">
 						<label className={fieldLabel} htmlFor={`${id}-uses`}>
-							使える回数
+							{t("settings.inviteMaxUses")}
 							<input
 								id={`${id}-uses`}
 								type="number"
@@ -708,11 +725,11 @@ function InvitesSection({
 								onChange={(event) => setUnlimited(event.target.checked)}
 								className="size-4 accent-primary"
 							/>
-							制限なし
+							{t("settings.inviteUnlimited")}
 						</label>
 					</div>
 					<label className={fieldLabel} htmlFor={`${id}-days`}>
-						有効期限（日）
+						{t("settings.inviteExpiresDays")}
 						<input
 							id={`${id}-days`}
 							type="number"
@@ -725,11 +742,11 @@ function InvitesSection({
 					</label>
 				</div>
 				<Button type="submit" variant="primary" disabled={!roleId}>
-					発行する
+					{t("settings.inviteIssue")}
 				</Button>
 			</form>
 			{invites.length === 0 ? (
-				<p className="text-sm text-ink-muted">まだ招待コードはありません。</p>
+				<p className="text-sm text-ink-muted">{t("settings.invitesEmpty")}</p>
 			) : (
 				<ul className={`${listBox} text-sm`}>
 					{invites.map((invite) => {
@@ -750,16 +767,21 @@ function InvitesSection({
 									</div>
 									<p className="tabular flex flex-wrap gap-x-3 text-xs text-ink-muted">
 										<span>
-											{invite.uses}/{invite.maxUses ?? "∞"} 回
+											{t("settings.inviteUses", {
+												uses: invite.uses,
+												max: invite.maxUses ?? "∞",
+											})}
 										</span>
 										<span>
 											{reason === "revoked"
-												? "取り消し済み"
+												? t("settings.inviteRevoked")
 												: reason === "expired"
-													? "期限切れ"
+													? t("settings.inviteExpired")
 													: reason === "used_up"
-														? "使い切り"
-														: `${dateFormatter.format(invite.expiresAt)} まで`}
+														? t("settings.inviteUsedUp")
+														: t("settings.inviteUntil", {
+																date: dateFormatter.format(invite.expiresAt),
+															})}
 										</span>
 									</p>
 								</div>
@@ -771,8 +793,8 @@ function InvitesSection({
 											onClick={() => void copy(invite.code)}
 										>
 											{copied === invite.code
-												? "コピーしました"
-												: "参加用のリンクをコピー"}
+												? t("settings.inviteCopied")
+												: t("settings.inviteCopyLink")}
 										</Button>
 										<Button
 											variant="danger"
@@ -783,7 +805,7 @@ function InvitesSection({
 												)
 											}
 										>
-											取り消す
+											{t("settings.inviteRevoke")}
 										</Button>
 									</span>
 								)}

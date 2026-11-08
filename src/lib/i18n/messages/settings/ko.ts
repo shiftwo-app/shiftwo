@@ -1,0 +1,188 @@
+import type { Messages } from "../define";
+import type ja from "./ja";
+
+export default {
+	failedShort: "하지 못했어요",
+	create: "만들기",
+	color: "색",
+	ownerLabel: "소유자",
+	noRoles: "역할 없음",
+	roleSeparator: ", ",
+	sameAsTenant: "장소와 같음",
+
+	orgSettingsTitle: "설정·멤버",
+	orgAvatarTitle: "이 단체에서 쓰는 내 아이콘",
+	orgAvatarDescription:
+		"선택하면 이 단체에서만 이 아이콘을 써요(다른 단체나 계정의 아이콘은 바뀌지 않아요).",
+	orgAvatarRemove: "계정 아이콘으로 되돌리기",
+	orgPositionsTitle: "포지션",
+	orgPositionsDescription:
+		"사용하지 않으면 근무를 사람과 시간만으로 짜요(포지션 선택, 포지션별 표시, 필요 인원, 희망 포지션을 표시하지 않아요). 단체의 기본 설정이며, 장소나 이벤트마다 바꿀 수 있어요.",
+	displayNameTitle: "이 단체에서 쓰는 내 표시 이름",
+	displayNameLabel: "표시 이름",
+	displayNameSubmit: "변경",
+	membersTitle: "멤버({count}명)",
+	memberYou: "(나)",
+	removeMember: "내보내기",
+	memberRolesLegend: "{name}의 역할",
+	roleNotToggleable:
+		"내가 갖지 않은 권한이 포함되어 있어 붙이거나 뗄 수 없어요",
+	permissionNotOwned: "내가 갖지 않은 권한은 부여할 수 없어요",
+	roleName: "역할 이름",
+	roleMemberCount: "{count}명",
+	roleLocked: "내가 갖지 않은 권한이 포함되어 있어 바꿀 수 없어요",
+	roleCreate: "역할 만들기",
+	rolesTitle: "역할",
+	rolesDescription:
+		"역할마다 권한을 정해요. 한 사람이 여러 역할을 가질 수 있고, 권한은 합쳐져요. 소유자는 항상 모든 권한을 가져요. 내가 갖지 않은 권한은 역할에 붙이거나 다른 사람에게 줄 수 없어요.",
+	newRole: "새 역할",
+	invitesTitle: "초대 코드",
+	inviteRole: "참여할 때 부여할 역할",
+	inviteMaxUses: "사용 가능 횟수",
+	inviteUnlimited: "제한 없음",
+	inviteExpiresDays: "유효 기간(일)",
+	inviteIssue: "발급하기",
+	invitesEmpty: "아직 초대 코드가 없어요.",
+	inviteUses: "{uses}/{max}회",
+	inviteRevoked: "취소됨",
+	inviteExpired: "기간 만료",
+	inviteUsedUp: "모두 사용됨",
+	inviteUntil: "{date}까지",
+	inviteCopied: "복사했어요",
+	inviteCopyLink: "참여 링크 복사",
+	inviteRevoke: "취소하기",
+
+	discordTitle: "Discord 서버",
+	discordDescription:
+		"서버를 지정하면 그 서버의 멤버만 참여하고 근무를 볼 수 있어요. 게스트 역할처럼 면제 권한이 있는 역할의 사람은 멤버가 아니어도 참여할 수 있어요({link}).",
+	discordLearnMore: "자세히",
+	discordNotConfigured: "이 Shiftwo에서는 Discord 연동을 쓸 수 없어요.",
+	discordCurrent: "현재 설정",
+	discordMembersOnly: "{name}의 멤버만",
+	discordNoConditionCurrent:
+		"조건 없음(초대 코드가 있으면 누구나 참여할 수 있어요)",
+	discordLinkFirst: "서버를 선택하려면 먼저 {link}에서 Discord를 연동하세요.",
+	discordAccountSettings: "계정 설정",
+	discordGuildsError:
+		"Discord에서 서버 목록을 읽지 못했어요. 잠시 후 다시 시도하거나 Discord를 다시 연동하세요.",
+	discordServer: "서버",
+	discordNoCondition: "조건 없음",
+	discordNote:
+		"내가 참여한 서버만 선택할 수 있어요. 지정하면 지금 있는 멤버도 다음 로그인부터 확인해요.",
+
+	positionsToggleTitle: "포지션 사용 여부",
+	positionsToggleDescription:
+		"사용하지 않으면 근무를 사람과 시간만으로 짜요(포지션 선택, 포지션별 표시, 필요 인원, 희망 포지션을 표시하지 않아요).",
+	positionsOn: "사용",
+	positionsOff: "사용 안 함",
+	positionsInheritDefault: "상위와 같음",
+	positionsInheritOption: "{label}({value})",
+	sameAsOrg: "단체와 같음",
+
+	tenantsTitle: "장소({count})",
+	tenantsDescription:
+		"매장 등 근무를 짜는 단위예요. 일상 근무의 포지션과 이벤트는 장소마다 따로 가져요.",
+	tenantSettingsLink: "설정",
+	tenantCreate: "장소 만들기(매장 등)",
+	tenantSettingsTitle: "장소 설정",
+	tenantSection: "장소",
+	tenantPositionsTitle: "일상 근무의 포지션",
+	tenantPositionsDescription: "이벤트의 포지션은 이벤트 설정에서 따로 정해요.",
+	tenantPositionsUnused:
+		"이 장소에서는 포지션을 사용하지 않아요. 사용하도록 하면 여기서 정한 포지션을 쓸 수 있어요.",
+	tenantRolesTitle: "이 장소의 역할 배정",
+	tenantRolesDescription:
+		"여기서 배정한 역할의 근무 관련 권한(근무 보기·편집·확정, 포지션·이벤트 관리)이 이 장소와 그 아래 이벤트에서 더해져요(점장 등).",
+	tenantNoPermission: "이 장소의 설정을 바꿀 권한이 없어요.",
+
+	eventsTitle: "이벤트",
+	eventsDescription:
+		"단발성 이벤트의 근무는 일상 근무와 별도로, 이벤트마다의 포지션으로 짜요.",
+	eventsListTitle: "이벤트 목록({count})",
+	eventsEmpty: "아직 이벤트가 없어요.",
+	eventsCreate: "이벤트 만들기",
+	eventSettingsTitle: "이벤트 설정",
+	eventSection: "이벤트",
+	eventPositionsTitle: "이 이벤트의 포지션",
+	eventPositionsDescription: "일상 근무의 포지션과는 따로 가져요.",
+	eventPositionsUnused:
+		"이 이벤트에서는 포지션을 사용하지 않아요. 사용하도록 하면 여기서 정한 포지션을 쓸 수 있어요.",
+	eventRolesTitle: "이 이벤트의 역할 배정",
+	eventRolesDescription:
+		"여기서 배정한 역할의 근무 관련 권한이 이 이벤트에서만 더해져요.",
+	eventDeleteTitle: "이벤트 삭제",
+	eventDeleteDescription:
+		"이벤트의 포지션과 근무도 삭제돼요. 되돌릴 수 없어요.",
+	eventDelete: "이 이벤트 삭제",
+	eventDeleteConfirm: "정말 삭제(이벤트의 포지션과 근무도 삭제돼요)",
+	eventNoPermission: "이 이벤트의 설정을 바꿀 권한이 없어요.",
+
+	tenantName: "장소 이름",
+	eventName: "이벤트 이름",
+	urlName: "URL 이름",
+	urlNameHint: "(영문 소문자·숫자·하이픈)",
+	timeUnit: "시간 단위",
+	minutes: "{minutes}분",
+
+	positionName: "포지션 이름",
+	positionNamePlaceholder: "포지션 이름(예: 접수)",
+	requiredStaffCount: "필요 인원",
+	positionCreate: "포지션 만들기",
+	positionDeleteConfirm: "정말 삭제(이 포지션의 근무도 삭제돼요)",
+	positionsEmpty: "아직 포지션이 없어요.",
+
+	ownerAllPermissions: "소유자(항상 모든 권한)",
+	scopedRolesLegend: "{name}에게 배정할 역할",
+	roleNotAssignable: "내가 갖지 않은 권한이 포함되어 있어 배정할 수 없어요",
+
+	staffTitle: "스태프({count})",
+	staffDescription:
+		"근무에 들어가는 사람이에요. 단체의 멤버(계정)와 연결해 두면 아이콘 등에 쓸 수 있어요.",
+	staffName: "스태프 이름",
+	staffLinkedMember: "연결된 멤버",
+	staffNoLink: "연결 안 함",
+	staffShiftCount: "근무 {count}건",
+	staffAdd: "스태프 추가",
+	staffDeleteConfirm: "정말 삭제(근무 {count}건도 삭제돼요)",
+
+	permShiftView: "근무 보기",
+	permShiftEdit: "근무 만들기·변경·삭제",
+	permShiftConfirm: "근무 확정",
+	permPositionManage: "포지션 만들기·변경",
+	permEventManage: "이벤트 만들기·설정",
+	permStaffManage: "스태프 만들기·변경",
+	permMemberView: "멤버 보기",
+	permInviteManage: "초대 코드 발급·취소",
+	permInviteGuest:
+		"게스트 초대(Discord 서버 참여 조건 면제가 포함된 역할의 초대 코드를 발급할 수 있음)",
+	permMemberManage: "멤버의 역할 변경·제거",
+	permRoleManage: "역할 만들기·변경",
+	permTenantManage: "장소 만들기·설정",
+	permOrgSettings: "단체 설정 변경",
+	permGuildBypass: "Discord 서버 참여 조건 면제(게스트용)",
+
+	timeUnitInvalid: "시간 단위는 5·10·15·30분 중에서 선택하세요",
+	tenantNameRequired: "장소 이름을 입력하세요",
+	tenantNameTooLong: "장소 이름은 80자 이내로 입력하세요",
+	eventNameRequired: "이벤트 이름을 입력하세요",
+	eventNameTooLong: "이벤트 이름은 80자 이내로 입력하세요",
+	positionNameRequired: "포지션 이름을 입력하세요",
+	positionNameTooLong: "포지션 이름은 40자 이내로 입력하세요",
+	colorInvalid: "색은 #RRGGBB 형식으로 지정하세요",
+	requiredCountInteger: "필요 인원은 정수로 입력하세요",
+	requiredCountMin: "필요 인원은 0명 이상으로 입력하세요",
+	requiredCountMax: "필요 인원은 99명 이하로 입력하세요",
+
+	errorSlugTaken: "이 URL은 이미 사용 중이에요",
+	errorTenantNotFound: "장소를 찾을 수 없어요",
+	errorEventNotFound: "이벤트를 찾을 수 없어요",
+	errorPositionNotFound: "포지션을 찾을 수 없어요",
+	errorMemberNotFound: "멤버를 찾을 수 없어요",
+	errorStaffNotFound: "스태프를 찾을 수 없어요",
+	errorRoleNotFound: "역할을 찾을 수 없어요",
+	errorStaffMemberTaken: "이 멤버는 이미 다른 스태프와 연결되어 있어요",
+	errorScopedRoleForbidden:
+		"내가 갖지 않은 권한이 포함된 역할은 붙이거나 뗄 수 없어요",
+	errorLinkForbidden: "멤버와 연결하려면 멤버 보기 권한이 필요해요",
+	errorOrgPositionsInherit: "단체에서는 사용 여부를 선택하세요",
+} satisfies Messages<typeof ja>;

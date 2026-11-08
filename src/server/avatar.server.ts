@@ -1,5 +1,6 @@
 // アイコンのアップロード。アカウントのアイコンと、団体ごとのアイコン（上書き）
 import { detectAvatarImageType, AVATAR_MAX_BYTES } from "../lib/avatar-image";
+import { serverT } from "../lib/i18n/request-locale.server";
 import { prisma } from "../lib/prisma.server";
 import type { BlobStore } from "../lib/storage/blob-store";
 import { getBlobStore } from "../lib/storage/index.server";
@@ -94,14 +95,18 @@ export const saveUploadedAvatar = async (
 	store: BlobStore = getBlobStore(),
 ): Promise<AvatarUploadResult> => {
 	if (body.byteLength > AVATAR_MAX_BYTES) {
-		return { ok: false, status: 413, message: "画像が大きすぎます" };
+		return {
+			ok: false,
+			status: 413,
+			message: serverT("account.avatarTooLarge"),
+		};
 	}
 	const type = detectAvatarImageType(body);
 	if (!type) {
 		return {
 			ok: false,
 			status: 400,
-			message: "PNG・JPEG・WebP の画像を選んでください",
+			message: serverT("account.avatarWrongType"),
 		};
 	}
 	// ファイル名は毎回新しくする（差し替えた直後に、ブラウザの古いキャッシュが出ないように）

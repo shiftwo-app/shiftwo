@@ -2,6 +2,7 @@ import { useId, useState } from "react";
 import type { FormEvent } from "react";
 import { TIME_UNIT_OPTIONS } from "../../lib/manage-schemas";
 import Button from "../ui/Button";
+import { useT } from "../../lib/i18n/react";
 
 const fieldLabel = "flex flex-col gap-1 text-sm font-bold text-ink";
 
@@ -27,7 +28,7 @@ const TenantOrEventForm = ({
 	onSubmit: (value: TenantOrEventValue) => Promise<boolean>;
 }) => {
 	const id = useId();
-	const label = kind === "tenant" ? "テナント" : "イベント";
+	const t = useT();
 	const [name, setName] = useState(initial?.name ?? "");
 	const [slug, setSlug] = useState(initial?.slug ?? "");
 	const [timeUnit, setTimeUnit] = useState<number | null>(
@@ -47,7 +48,9 @@ const TenantOrEventForm = ({
 		<form onSubmit={submit} className="space-y-4">
 			<div className="grid gap-4 sm:grid-cols-2">
 				<label htmlFor={`${id}-name`} className={fieldLabel}>
-					{label}名
+					{kind === "tenant"
+						? t("settings.tenantName")
+						: t("settings.eventName")}
 					<input
 						id={`${id}-name`}
 						required
@@ -59,9 +62,9 @@ const TenantOrEventForm = ({
 				</label>
 				<label htmlFor={`${id}-slug`} className={fieldLabel}>
 					<span>
-						URL 名
+						{t("settings.urlName")}
 						<span className="font-normal text-ink-muted">
-							（半角の英小文字・数字・ハイフン）
+							{t("settings.urlNameHint")}
 						</span>
 					</span>
 					<input
@@ -75,7 +78,7 @@ const TenantOrEventForm = ({
 					/>
 				</label>
 				<label htmlFor={`${id}-unit`} className={fieldLabel}>
-					時間粒度
+					{t("settings.timeUnit")}
 					<select
 						id={`${id}-unit`}
 						value={timeUnit ?? ""}
@@ -86,10 +89,12 @@ const TenantOrEventForm = ({
 						}
 						className="control font-normal sm:max-w-48"
 					>
-						{kind === "event" && <option value="">テナントと同じ</option>}
+						{kind === "event" && (
+							<option value="">{t("settings.sameAsTenant")}</option>
+						)}
 						{TIME_UNIT_OPTIONS.map((minutes) => (
 							<option key={minutes} value={minutes}>
-								{minutes} 分
+								{t("settings.minutes", { minutes })}
 							</option>
 						))}
 					</select>

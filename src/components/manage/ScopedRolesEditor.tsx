@@ -2,6 +2,7 @@ import { useServerFn } from "@tanstack/react-start";
 import type { ShiftScopeParams } from "../../lib/shift-scope";
 import { setScopedRolesFn } from "../../server/manage.functions";
 import type { RunMutation } from "./useMutationRunner";
+import { useT } from "../../lib/i18n/react";
 
 type Assignments = {
 	members: {
@@ -26,6 +27,7 @@ const ScopedRolesEditor = ({
 	assignments: Assignments;
 	run: RunMutation;
 }) => {
+	const t = useT();
 	const setRoles = useServerFn(setScopedRolesFn);
 	return (
 		<ul className="divide-y divide-line rounded-lg border border-line bg-surface text-sm">
@@ -40,14 +42,14 @@ const ScopedRolesEditor = ({
 						</span>
 						{member.isOwner && (
 							<span className="block text-xs text-ink-muted">
-								オーナー（常に全権限）
+								{t("settings.ownerAllPermissions")}
 							</span>
 						)}
 					</div>
 					{!member.isOwner && (
 						<fieldset className="flex min-w-0 flex-wrap gap-2">
 							<legend className="sr-only">
-								{member.displayName}に割り当てるロール
+								{t("settings.scopedRolesLegend", { name: member.displayName })}
 							</legend>
 							{assignments.roles.map((role) => {
 								const checked = member.roleIds.includes(role.id);
@@ -62,7 +64,7 @@ const ScopedRolesEditor = ({
 										title={
 											role.grantable
 												? undefined
-												: "自分が持っていない権限を含むので、割り当てできません"
+												: t("settings.roleNotAssignable")
 										}
 									>
 										<input

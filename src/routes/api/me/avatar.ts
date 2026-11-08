@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { AVATAR_MAX_BYTES } from "../../../lib/avatar-image";
+import { serverT } from "../../../lib/i18n/request-locale.server";
 import {
 	readBodyWithLimit,
 	removeUploadedAvatar,
@@ -20,7 +21,7 @@ export const Route = createFileRoute("/api/me/avatar")({
 				const body = await readBodyWithLimit(request, AVATAR_MAX_BYTES);
 				if (!body) {
 					return Response.json(
-						{ message: "画像が大きすぎます" },
+						{ message: serverT("account.avatarTooLarge") },
 						{ status: 413 },
 					);
 				}

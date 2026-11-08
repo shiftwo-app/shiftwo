@@ -7,6 +7,7 @@ import TenantOrEventForm from "../../../../../../components/manage/TenantOrEvent
 import { useMutationRunner } from "../../../../../../components/manage/useMutationRunner";
 import { hasPermission } from "../../../../../../lib/org/permissions";
 import { createEventFn } from "../../../../../../server/manage.functions";
+import { useT } from "../../../../../../lib/i18n/react";
 
 // テナントのイベントの一覧と、イベントの作成（イベントの管理の権限があるとき）
 export const Route = createFileRoute(
@@ -18,6 +19,7 @@ export const Route = createFileRoute(
 function EventsPage() {
 	const { organization, tenantContext } = Route.useRouteContext();
 	const router = useRouter();
+	const t = useT();
 	const createEvent = useServerFn(createEventFn);
 	const { run, errors } = useMutationRunner();
 	const params = {
@@ -29,16 +31,20 @@ function EventsPage() {
 	return (
 		<main className="mx-auto max-w-5xl px-4 py-6 sm:px-6">
 			<PageHeader
-				title="イベント"
-				description="単発のイベントのシフトは、日常シフトとは別に、イベントごとの持ち場で組みます。"
+				title={t("settings.eventsTitle")}
+				description={t("settings.eventsDescription")}
 			/>
 			<div>
 				<Section
 					id="events-list"
-					title={`イベントの一覧（${tenantContext.events.length}）`}
+					title={t("settings.eventsListTitle", {
+						count: tenantContext.events.length,
+					})}
 				>
 					{tenantContext.events.length === 0 ? (
-						<p className="text-sm text-ink-muted">まだイベントはありません。</p>
+						<p className="text-sm text-ink-muted">
+							{t("settings.eventsEmpty")}
+						</p>
 					) : (
 						<ul className="divide-y divide-line overflow-hidden rounded-lg border border-line bg-surface">
 							{tenantContext.events.map((event) => (
@@ -69,11 +75,11 @@ function EventsPage() {
 					)}
 				</Section>
 				{canManage && (
-					<Section id="events-create" title="イベントを作る">
+					<Section id="events-create" title={t("settings.eventsCreate")}>
 						<ErrorList errors={errors} />
 						<TenantOrEventForm
 							kind="event"
-							submitLabel="作る"
+							submitLabel={t("settings.create")}
 							onSubmit={async (value) => {
 								let slug: string | null = null;
 								const ok = await run(async () => {

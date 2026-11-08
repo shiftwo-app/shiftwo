@@ -7,6 +7,7 @@ import {
 	type TimeRangeMs,
 	validatePreference,
 } from "../../lib/preferences";
+import { useT } from "../../lib/i18n/react";
 import Button from "../ui/Button";
 import { joinJst, splitJst, timeOptions } from "./time";
 
@@ -53,6 +54,7 @@ const PreferenceForm = ({
 	onSubmit: (input: PreferenceInput) => Promise<boolean>;
 }) => {
 	const id = useId();
+	const t = useT();
 	const [rows, setRows] = useState<BreakRow[]>(() => initial.breaks.map(toRow));
 	const [positionIds, setPositionIds] = useState<string[]>(
 		// もう選べない持ち場（消されたなど）は外す
@@ -71,6 +73,7 @@ const PreferenceForm = ({
 	const errors = validatePreference(
 		{ breaks: toRanges(rows), positionIds },
 		{ timeUnitMinutes, period },
+		t,
 	);
 
 	const update = (key: number, patch: Partial<BreakRow>) =>
@@ -99,9 +102,9 @@ const PreferenceForm = ({
 	return (
 		<form onSubmit={submit} className="space-y-6 text-sm">
 			<fieldset className="min-w-0 space-y-2" disabled={disabled}>
-				<legend className={legend}>休憩・参加できない時間</legend>
+				<legend className={legend}>{t("preferences.breaksLegend")}</legend>
 				{rows.length === 0 && (
-					<p className="text-ink-muted">ありません（いつでも入れます）。</p>
+					<p className="text-ink-muted">{t("preferences.noBreaks")}</p>
 				)}
 				{rows.map((row, index) => (
 					// 狭い画面では日付を 1 段目、時刻と「消す」を 2 段目に置く
@@ -110,7 +113,7 @@ const PreferenceForm = ({
 						className="grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)_auto] items-center gap-2 sm:flex sm:flex-wrap"
 					>
 						<label htmlFor={`${id}-${row.key}-date`} className="sr-only">
-							休憩 {index + 1} の日付
+							{t("preferences.breakDate", { number: index + 1 })}
 						</label>
 						<input
 							id={`${id}-${row.key}-date`}
@@ -125,7 +128,7 @@ const PreferenceForm = ({
 							className="control tabular col-span-4 min-w-0 sm:w-44"
 						/>
 						<label htmlFor={`${id}-${row.key}-start`} className="sr-only">
-							休憩 {index + 1} の始まり
+							{t("preferences.breakStart", { number: index + 1 })}
 						</label>
 						<select
 							id={`${id}-${row.key}-start`}
@@ -145,7 +148,7 @@ const PreferenceForm = ({
 							〜
 						</span>
 						<label htmlFor={`${id}-${row.key}-end`} className="sr-only">
-							休憩 {index + 1} の終わり
+							{t("preferences.breakEnd", { number: index + 1 })}
 						</label>
 						<select
 							id={`${id}-${row.key}-end`}
@@ -168,14 +171,14 @@ const PreferenceForm = ({
 								setRows((list) => list.filter((r) => r.key !== row.key))
 							}
 						>
-							消す
+							{t("common.delete")}
 						</Button>
 					</div>
 				))}
 				{rows.length < PREFERENCE_BREAKS_MAX && (
 					<div className="pt-1">
 						<Button variant="secondary" size="sm" onClick={addRow}>
-							休憩を足す
+							{t("preferences.addBreak")}
 						</Button>
 					</div>
 				)}
@@ -183,7 +186,7 @@ const PreferenceForm = ({
 
 			{positions.length > 0 && (
 				<fieldset className="min-w-0" disabled={disabled}>
-					<legend className={legend}>やりたい持ち場（いくつでも）</legend>
+					<legend className={legend}>{t("preferences.positionsLegend")}</legend>
 					<div className="flex flex-wrap gap-2">
 						{positions.map((position) => (
 							// 札の形のチェックボックス。選ぶと札の色が変わる
@@ -220,7 +223,7 @@ const PreferenceForm = ({
 					htmlFor={`${id}-memo`}
 					className="block text-sm font-bold text-ink"
 				>
-					メモ（任意）
+					{t("preferences.memoLabel")}
 				</label>
 				<textarea
 					id={`${id}-memo`}
@@ -236,7 +239,10 @@ const PreferenceForm = ({
 					id={`${id}-memo-count`}
 					className="tabular text-right text-xs text-ink-muted"
 				>
-					{memo.length} / {PREFERENCE_MEMO_MAX} 文字
+					{t("preferences.memoCount", {
+						count: memo.length,
+						max: PREFERENCE_MEMO_MAX,
+					})}
 				</p>
 			</div>
 

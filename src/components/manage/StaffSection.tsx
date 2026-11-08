@@ -11,6 +11,7 @@ import Button from "../ui/Button";
 import Section from "../ui/Section";
 import ConfirmButton from "./ConfirmButton";
 import type { RunMutation } from "./useMutationRunner";
+import { useT } from "../../lib/i18n/react";
 
 type StaffRow = {
 	id: string;
@@ -42,6 +43,7 @@ function StaffForm({
 	const create = useServerFn(createStaffFn);
 	const update = useServerFn(updateStaffFn);
 	const remove = useServerFn(deleteStaffFn);
+	const t = useT();
 	const id = useId();
 	const [name, setName] = useState(staff?.name ?? "");
 	const [memberId, setMemberId] = useState<string | null>(
@@ -70,13 +72,13 @@ function StaffForm({
 		>
 			<div className="flex min-w-40 flex-1 flex-col gap-1">
 				<label htmlFor={`${id}-name`} className={labelClass(isNew)}>
-					スタッフの名前
+					{t("settings.staffName")}
 				</label>
 				<input
 					id={`${id}-name`}
 					required
 					maxLength={NAME_MAX_LENGTH}
-					placeholder="スタッフの名前"
+					placeholder={t("settings.staffName")}
 					value={name}
 					onChange={(event) => setName(event.target.value)}
 					className="control w-full"
@@ -85,7 +87,7 @@ function StaffForm({
 			{canLinkMembers && (
 				<div className="flex min-w-40 flex-1 flex-col gap-1 sm:max-w-56">
 					<label htmlFor={`${id}-member`} className={labelClass(isNew)}>
-						紐づくメンバー
+						{t("settings.staffLinkedMember")}
 					</label>
 					<select
 						id={`${id}-member`}
@@ -93,7 +95,7 @@ function StaffForm({
 						onChange={(event) => setMemberId(event.target.value || null)}
 						className="control w-full"
 					>
-						<option value="">紐づけない</option>
+						<option value="">{t("settings.staffNoLink")}</option>
 						{members.map((member) => (
 							<option
 								key={member.id}
@@ -111,7 +113,7 @@ function StaffForm({
 			<div className="flex flex-wrap items-center gap-2">
 				{staff && (
 					<span className="tabular text-xs text-ink-muted">
-						シフト {staff.shiftCount} 件
+						{t("settings.staffShiftCount", { count: staff.shiftCount })}
 					</span>
 				)}
 				<Button
@@ -119,12 +121,14 @@ function StaffForm({
 					variant={isNew ? "primary" : "secondary"}
 					size={isNew ? "md" : "sm"}
 				>
-					{staff ? "保存" : "スタッフを足す"}
+					{staff ? t("common.save") : t("settings.staffAdd")}
 				</Button>
 				{staff && (
 					<ConfirmButton
-						label="消す"
-						confirmLabel={`本当に消す（シフト ${staff.shiftCount} 件も消えます）`}
+						label={t("common.delete")}
+						confirmLabel={t("settings.staffDeleteConfirm", {
+							count: staff.shiftCount,
+						})}
 						onConfirm={() =>
 							void run(() => remove({ data: { orgSlug, staffId: staff.id } }))
 						}
@@ -153,6 +157,7 @@ const StaffSection = ({
 	canLinkMembers: boolean;
 	run: RunMutation;
 }) => {
+	const t = useT();
 	const id = useId();
 	const taken = new Set(
 		staffs.map((s) => s.memberId).filter((v): v is string => v !== null),
@@ -160,8 +165,8 @@ const StaffSection = ({
 	return (
 		<Section
 			id={`${id}-h`}
-			title={`スタッフ（${staffs.length}）`}
-			description="シフトに入る人です。団体のメンバー（アカウント）と紐づけておくと、アイコンなどに使えます。"
+			title={t("settings.staffTitle", { count: staffs.length })}
+			description={t("settings.staffDescription")}
 		>
 			{staffs.length > 0 && (
 				<ul className="divide-y divide-line rounded-lg border border-line bg-surface">

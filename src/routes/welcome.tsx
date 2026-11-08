@@ -3,9 +3,12 @@ import { useServerFn } from "@tanstack/react-start";
 import { useId, useState } from "react";
 import type { FormEvent } from "react";
 import Logo from "../components/Logo";
+import LanguageSwitcher from "../components/shell/LanguageSwitcher";
 import Alert from "../components/ui/Alert";
 import Button from "../components/ui/Button";
 import { authClient } from "../lib/auth-client";
+import { useT } from "../lib/i18n/react";
+import { translate } from "../lib/i18n/translate";
 import { NAME_MAX_LENGTH, suggestNameFromEmail } from "../lib/profile";
 import { safeRedirectPath } from "../lib/safe-redirect";
 import { completeOnboarding, getSession } from "../server/session.functions";
@@ -23,7 +26,15 @@ export const Route = createFileRoute("/welcome")({
 		if (user.onboarded) throw redirect({ href: search.redirect });
 		return { user };
 	},
-	head: () => ({ meta: [{ title: "はじめに | シフトヲ" }] }),
+	head: ({ match }) => ({
+		meta: [
+			{
+				title: translate(match.context.locale, "shell.pageTitle", {
+					page: translate(match.context.locale, "auth.welcomePageTitle"),
+				}),
+			},
+		],
+	}),
 	component: WelcomePage,
 });
 
@@ -31,6 +42,7 @@ function WelcomePage() {
 	const { user } = Route.useRouteContext();
 	const { redirect: redirectTo } = Route.useSearch();
 	const router = useRouter();
+	const t = useT();
 	const complete = useServerFn(completeOnboarding);
 	const id = useId();
 	const [name, setName] = useState(
@@ -52,7 +64,7 @@ function WelcomePage() {
 			router.history.push(redirectTo);
 		} catch (error) {
 			console.error(error);
-			setErrors(["保存できませんでした。時間をおいて、もう一度試してください"]);
+			setErrors([t("errors.saveFailed")]);
 		} finally {
 			setBusy(false);
 		}
@@ -64,12 +76,21 @@ function WelcomePage() {
 				<Logo className="mx-auto h-16 w-auto text-ink" />
 				<div className="space-y-3 text-center">
 					<h1 className="text-2xl leading-tight font-bold tracking-tight text-ink">
-						シフトヲへようこそ
+						{t("auth.welcomeTitle")}
 					</h1>
 					<p className="text-sm leading-relaxed text-ink-muted">
-						<span className="break-all">{user.email}</span>{" "}
-						でアカウントを作りました。まず名前を決めてください。
-						団体の中で使う表示名は、団体ごとにあとで変えられます。
+						{t("auth.welcomeBody")
+							.split("{email}")
+							.flatMap((part, index) =>
+								index === 0
+									? [part]
+									: [
+											<span key={index} className="break-all">
+												{user.email}
+											</span>,
+											part,
+										],
+							)}
 					</p>
 				</div>
 				<div className="space-y-5 rounded-xl border border-line bg-surface p-6">
@@ -79,7 +100,7 @@ function WelcomePage() {
 								htmlFor={`${id}-name`}
 								className="text-sm font-bold text-ink"
 							>
-								名前
+								{t("auth.nameLabel")}
 							</label>
 							<input
 								id={`${id}-name`}
@@ -97,7 +118,7 @@ function WelcomePage() {
 							disabled={busy}
 							className="h-10 w-full"
 						>
-							はじめる
+							{t("auth.welcomeSubmit")}
 						</Button>
 					</form>
 					{errors.length > 0 && (
@@ -112,7 +133,7 @@ function WelcomePage() {
 				</div>
 				<div className="space-y-3 text-center text-sm">
 					<p className="leading-relaxed text-ink-muted">
-						名前を決めたら、団体を作るか、招待コードで団体に参加します。
+						{t("auth.welcomeNext")}
 					</p>
 					<button
 						type="button"
@@ -122,9 +143,10 @@ function WelcomePage() {
 						}}
 						className="text-ink-muted underline underline-offset-4 hover:text-ink"
 					>
-						別のアカウントでログインする（ログアウト）
+						{t("auth.welcomeSwitchAccount")}
 					</button>
 				</div>
+				<LanguageSwitcher className="justify-center" />
 			</div>
 		</main>
 	);

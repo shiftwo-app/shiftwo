@@ -8,6 +8,8 @@ import {
 	useState,
 } from "react";
 import type { KeyboardEvent, PointerEvent, RefObject } from "react";
+import { useIntlLocale, useT } from "../lib/i18n/react";
+import type { MessageKey } from "../lib/i18n/messages";
 import { type Position, type Shift, ShiftStatus, type Staff } from "../types";
 import {
 	buildRows,
@@ -15,7 +17,7 @@ import {
 	computeDisplayRange,
 	type CoverageSegment,
 	coverageSegments,
-	formatDay,
+	formatDayIn,
 	formatTime,
 	isHourTick,
 	listShiftDays,
@@ -75,9 +77,9 @@ const headerWidthOf = (el: HTMLElement): number =>
 	Number.parseFloat(getComputedStyle(el).getPropertyValue("--header-w")) ||
 	HEADER_WIDTH_PX;
 
-const AXIS_LABELS: Record<TimelineAxis, string> = {
-	position: "持ち場別",
-	staff: "スタッフ別",
+const AXIS_LABELS: Record<TimelineAxis, MessageKey> = {
+	position: "board.axisPosition",
+	staff: "board.axisStaff",
 };
 
 /** 切り替えボタンの並び（日付・縦軸）。選ばれているものは墨の地に白抜き */
@@ -168,6 +170,8 @@ const ShiftTimeline = ({
 	preferenceConflicts,
 	positionsEnabled = true,
 }: ShiftTimelineProps) => {
+	const t = useT();
+	const intlLocale = useIntlLocale();
 	const [selectedAxis, setAxis] = useState<TimelineAxis>("position");
 	// 持ち場を使わない単位では、スタッフ別だけ
 	const axis: TimelineAxis = positionsEnabled ? selectedAxis : "staff";
@@ -216,8 +220,9 @@ const ShiftTimeline = ({
 	}, [dayShifts, day, isEditing]);
 	const ticks = useMemo(() => buildTicks(range, zoom), [range, zoom]);
 	const rows = useMemo(
-		() => buildRows(axis, dayShifts, positions, staffs),
-		[axis, dayShifts, positions, staffs],
+		() =>
+			buildRows(axis, dayShifts, positions, staffs, t("board.unassignedRow")),
+		[axis, dayShifts, positions, staffs, t],
 	);
 
 	const pxPerMs = TICK_WIDTH_PX / (zoom * MINUTE_MS);
@@ -226,10 +231,14 @@ const ShiftTimeline = ({
 	const showNow = now !== null && now >= range.start && now < range.end;
 
 	return (
-		<section aria-label="シフトのタイムライン" className="space-y-3">
+		<section aria-label={t("board.timelineLabel")} className="space-y-3">
 			<div className="flex flex-wrap items-center gap-x-4 gap-y-2">
 				{days.length > 1 && (
-					<div role="group" aria-label="日付" className={SEGMENT_GROUP}>
+					<div
+						role="group"
+						aria-label={t("board.dayGroup")}
+						className={SEGMENT_GROUP}
+					>
 						{days.map((value) => (
 							<button
 								key={value}
@@ -238,14 +247,14 @@ const ShiftTimeline = ({
 								onClick={() => setSelectedDay(value)}
 								className={`${segmentItem(value === day)} tabular`}
 							>
-								{formatDay(value)}
+								{formatDayIn(value, intlLocale)}
 							</button>
 						))}
 					</div>
 				)}
 				{positionsEnabled && (
 					<fieldset className={SEGMENT_GROUP}>
-						<legend className="sr-only">縦軸</legend>
+						<legend className="sr-only">{t("board.axisLegend")}</legend>
 						{(Object.keys(AXIS_LABELS) as TimelineAxis[]).map((value) => (
 							<label
 								key={value}
@@ -260,7 +269,7 @@ const ShiftTimeline = ({
 									onChange={() => setAxis(value)}
 									className="sr-only"
 								/>
-								{AXIS_LABELS[value]}
+								{t(AXIS_LABELS[value])}
 							</label>
 						))}
 					</fieldset>
@@ -269,7 +278,7 @@ const ShiftTimeline = ({
 					htmlFor={zoomSelectId}
 					className="flex items-center gap-2 text-xs text-ink-muted"
 				>
-					目盛り
+					{t("board.zoomLabel")}
 					<select
 						id={zoomSelectId}
 						value={zoom}
@@ -278,7 +287,7 @@ const ShiftTimeline = ({
 					>
 						{ZOOM_OPTIONS.map((option) => (
 							<option key={option} value={option}>
-								{option} 分
+								{t("board.zoomOption", { minutes: option })}
 							</option>
 						))}
 					</select>
@@ -299,7 +308,7 @@ const ShiftTimeline = ({
 							className="sticky left-0 z-30 flex shrink-0 items-center border-r border-board-head-ink/20 bg-board-head px-3 text-xs font-bold"
 							style={{ width: "var(--header-w)" }}
 						>
-							{AXIS_LABELS[axis]}
+							{t(AXIS_LABELS[axis])}
 						</div>
 						<div className="relative h-9 tabular" style={{ width }}>
 							{ticks.map((tick, index) => {
@@ -335,14 +344,14 @@ const ShiftTimeline = ({
 									className="pointer-events-none absolute top-1/2 z-10 -translate-x-1/2 -translate-y-1/2 rounded-full bg-brand px-1.5 text-[10px] leading-4 font-bold text-white"
 									style={{ left: toX(now) }}
 								>
-									いま
+									{t("board.now")}
 								</span>
 							)}
 						</div>
 					</div>
 
 					{/* 行 */}
-					<ul aria-label={`${AXIS_LABELS[axis]}の行`}>
+					<ul aria-label={t("board.rowsLabel", { axis: t(AXIS_LABELS[axis]) })}>
 						{rows.map((row) => (
 							<li
 								key={row.id}
@@ -401,7 +410,7 @@ const ShiftTimeline = ({
 										/>
 									)}
 									<ul
-										aria-label={`${row.label}のシフト`}
+										aria-label={t("board.rowShifts", { label: row.label })}
 										className="absolute inset-x-0 bottom-0"
 										style={{
 											top:
@@ -440,20 +449,23 @@ const ShiftTimeline = ({
 			</div>
 
 			<div className="space-y-1 text-xs leading-relaxed text-ink-muted">
-				<ul aria-label="凡例" className="flex flex-wrap gap-x-4 gap-y-1">
+				<ul
+					aria-label={t("board.legendLabel")}
+					className="flex flex-wrap gap-x-4 gap-y-1"
+				>
 					<li className="flex items-center gap-1.5">
 						<span
 							aria-hidden
 							className="inline-block h-3 w-5 rounded-sm border border-dashed border-ink-muted"
 						/>
-						下書き
+						{t("board.legendDraft")}
 					</li>
 					<li className="flex items-center gap-1.5">
 						<span
 							aria-hidden
 							className="inline-block h-3 w-5 rounded-sm border border-line-strong ring-2 ring-warn"
 						/>
-						希望外の割り当て
+						{t("board.legendOverridden")}
 					</li>
 					{positionsEnabled && (
 						<li className="flex items-center gap-1.5">
@@ -461,20 +473,18 @@ const ShiftTimeline = ({
 								aria-hidden
 								className="inline-block h-3 w-5 rounded-sm bg-danger-soft ring-1 ring-danger/40"
 							/>
-							人が足りない時間帯
+							{t("board.legendShort")}
 						</li>
 					)}
 					<li className="flex items-center gap-1.5">
 						<span aria-hidden className="inline-block h-3 w-0.5 bg-brand" />
-						いま
+						{t("board.legendNow")}
 					</li>
 				</ul>
 				<p>
-					{positionsEnabled &&
-						"持ち場別の行の上の数字は「入っている人数 / 必要な人数」です。"}
-					⌘ / Ctrl を押しながらホイール（ピンチ）でズームできます。
-					{editing &&
-						" 編集モードでは、シフトをドラッグで移動、右端のドラッグで長さを変えられます。キーボードでは ←→ で移動、Shift+←→ で長さ、Delete で削除です。"}
+					{positionsEnabled && t("board.helpStaffing")}
+					{t("board.helpZoom")}
+					{editing && t("board.helpEditing")}
 				</p>
 			</div>
 		</section>
@@ -492,33 +502,40 @@ const StaffingBand = ({
 	requiredCount: number;
 	segments: CoverageSegment[];
 	toX: (ms: number) => number;
-}) => (
-	<ul
-		aria-label={`${label}の充足状況`}
-		className="absolute inset-x-0 top-0"
-		style={{ height: BADGE_BAND_HEIGHT_PX }}
-	>
-		{segments.map((segment) => {
-			const short = segment.count < requiredCount;
-			const text = `${segment.count}/${requiredCount}`;
-			return (
-				<li
-					key={segment.start}
-					aria-label={`${formatTime(segment.start)}〜${formatTime(segment.end)}、${segment.count} 人 / 必要 ${requiredCount} 人${short ? "、不足" : ""}`}
-					title={`${formatTime(segment.start)}〜${formatTime(segment.end)}：${text}`}
-					className={`absolute top-0.5 flex items-center justify-center overflow-hidden rounded-sm text-[11px] leading-none font-bold tabular ${short ? "bg-danger-soft text-danger ring-1 ring-danger/40 ring-inset" : "bg-primary-soft text-ink"}`}
-					style={{
-						left: toX(segment.start) + 1,
-						width: Math.max(toX(segment.end) - toX(segment.start) - 2, 2),
-						height: BADGE_BAND_HEIGHT_PX - 4,
-					}}
-				>
-					{text}
-				</li>
-			);
-		})}
-	</ul>
-);
+}) => {
+	const t = useT();
+	return (
+		<ul
+			aria-label={t("board.staffingLabel", { label })}
+			className="absolute inset-x-0 top-0"
+			style={{ height: BADGE_BAND_HEIGHT_PX }}
+		>
+			{segments.map((segment) => {
+				const short = segment.count < requiredCount;
+				const text = `${segment.count}/${requiredCount}`;
+				const timeRange = t("board.timeRange", {
+					start: formatTime(segment.start),
+					end: formatTime(segment.end),
+				});
+				return (
+					<li
+						key={segment.start}
+						aria-label={`${t("board.staffingSegment", { range: timeRange, count: segment.count, required: requiredCount })}${short ? t("board.staffingShortSuffix") : ""}`}
+						title={t("board.staffingTitle", { range: timeRange, text })}
+						className={`absolute top-0.5 flex items-center justify-center overflow-hidden rounded-sm text-[11px] leading-none font-bold tabular ${short ? "bg-danger-soft text-danger ring-1 ring-danger/40 ring-inset" : "bg-primary-soft text-ink"}`}
+						style={{
+							left: toX(segment.start) + 1,
+							width: Math.max(toX(segment.end) - toX(segment.start) - 2, 2),
+							height: BADGE_BAND_HEIGHT_PX - 4,
+						}}
+					>
+						{text}
+					</li>
+				);
+			})}
+		</ul>
+	);
+};
 
 const ShiftBlock = ({
 	item,
@@ -538,6 +555,7 @@ const ShiftBlock = ({
 	/** スタッフの希望と違うところ（なければ undefined） */
 	conflicts?: string[];
 }) => {
+	const t = useT();
 	const { shift, position, staff } = item;
 	// ドラッグ中・保存中は、動かした先を仮に表示する。保存後にデータが変われば消す
 	const [preview, setPreview] = useState<{ start: number; end: number } | null>(
@@ -555,17 +573,20 @@ const ShiftBlock = ({
 	const color = position?.color ?? "var(--line-strong)";
 	// 持ち場別の行ではスタッフ名、スタッフ別の行では持ち場名を出す
 	const title = axis === "position" ? staff?.name : position?.name;
-	const time = `${formatTime(shown.start)}〜${formatTime(shown.end)}`;
+	const time = t("board.timeRange", {
+		start: formatTime(shown.start),
+		end: formatTime(shown.end),
+	});
 	// 希望と違う割り当て：手で付けた「希望外」か、スタッフの希望（持ち場・休憩）と違うもの
 	const overridden = !shift.isPreferredPosition || (conflicts?.length ?? 0) > 0;
 	const notes = [
-		isDraft ? "下書き" : undefined,
-		shift.isPreferredPosition ? undefined : "希望外の割り当て",
+		isDraft ? t("board.noteDraft") : undefined,
+		shift.isPreferredPosition ? undefined : t("board.noteOverridden"),
 		...(conflicts ?? []),
 	].filter(Boolean);
 	const label = [staff?.name, position?.name, time, ...notes]
 		.filter(Boolean)
-		.join("、");
+		.join(t("board.listSeparator"));
 
 	const left = (Math.max(shown.start, range.start) - range.start) * pxPerMs;
 	const width =

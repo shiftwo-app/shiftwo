@@ -1,5 +1,6 @@
 import { useRouter } from "@tanstack/react-router";
 import { useState } from "react";
+import { useT } from "../../lib/i18n/react";
 
 export type MutationResult = { ok: boolean; errors?: string[] };
 export type RunMutation = (
@@ -9,20 +10,21 @@ export type RunMutation = (
 /** 操作を 1 回行い、できたら画面を読み直す。失敗したらメッセージを errors に入れる */
 export const useMutationRunner = () => {
 	const router = useRouter();
+	const t = useT();
 	const [errors, setErrors] = useState<string[]>([]);
 	const run: RunMutation = async (action) => {
 		setErrors([]);
 		try {
 			const result = await action();
 			if (!result.ok) {
-				setErrors(result.errors ?? ["できませんでした"]);
+				setErrors(result.errors ?? [t("settings.failedShort")]);
 				return false;
 			}
 			await router.invalidate();
 			return true;
 		} catch (error) {
 			console.error(error);
-			setErrors(["できませんでした。時間をおいて、もう一度試してください"]);
+			setErrors([t("common.failed")]);
 			return false;
 		}
 	};

@@ -15,6 +15,8 @@ import {
 	permissionsOf,
 } from "../lib/org/permissions";
 import { memberAvatarSelect, resolveAvatarUrl } from "../lib/avatar";
+import type { MessageKey } from "../lib/i18n/messages";
+import { serverT } from "../lib/i18n/request-locale.server";
 import { orgNameSchema, slugSchema } from "../lib/org/slug";
 import { prisma } from "../lib/prisma.server";
 import { nameSchema } from "../lib/profile";
@@ -42,7 +44,8 @@ import {
 type Errors = { ok: false; errors: string[] };
 const errorsOf = (error: z.ZodError): Errors => ({
 	ok: false,
-	errors: error.issues.map((issue) => issue.message),
+	// メッセージのキーならこのリクエストの言語に（キーでない文は、そのまま出る）
+	errors: error.issues.map((issue) => serverT(issue.message as MessageKey)),
 });
 
 const slugParam = z.string().min(1);
@@ -168,7 +171,7 @@ export const updateMyDisplayName = createServerFn({ method: "POST" })
 			parsed.data.orgSlug,
 		);
 		if (!membership)
-			return { ok: false as const, errors: ["団体が見つかりません"] };
+			return { ok: false as const, errors: [serverT("errors.orgNotFound")] };
 		await prisma.member.update({
 			where: { id: membership.member.id },
 			data: { displayName: parsed.data.displayName },
@@ -276,9 +279,12 @@ export const removeMember = createServerFn({ method: "POST" })
 			},
 		});
 		if (!target)
-			return { ok: false as const, errors: ["メンバーが見つかりません"] };
+			return { ok: false as const, errors: [serverT("errors.memberNotFound")] };
 		if (target.isOwner)
-			return { ok: false as const, errors: ["オーナーは外せません"] };
+			return {
+				ok: false as const,
+				errors: [serverT("errors.ownerCannotBeRemoved")],
+			};
 		const targetPermissions = permissionsOf(
 			false,
 			target.roles.map((r) => r.role),
@@ -286,7 +292,7 @@ export const removeMember = createServerFn({ method: "POST" })
 		if (!canGrant(access.member.permissions, targetPermissions)) {
 			return {
 				ok: false as const,
-				errors: ["自分が持っていない権限を持つメンバーは外せません"],
+				errors: [serverT("errors.memberRemoveForbidden")],
 			};
 		}
 		await prisma.member.delete({ where: { id: target.id } });
@@ -302,11 +308,9 @@ const roleInputSchema = z.object({
 	name: z
 		.string()
 		.trim()
-		.min(1, "ロール名を入力してください")
-		.max(40, "ロール名は 40 文字までにしてください"),
-	color: z
-		.string()
-		.regex(/^#[0-9a-fA-F]{6}$/, "色は #RRGGBB の形で指定してください"),
+		.min(1, "errors.roleNameRequired")
+		.max(40, "errors.roleNameTooLong"),
+	color: z.string().regex(/^#[0-9a-fA-F]{6}$/, "errors.roleColorInvalid"),
 	permissions: permissionsSchema,
 });
 

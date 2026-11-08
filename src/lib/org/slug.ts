@@ -1,5 +1,13 @@
 // 団体の URL（/o/<slug>）と名前の決まり
 import { z } from "zod";
+import { getCurrentLocale } from "../i18n/current-locale";
+import type { MessageKey } from "../i18n/messages";
+import { translate } from "../i18n/translate";
+
+/** エラーの文は、確かめるときの言語にする（サーバーではリクエストの言語、画面では画面の言語） */
+const localized = (key: MessageKey) => ({
+	error: () => translate(getCurrentLocale(), key),
+});
 
 /** URL として使えない（ほかの画面と紛らわしい）名前 */
 export const RESERVED_SLUGS = new Set([
@@ -26,16 +34,13 @@ export const slugSchema = z
 	.string()
 	.trim()
 	.toLowerCase()
-	.min(3, "URL は 3 文字以上にしてください")
-	.max(32, "URL は 32 文字までにしてください")
-	.regex(
-		/^[a-z0-9](?:[a-z0-9-]*[a-z0-9])?$/,
-		"URL は半角の英小文字・数字・ハイフンだけで、ハイフンで始めたり終えたりしないでください",
-	)
-	.refine((slug) => !RESERVED_SLUGS.has(slug), "この URL は使えません");
+	.min(3, localized("orgs.slugTooShort"))
+	.max(32, localized("orgs.slugTooLong"))
+	.regex(/^[a-z0-9](?:[a-z0-9-]*[a-z0-9])?$/, localized("orgs.slugInvalid"))
+	.refine((slug) => !RESERVED_SLUGS.has(slug), localized("orgs.slugReserved"));
 
 export const orgNameSchema = z
 	.string()
 	.trim()
-	.min(1, "団体名を入力してください")
-	.max(80, "団体名は 80 文字までにしてください");
+	.min(1, localized("orgs.nameRequired"))
+	.max(80, localized("orgs.nameTooLong"));

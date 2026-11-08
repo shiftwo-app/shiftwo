@@ -1,6 +1,11 @@
 // スタッフの希望（FR-5）の決まり。画面とサーバーの両方で使う。
 // 希望は団体全体を基本にして、テナント・イベントごとに上書きできる（see prisma/schema/models.prisma の StaffPreference）
 import { z } from "zod";
+import type { MessageKey } from "./i18n/messages";
+import { type Translate, translatorFor } from "./i18n/translate";
+
+/** 引数で言語を渡されなかったときの、日本語のメッセージ（サーバーでは serverT を渡す） */
+const ja: Translate = translatorFor("ja");
 
 /** 希望を出す単位。団体全体・テナント・イベント */
 export type PreferenceScope =
@@ -10,11 +15,13 @@ export type PreferenceScope =
 
 export type PreferenceLevel = PreferenceScope["level"];
 
-export const PREFERENCE_LEVEL_LABELS: Record<PreferenceLevel, string> = {
-	org: "団体全体",
-	tenant: "テナント",
-	event: "イベント",
-};
+/** 単位の名前のメッセージキー */
+export const PREFERENCE_LEVEL_LABEL_KEYS: Record<PreferenceLevel, MessageKey> =
+	{
+		org: "preferences.levelOrg",
+		tenant: "preferences.levelTenant",
+		event: "preferences.levelEvent",
+	};
 
 /** URL の search に入れる形（org・t:<テナント>・e:<テナント>/<イベント>）にする */
 export const encodePreferenceScope = (scope: PreferenceScope): string => {
@@ -72,19 +79,18 @@ const isoDateTime = z.iso.datetime({ offset: true });
 export const preferenceInputSchema = z.object({
 	breaks: z
 		.array(z.object({ start: isoDateTime, end: isoDateTime }))
-		.max(
-			PREFERENCE_BREAKS_MAX,
-			`休憩は ${PREFERENCE_BREAKS_MAX} 個までにしてください`,
-		),
+		.max(PREFERENCE_BREAKS_MAX, "preferences.breaksMax"),
 	positionIds: z.array(z.uuid()).max(50),
-	memo: z
-		.string()
-		.max(
-			PREFERENCE_MEMO_MAX,
-			`メモは ${PREFERENCE_MEMO_MAX} 文字までにしてください`,
-		),
+	memo: z.string().max(PREFERENCE_MEMO_MAX, "preferences.memoMax"),
 });
 export type PreferenceInput = z.infer<typeof preferenceInputSchema>;
+
+/** preferenceInputSchema の zod のメッセージ（キー）を文にする。キーでないもの（zod の既定の文）はそのまま */
+export const preferenceIssueMessage = (message: string, t: Translate = ja) =>
+	t(message as MessageKey, {
+		breaksMax: PREFERENCE_BREAKS_MAX,
+		memoMax: PREFERENCE_MEMO_MAX,
+	});
 
 export type TimeRangeMs = { start: number; end: number };
 
@@ -98,35 +104,39 @@ export type TimeRangeMs = { start: number; end: number };
 export const validatePreference = (
 	input: { breaks: TimeRangeMs[]; positionIds: string[] },
 	rules: { timeUnitMinutes: number; period: TimeRangeMs | null },
+	t: Translate = ja,
 ): string[] => {
 	const errors: string[] = [];
 	const unitMs = rules.timeUnitMinutes * 60_000;
 	for (const [index, range] of input.breaks.entries()) {
-		const label = `休憩 ${index + 1}`;
+		const label = t("preferences.breakLabel", { number: index + 1 });
 		if (range.end <= range.start) {
-			errors.push(`${label}：終わりは始まりより後にしてください`);
+			errors.push(t("preferences.breakEndBeforeStart", { label }));
 		}
 		if (range.start % unitMs !== 0 || range.end % unitMs !== 0) {
 			errors.push(
-				`${label}：時刻は ${rules.timeUnitMinutes} 分の区切りにしてください`,
+				t("preferences.breakTimeUnit", {
+					label,
+					minutes: rules.timeUnitMinutes,
+				}),
 			);
 		}
 		if (
 			rules.period &&
 			(range.start < rules.period.start || range.end > rules.period.end)
 		) {
-			errors.push(`${label}：イベントの期間の中にしてください`);
+			errors.push(t("preferences.breakOutsidePeriod", { label }));
 		}
 	}
 	const sorted = [...input.breaks].sort((a, b) => a.start - b.start);
 	for (let i = 1; i < sorted.length; i++) {
 		if (sorted[i].start < sorted[i - 1].end) {
-			errors.push("休憩どうしが重なっています");
+			errors.push(t("preferences.breaksOverlap"));
 			break;
 		}
 	}
 	if (new Set(input.positionIds).size !== input.positionIds.length) {
-		errors.push("同じ持ち場が 2 回選ばれています");
+		errors.push(t("preferences.duplicatePosition"));
 	}
 	return errors;
 };
@@ -174,6 +184,7 @@ export const effectivePreference = <
 	};
 };
 
+// 時刻は「12:00」の形で、どの言語でも同じ
 const conflictTimeFormatter = new Intl.DateTimeFormat("ja-JP", {
 	timeZone: "Asia/Tokyo",
 	hour: "2-digit",
@@ -188,6 +199,7 @@ const conflictTimeFormatter = new Intl.DateTimeFormat("ja-JP", {
 export const preferenceConflicts = (
 	shift: { positionId: string | null; start: number; end: number },
 	preference: { breaks: TimeRangeMs[]; positionIds: string[] },
+	t: Translate = ja,
 ): string[] => {
 	const reasons: string[] = [];
 	// 持ち場のないシフト（持ち場を使わない単位）は、持ち場の希望を問わない
@@ -196,12 +208,15 @@ export const preferenceConflicts = (
 		preference.positionIds.length > 0 &&
 		!preference.positionIds.includes(shift.positionId)
 	) {
-		reasons.push("希望の持ち場ではありません");
+		reasons.push(t("preferences.conflictPosition"));
 	}
 	for (const range of preference.breaks) {
 		if (range.start < shift.end && shift.start < range.end) {
 			reasons.push(
-				`休憩（${conflictTimeFormatter.format(range.start)}〜${conflictTimeFormatter.format(range.end)}）と重なっています`,
+				t("preferences.conflictBreak", {
+					start: conflictTimeFormatter.format(range.start),
+					end: conflictTimeFormatter.format(range.end),
+				}),
 			);
 		}
 	}

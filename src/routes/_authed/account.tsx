@@ -9,6 +9,8 @@ import Button from "../../components/ui/Button";
 import PageHeader from "../../components/ui/PageHeader";
 import Section from "../../components/ui/Section";
 import { authClient } from "../../lib/auth-client";
+import { useT } from "../../lib/i18n/react";
+import { translate } from "../../lib/i18n/translate";
 import {
 	getAccountSummary,
 	refreshMyDiscordStatus,
@@ -19,7 +21,15 @@ export const Route = createFileRoute("/_authed/account")({
 	validateSearch: (search: Record<string, unknown>): { linked?: boolean } =>
 		search.linked ? { linked: true } : {},
 	loader: () => getAccountSummary(),
-	head: () => ({ meta: [{ title: "アカウント | シフトヲ" }] }),
+	head: ({ match }) => ({
+		meta: [
+			{
+				title: translate(match.context.locale, "shell.pageTitle", {
+					page: translate(match.context.locale, "account.title"),
+				}),
+			},
+		],
+	}),
 	component: AccountPage,
 });
 
@@ -27,6 +37,7 @@ function AccountPage() {
 	const summary = Route.useLoaderData();
 	const { linked } = Route.useSearch();
 	const router = useRouter();
+	const t = useT();
 	const refresh = useServerFn(refreshMyDiscordStatus);
 	const [busy, setBusy] = useState(false);
 	const [message, setMessage] = useState<{
@@ -38,9 +49,9 @@ function AccountPage() {
 	useEffect(() => {
 		if (!linked || !summary.discordAccountId) return;
 		void refresh().then(() =>
-			setMessage({ text: "Discord と連携しました", tone: "success" }),
+			setMessage({ text: t("account.discordLinked"), tone: "success" }),
 		);
-	}, [linked, summary.discordAccountId, refresh]);
+	}, [linked, summary.discordAccountId, refresh, t]);
 
 	const link = async () => {
 		setBusy(true);
@@ -61,10 +72,10 @@ function AccountPage() {
 		setMessage(
 			error
 				? {
-						text: "連携を外せませんでした。時間をおいて、もう一度試してください",
+						text: t("account.discordUnlinkFailed"),
 						tone: "error",
 					}
-				: { text: "Discord の連携を外しました", tone: "success" },
+				: { text: t("account.discordUnlinked"), tone: "success" },
 		);
 		await router.invalidate();
 	};
@@ -74,7 +85,7 @@ function AccountPage() {
 
 	return (
 		<main className="mx-auto max-w-5xl px-4 py-8 sm:px-6">
-			<PageHeader title="アカウント" />
+			<PageHeader title={t("account.title")} />
 			{message && (
 				<Alert tone={message.tone} className="mb-6">
 					{message.text}
@@ -82,8 +93,8 @@ function AccountPage() {
 			)}
 			<Section
 				id="account-avatar"
-				title="アイコン"
-				description="一覧やシフト表に出ます。団体ごとに別のアイコンにもできます（団体の「設定・メンバー」から）。"
+				title={t("account.avatarTitle")}
+				description={t("account.avatarDescription")}
 			>
 				<AvatarUploader
 					endpoint="/api/me/avatar"
@@ -92,18 +103,16 @@ function AccountPage() {
 					hasUploaded={summary.hasUploadedAvatar}
 					removeLabel={
 						summary.discordAccountId
-							? "Discord のアイコンに戻す"
-							: "アイコンをやめる"
+							? t("account.avatarResetToDiscord")
+							: t("account.avatarRemove")
 					}
 					onChanged={() => router.invalidate()}
 				/>
 			</Section>
-			<Section id="account-email" title="メールアドレス">
+			<Section id="account-email" title={t("account.emailTitle")}>
 				<p className="text-sm leading-relaxed text-ink">
 					<span className="font-bold break-all">{summary.email}</span>
-					<span className="text-ink-muted">
-						（確認コードでいつでもログインできます）
-					</span>
+					<span className="text-ink-muted">{t("account.emailNote")}</span>
 				</p>
 			</Section>
 			<Section
@@ -111,38 +120,48 @@ function AccountPage() {
 				title="Discord"
 				description={
 					<>
-						連携すると、Discord
-						のユーザー名・アイコン・メールアドレス、参加しているサーバーの一覧、
-						サーバーでのプロフィール（メンバーかどうかとアイコン）を読みます（
-						<a href="/help/discord-server" className={textLink}>
-							くわしく
-						</a>
-						）。
+						{/* 訳文の {more} の位置に「くわしく」のリンクを置く */}
+						{t("account.discordDescription")
+							.split("{more}")
+							.flatMap((part, index) =>
+								index === 0
+									? [part]
+									: [
+											<a
+												key={index}
+												href="/help/discord-server"
+												className={textLink}
+											>
+												{t("orgs.learnMore")}
+											</a>,
+											part,
+										],
+							)}
 					</>
 				}
 			>
 				{!summary.discordConfigured ? (
 					<p className="text-sm text-ink-muted">
-						このシフトヲでは、Discord の連携は使えません。
+						{t("account.discordNotConfigured")}
 					</p>
 				) : summary.discordAccountId ? (
 					<div className="flex flex-wrap items-center gap-3 text-sm">
-						<Badge tone="primary">連携しています</Badge>
-						<span className="text-ink-muted">Discord でもログインできます</span>
+						<Badge tone="primary">{t("account.discordLinkedBadge")}</Badge>
+						<span className="text-ink-muted">
+							{t("account.discordCanSignIn")}
+						</span>
 						<Button variant="ghost" size="sm" onClick={unlink} disabled={busy}>
-							連携を外す
+							{t("account.discordUnlink")}
 						</Button>
 					</div>
 				) : (
 					<div className="space-y-3 text-sm">
 						<p className="max-w-prose leading-relaxed text-ink">
-							Discord を連携すると、Discord でもログインでき、Discord
-							のアイコンが使われます。 Discord
-							サーバーのメンバーだけが参加できる団体にも参加できるようになります。
+							{t("account.discordLinkIntro")}
 						</p>
 						<Button onClick={link} disabled={busy}>
 							<DiscordMark />
-							Discord と連携する
+							{t("account.discordLink")}
 						</Button>
 					</div>
 				)}

@@ -6,6 +6,8 @@ import { emailOTP } from "better-auth/plugins";
 import { tanstackStartCookies } from "better-auth/tanstack-start";
 import { resolveDiscordConfig } from "./auth-config";
 import { parseDatabaseProvider } from "./database-provider";
+import { getRequestLocale } from "./i18n/request-locale.server";
+import { translatorFor } from "./i18n/translate";
 import {
 	buildLoginEmail,
 	buildLoginLink,
@@ -93,10 +95,12 @@ export const auth = betterAuth({
 					email,
 					otp,
 				);
+				// 文面は、ログインのメールを頼んだリクエストの言語にする（送るのは応答のあとになるので、先に決める）
+				const t = translatorFor(getRequestLocale());
 				// 送るのを待つと、届く宛先かどうかが応答時間でわかってしまうので待たない
 				// （Workers では waitUntil に載せて、応答を返したあとも送り終えるまで続けさせる）
 				platform.runInBackground("ログインのメールを送れませんでした", () =>
-					sendMail(buildLoginEmail({ email, otp, link })),
+					sendMail(buildLoginEmail({ email, otp, link, t })),
 				);
 			},
 		}),

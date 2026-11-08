@@ -7,6 +7,8 @@ import {
 	useMatch,
 } from "@tanstack/react-router";
 import ScopeTabs, { type ScopeTab } from "../../../components/shell/ScopeTabs";
+import { useT } from "../../../lib/i18n/react";
+import { translate } from "../../../lib/i18n/translate";
 import { memberRoleLabel } from "../../../lib/org/member-label";
 import { hasPermission } from "../../../lib/org/permissions";
 import { getOrganization } from "../../../server/org.functions";
@@ -28,7 +30,13 @@ export const Route = createFileRoute("/_authed/o/$orgSlug")({
 	},
 	head: ({ match }) => ({
 		meta: [
-			{ title: `${match.context.organization?.name ?? "団体"} | シフトヲ` },
+			{
+				title: translate(match.context.locale, "shell.pageTitle", {
+					page:
+						match.context.organization?.name ??
+						translate(match.context.locale, "shell.orgFallbackName"),
+				}),
+			},
 		],
 	}),
 	component: OrgLayout,
@@ -36,6 +44,7 @@ export const Route = createFileRoute("/_authed/o/$orgSlug")({
 
 function OrgLayout() {
 	const { organization, member, tenants } = Route.useRouteContext();
+	const t = useT();
 	// いま開いているテナント・イベント（その画面の土台の beforeLoad で確かめたもの）
 	const tenantMatch = useMatch({
 		from: "/_authed/o/$orgSlug/t/$tenantSlug",
@@ -62,21 +71,21 @@ function OrgLayout() {
 			hasPermission(eventContext.permissions, "event.manage") ||
 			hasPermission(eventContext.permissions, "position.manage") ||
 			hasPermission(member.permissions, "member.manage");
-		tabsLabel = `${eventContext.event.name}のメニュー`;
+		tabsLabel = t("shell.menuLabel", { name: eventContext.event.name });
 		tabs = [
 			{
-				label: "確定シフト",
+				label: t("shell.tabPublished"),
 				link: { to: "/o/$orgSlug/t/$tenantSlug/e/$eventSlug", params },
 				exact: true,
 			},
 			{
-				label: "下書き",
+				label: t("shell.tabDraft"),
 				link: { to: "/o/$orgSlug/t/$tenantSlug/e/$eventSlug/draft", params },
 			},
 			...(canOpenSettings
 				? [
 						{
-							label: "イベントの設定",
+							label: t("shell.tabEventSettings"),
 							link: {
 								to: "/o/$orgSlug/t/$tenantSlug/e/$eventSlug/settings",
 								params,
@@ -90,25 +99,25 @@ function OrgLayout() {
 			hasPermission(member.permissions, "tenant.manage") ||
 			hasPermission(member.permissions, "member.manage") ||
 			hasPermission(tenantContext.permissions, "position.manage");
-		tabsLabel = `${tenantContext.tenant.name}のメニュー`;
+		tabsLabel = t("shell.menuLabel", { name: tenantContext.tenant.name });
 		tabs = [
 			{
-				label: "日常シフト",
+				label: t("shell.tabRegular"),
 				link: { to: "/o/$orgSlug/t/$tenantSlug", params: tenantParams },
 				exact: true,
 			},
 			{
-				label: "下書き",
+				label: t("shell.tabDraft"),
 				link: { to: "/o/$orgSlug/t/$tenantSlug/draft", params: tenantParams },
 			},
 			{
-				label: `イベント（${tenantContext.events.length}）`,
+				label: t("shell.tabEvents", { count: tenantContext.events.length }),
 				link: { to: "/o/$orgSlug/t/$tenantSlug/events", params: tenantParams },
 			},
 			...(canOpenSettings
 				? [
 						{
-							label: "テナントの設定",
+							label: t("shell.tabTenantSettings"),
 							link: {
 								to: "/o/$orgSlug/t/$tenantSlug/settings",
 								params: tenantParams,
@@ -118,10 +127,10 @@ function OrgLayout() {
 				: []),
 		];
 	} else {
-		tabsLabel = `${organization.name}のメニュー`;
+		tabsLabel = t("shell.menuLabel", { name: organization.name });
 		tabs = [
 			{
-				label: "トップ",
+				label: t("shell.tabTop"),
 				link: { to: "/o/$orgSlug", params: { orgSlug } },
 				exact: true,
 			},
@@ -136,11 +145,11 @@ function OrgLayout() {
 					}) satisfies ScopeTab,
 			),
 			{
-				label: "希望",
+				label: t("shell.tabPreferences"),
 				link: { to: "/o/$orgSlug/preferences", params: { orgSlug } },
 			},
 			{
-				label: "設定・メンバー",
+				label: t("shell.tabSettingsMembers"),
 				link: { to: "/o/$orgSlug/settings", params: { orgSlug } },
 			},
 		];
@@ -154,7 +163,7 @@ function OrgLayout() {
 				<div className="mx-auto max-w-7xl px-4 sm:px-6">
 					<div className="flex flex-wrap items-center justify-between gap-x-6 gap-y-2 pt-4">
 						{/* いまどこにいるか（団体 › テナント › イベント）。最後の 1 つがいまの単位 */}
-						<nav aria-label="いまいる場所">
+						<nav aria-label={t("shell.breadcrumbLabel")}>
 							<ol className="flex flex-wrap items-center gap-x-2 text-sm">
 								<li>
 									{tenantContext ? (
@@ -221,19 +230,22 @@ function OrgLayout() {
 										params={{ orgSlug }}
 										className={crumb}
 									>
-										希望
+										{t("shell.tabPreferences")}
 									</Link>
 									<Link
 										to="/o/$orgSlug/settings"
 										params={{ orgSlug }}
 										className={crumb}
 									>
-										設定・メンバー
+										{t("shell.tabSettingsMembers")}
 									</Link>
 								</>
 							)}
 							<span className="text-xs text-ink-muted">
-								{member.displayName}（{memberRoleLabel(member)}）
+								{t("shell.memberWithRole", {
+									name: member.displayName,
+									role: memberRoleLabel(member, t),
+								})}
 							</span>
 						</div>
 					</div>

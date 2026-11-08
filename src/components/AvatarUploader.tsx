@@ -1,6 +1,7 @@
 import { useId, useState } from "react";
 import type { ChangeEvent } from "react";
 import { AVATAR_MAX_BYTES, AVATAR_SIZE } from "../lib/avatar-image";
+import { useT } from "../lib/i18n/react";
 import Avatar from "./Avatar";
 import { buttonClass } from "./ui/Button";
 
@@ -36,12 +37,12 @@ const toAvatarBlob = async (file: File): Promise<Blob> => {
 	return blob;
 };
 
-const messageOf = async (response: Response) => {
+const messageOf = async (response: Response, fallback: string) => {
 	try {
 		const body = (await response.json()) as { message?: string };
-		return body.message ?? "できませんでした";
+		return body.message ?? fallback;
 	} catch {
-		return "できませんでした";
+		return fallback;
 	}
 };
 
@@ -62,6 +63,7 @@ export default function AvatarUploader({
 	onChanged: () => Promise<void>;
 }) {
 	const id = useId();
+	const t = useT();
 	const [busy, setBusy] = useState(false);
 	const [message, setMessage] = useState<string | null>(null);
 
@@ -71,14 +73,14 @@ export default function AvatarUploader({
 		try {
 			const response = await fetch(endpoint, init);
 			if (!response.ok) {
-				setMessage(await messageOf(response));
+				setMessage(await messageOf(response, t("errors.failedShort")));
 				return;
 			}
 			await onChanged();
 			setMessage(done);
 		} catch (error) {
 			console.error(error);
-			setMessage("できませんでした。時間をおいて、もう一度試してください");
+			setMessage(t("common.failed"));
 		} finally {
 			setBusy(false);
 		}
@@ -93,16 +95,16 @@ export default function AvatarUploader({
 			blob = await toAvatarBlob(file);
 		} catch (error) {
 			console.error(error);
-			setMessage("この画像は読み込めませんでした");
+			setMessage(t("account.avatarUnreadable"));
 			return;
 		}
 		if (blob.size > AVATAR_MAX_BYTES) {
-			setMessage("画像が大きすぎます");
+			setMessage(t("account.avatarTooLarge"));
 			return;
 		}
 		await send(
 			{ method: "POST", headers: { "content-type": blob.type }, body: blob },
-			"アイコンを変えました",
+			t("account.avatarChanged"),
 		);
 	};
 
@@ -116,7 +118,7 @@ export default function AvatarUploader({
 						className={`${buttonClass("secondary", "sm")} cursor-pointer has-[+input:focus-visible]:outline-2 has-[+input:focus-visible]:outline-primary has-[+input:focus-visible]:outline-offset-2 aria-disabled:cursor-not-allowed aria-disabled:opacity-50`}
 						aria-disabled={busy}
 					>
-						画像を選ぶ
+						{t("account.avatarChoose")}
 					</label>
 					<input
 						id={`${id}-file`}
@@ -132,10 +134,7 @@ export default function AvatarUploader({
 							className={buttonClass("ghost", "sm")}
 							disabled={busy}
 							onClick={() =>
-								send(
-									{ method: "DELETE" },
-									"アップロードしたアイコンをやめました",
-								)
+								send({ method: "DELETE" }, t("account.avatarRemoved"))
 							}
 						>
 							{removeLabel}

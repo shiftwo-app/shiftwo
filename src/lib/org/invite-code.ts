@@ -1,4 +1,5 @@
 // 招待コード。8 文字で、読み間違えやすい文字（0 と O、1 と I と L）は使わない
+import type { MessageKey } from "../i18n/messages";
 
 export const INVITE_CODE_ALPHABET = "ABCDEFGHJKMNPQRSTUVWXYZ23456789";
 export const INVITE_CODE_LENGTH = 8;
@@ -55,8 +56,12 @@ export const inviteUnusableReason = (
 	return null;
 };
 
-export const INVITE_UNUSABLE_MESSAGES: Record<InviteUnusableReason, string> = {
-	revoked: "この招待コードは取り消されています",
-	expired: "この招待コードは期限が切れています",
-	used_up: "この招待コードは使える回数を使い切っています",
+/** 使えない理由ごとの、画面に出すメッセージのキー */
+export const INVITE_UNUSABLE_MESSAGE_KEYS: Record<
+	InviteUnusableReason,
+	MessageKey
+> = {
+	revoked: "orgs.inviteRevoked",
+	expired: "orgs.inviteExpired",
+	used_up: "orgs.inviteUsedUp",
 };

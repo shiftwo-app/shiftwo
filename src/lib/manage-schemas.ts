@@ -1,5 +1,6 @@
 // テナント・イベント・持ち場・スタッフの入力の決まり。画面とサーバーの両方で使う
 import { z } from "zod";
+import type { MessageKey } from "./i18n/messages";
 import { slugSchema } from "./org/slug";
 import { nameSchema } from "./profile";
 
@@ -9,29 +10,34 @@ export const timeUnitSchema = z
 	.number()
 	.refine(
 		(value) => (TIME_UNIT_OPTIONS as readonly number[]).includes(value),
-		"時間粒度は 5・10・15・30 分のどれかにしてください",
+		"settings.timeUnitInvalid",
 	);
 
-const titleSchema = (label: string, max: number) =>
-	z
-		.string()
-		.trim()
-		.min(1, `${label}を入力してください`)
-		.max(max, `${label}は ${max} 文字までにしてください`);
+// エラーはメッセージのキー。文章にするのは受け取る側（サーバーは serverT、画面は t）
+const titleSchema = (
+	max: number,
+	messages: { required: MessageKey; tooLong: MessageKey },
+) => z.string().trim().min(1, messages.required).max(max, messages.tooLong);
 
 const colorSchema = z
 	.string()
-	.regex(/^#[0-9a-fA-F]{6}$/, "色は #RRGGBB の形で指定してください");
+	.regex(/^#[0-9a-fA-F]{6}$/, "settings.colorInvalid");
 
 export const tenantInputSchema = z.object({
-	name: titleSchema("テナント名", 80),
+	name: titleSchema(80, {
+		required: "settings.tenantNameRequired",
+		tooLong: "settings.tenantNameTooLong",
+	}),
 	slug: slugSchema,
 	timeUnitMinutes: timeUnitSchema,
 });
 export type TenantInput = z.infer<typeof tenantInputSchema>;
 
 export const eventInputSchema = z.object({
-	name: titleSchema("イベント名", 80),
+	name: titleSchema(80, {
+		required: "settings.eventNameRequired",
+		tooLong: "settings.eventNameTooLong",
+	}),
 	slug: slugSchema,
 	// null ならテナントの時間粒度を使う
 	timeUnitMinutes: timeUnitSchema.nullable(),
@@ -39,13 +45,16 @@ export const eventInputSchema = z.object({
 export type EventInput = z.infer<typeof eventInputSchema>;
 
 export const positionInputSchema = z.object({
-	name: titleSchema("持ち場の名前", 40),
+	name: titleSchema(40, {
+		required: "settings.positionNameRequired",
+		tooLong: "settings.positionNameTooLong",
+	}),
 	color: colorSchema,
 	requiredStaffCount: z
 		.number()
-		.int("必要な人数は整数にしてください")
-		.min(0, "必要な人数は 0 人以上にしてください")
-		.max(99, "必要な人数は 99 人までにしてください"),
+		.int("settings.requiredCountInteger")
+		.min(0, "settings.requiredCountMin")
+		.max(99, "settings.requiredCountMax"),
 });
 export type PositionInput = z.infer<typeof positionInputSchema>;
 
