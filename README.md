@@ -249,6 +249,7 @@ docker compose up -d --build
 - データは volume に残ります（Postgres は `db`、アップロードしたアイコンは `uploads`）。バックアップするときは、この 2 つを取ります
 - 公開するポートは `.env` の `PORT`（既定は 3000）です。HTTPS はリバースプロキシ（Caddy・nginx など）で付け、`BETTER_AUTH_URL` には外から見た URL を書きます
 - このディレクトリの `.env` は、開発用のリポジトリ直下の `.env` とは別のものです
+- アプリのイメージ（`runtime`）は、サーバーの依存を build のときに `dist/server` へまとめ（`BUNDLE_SERVER=1`）、`node_modules` を持たない `node:26-alpine` で動かします（約 270MB。以前は約 800MB）。マイグレーションは依存の入った `build` の段階のイメージで流します
 
 ### メールの送り方
 
