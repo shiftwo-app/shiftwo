@@ -62,6 +62,14 @@ function OrgLayout() {
 						</Link>
 					))}
 				<Link
+					to="/o/$orgSlug/preferences"
+					params={{ orgSlug: organization.slug }}
+					activeProps={active}
+					className={link}
+				>
+					希望
+				</Link>
+				<Link
 					to="/o/$orgSlug/settings"
 					params={{ orgSlug: organization.slug }}
 					activeProps={active}
