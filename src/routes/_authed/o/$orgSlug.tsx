@@ -24,7 +24,7 @@ export const Route = createFileRoute("/_authed/o/$orgSlug")({
 });
 
 function OrgLayout() {
-	const { organization, member } = Route.useRouteContext();
+	const { organization, member, tenants } = Route.useRouteContext();
 	const link = "rounded px-3 py-1 text-sm hover:bg-gray-100";
 	const active = { className: `${link} bg-gray-200 font-semibold` };
 	return (
@@ -33,24 +33,26 @@ function OrgLayout() {
 				aria-label={`${organization.name}のメニュー`}
 				className="flex flex-wrap items-center gap-2 border-b px-4 py-2"
 			>
-				<span className="mr-2 font-semibold">{organization.name}</span>
 				<Link
 					to="/o/$orgSlug"
 					params={{ orgSlug: organization.slug }}
-					activeOptions={{ exact: true }}
-					activeProps={active}
-					className={link}
+					className="mr-2 font-semibold"
 				>
-					確定シフト
+					{organization.name}
 				</Link>
-				<Link
-					to="/o/$orgSlug/draft"
-					params={{ orgSlug: organization.slug }}
-					activeProps={active}
-					className={link}
-				>
-					下書き
-				</Link>
+				{/* テナントが 1 つなら、テナントを選ぶ手順は出さない */}
+				{tenants.length > 1 &&
+					tenants.map((tenant) => (
+						<Link
+							key={tenant.slug}
+							to="/o/$orgSlug/t/$tenantSlug"
+							params={{ orgSlug: organization.slug, tenantSlug: tenant.slug }}
+							activeProps={active}
+							className={link}
+						>
+							{tenant.name}
+						</Link>
+					))}
 				<Link
 					to="/o/$orgSlug/settings"
 					params={{ orgSlug: organization.slug }}
@@ -60,7 +62,7 @@ function OrgLayout() {
 					設定・メンバー
 				</Link>
 				<span className="ml-auto text-xs text-gray-600">
-					{member.displayName}（{ROLE_LABELS[member.role]}）
+					{member.displayName}（団体では{ROLE_LABELS[member.role]}）
 				</span>
 			</nav>
 			<Outlet />

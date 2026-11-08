@@ -1,29 +1,34 @@
 import { createServerFn } from "@tanstack/react-start";
+import { z } from "zod";
+import { can } from "../lib/org/permissions";
+import { prisma } from "../lib/prisma.server";
 import { type Shift, ShiftStatus } from "../types";
 import { requireUserMiddleware } from "./auth-middleware";
-import { OrgAccessError, requireOrgAccess } from "./org-access.server";
+import { OrgAccessError } from "./org-access.server";
+import {
+	findScopeAccess,
+	requireScopeAccess,
+	type ScopeAccess,
+	type ShiftScopeParams,
+} from "./scope-access.server";
 import {
 	removeShift,
 	saveShift,
+	type ShiftWriteAccess,
 	type ShiftWriteResult,
 } from "./shift-write.server";
 import { findShiftBoard } from "./shifts.server";
 
-// 画面から呼ぶ。どれもログインが必要で（requireUserMiddleware）、団体のメンバーかと権限を毎回確かめる
+// 画面から呼ぶ。どれもログインが必要で（requireUserMiddleware）、
+// シフトの単位（団体・テナント・イベント）のメンバーかと、その単位での権限を毎回確かめる
 
-const requireSlug = (value: unknown): string => {
-	if (typeof value !== "string" || value === "") {
-		throw new Error("Organization is required");
-	}
-	return value;
-};
+const scopeSchema = z.object({
+	orgSlug: z.string().min(1),
+	tenantSlug: z.string().min(1),
+	eventSlug: z.string().min(1).nullish(),
+});
 
-const requireId = (value: unknown): string => {
-	if (typeof value !== "string" || value === "") {
-		throw new Error("Shift id is required");
-	}
-	return value;
-};
+const parseScope = (data: unknown): ShiftScopeParams => scopeSchema.parse(data);
 
 const parseStatus = (status: unknown): ShiftStatus => {
 	if (status === ShiftStatus.draft || status === ShiftStatus.confirmed)
@@ -31,19 +36,69 @@ const parseStatus = (status: unknown): ShiftStatus => {
 	throw new Error(`Invalid shift status: ${String(status)}`);
 };
 
+const toIds = (access: ScopeAccess) => ({
+	organizationId: access.organization.id,
+	tenantId: access.tenant.id,
+	eventId: access.event?.id ?? null,
+});
+
+/** テナント（日常シフト）の画面の土台：テナント・この単位での役割・イベントの一覧。見つからなければ null */
+export const getTenantContext = createServerFn({ method: "GET" })
+	.middleware([requireUserMiddleware])
+	.validator((data: { orgSlug: unknown; tenantSlug: unknown }) =>
+		parseScope({ orgSlug: data.orgSlug, tenantSlug: data.tenantSlug }),
+	)
+	.handler(async ({ data, context }) => {
+		const access = await findScopeAccess(context.user.id, data);
+		if (!access) return null;
+		const events = await prisma.event.findMany({
+			where: { tenantId: access.tenant.id },
+			select: { slug: true, name: true },
+			orderBy: { name: "asc" },
+		});
+		return {
+			tenant: access.tenant,
+			events,
+			role: access.role,
+			timeUnitMinutes: access.timeUnitMinutes,
+		};
+	});
+
+/** イベントの画面の土台：イベント・この単位での役割・時間粒度。見つからなければ null */
+export const getEventContext = createServerFn({ method: "GET" })
+	.middleware([requireUserMiddleware])
+	.validator(
+		(data: { orgSlug: unknown; tenantSlug: unknown; eventSlug: unknown }) =>
+			scopeSchema.required({ eventSlug: true }).parse(data),
+	)
+	.handler(async ({ data, context }) => {
+		const access = await findScopeAccess(context.user.id, data);
+		if (!access?.event) return null;
+		return {
+			event: access.event,
+			role: access.role,
+			timeUnitMinutes: access.timeUnitMinutes,
+		};
+	});
+
 export const getShiftBoard = createServerFn({ method: "GET" })
 	.middleware([requireUserMiddleware])
-	.validator((data: { orgSlug: unknown; status: unknown }) => ({
-		orgSlug: requireSlug(data.orgSlug),
+	.validator((data: ShiftScopeParams & { status: unknown }) => ({
+		scope: parseScope(data),
 		status: parseStatus(data.status),
 	}))
 	.handler(async ({ data, context }) => {
-		const access = await requireOrgAccess(
+		const access = await requireScopeAccess(
 			context.user.id,
-			data.orgSlug,
+			data.scope,
 			"shift.view",
 		);
-		return findShiftBoard(access.organization.id, data.status);
+		const board = await findShiftBoard(toIds(access), data.status);
+		return {
+			...board,
+			timeUnitMinutes: access.timeUnitMinutes,
+			canEdit: can(access.role, "shift.edit"),
+		};
 	});
 
 /** 画面に返す結果。issues（zod の詳細）は返さず、画面に出せる errors だけにする */
@@ -60,11 +115,18 @@ const toMutationResult = (result: ShiftWriteResult): ShiftMutationResult =>
 				errors: result.errors ?? [result.message],
 			};
 
-/** 団体のメンバーかを確かめ、書き込みの権限は saveShift / removeShift が見る */
-const writeAccess = async (userId: string, orgSlug: string) => {
+/** この単位のメンバーかを確かめる。書き込みの権限は saveShift / removeShift が見る */
+const writeAccess = async (
+	userId: string,
+	scope: ShiftScopeParams,
+): Promise<ShiftWriteAccess | null> => {
 	try {
-		const access = await requireOrgAccess(userId, orgSlug, "shift.view");
-		return { organizationId: access.organization.id, role: access.member.role };
+		const access = await requireScopeAccess(userId, scope, "shift.view");
+		return {
+			...toIds(access),
+			role: access.role,
+			timeUnitMinutes: access.timeUnitMinutes,
+		};
 	} catch (error) {
 		if (error instanceof OrgAccessError) return null;
 		throw error;
@@ -74,18 +136,20 @@ const writeAccess = async (userId: string, orgSlug: string) => {
 const notFoundResult: ShiftMutationResult = {
 	ok: false,
 	message: "Not found",
-	errors: ["団体が見つかりません"],
+	errors: ["見つかりません"],
 };
 
-/** シフトを作る。入力の検証と権限の確認は saveShift が行う */
+const requireId = (value: unknown): string => z.string().min(1).parse(value);
+
+/** シフトを作る。入力の検証と権限の確認は saveShift が行う（イベントかどうかは、単位で決まる） */
 export const createShift = createServerFn({ method: "POST" })
 	.middleware([requireUserMiddleware])
-	.validator((data: { orgSlug: unknown; input: unknown }) => ({
-		orgSlug: requireSlug(data.orgSlug),
+	.validator((data: { scope: unknown; input: unknown }) => ({
+		scope: parseScope(data.scope),
 		input: data.input,
 	}))
 	.handler(async ({ data, context }) => {
-		const access = await writeAccess(context.user.id, data.orgSlug);
+		const access = await writeAccess(context.user.id, data.scope);
 		if (!access) return notFoundResult;
 		return toMutationResult(await saveShift(access, data.input));
 	});
@@ -93,13 +157,13 @@ export const createShift = createServerFn({ method: "POST" })
 /** シフトを更新する */
 export const updateShift = createServerFn({ method: "POST" })
 	.middleware([requireUserMiddleware])
-	.validator((data: { orgSlug: unknown; id: unknown; input: unknown }) => ({
-		orgSlug: requireSlug(data.orgSlug),
+	.validator((data: { scope: unknown; id: unknown; input: unknown }) => ({
+		scope: parseScope(data.scope),
 		id: requireId(data.id),
 		input: data.input,
 	}))
 	.handler(async ({ data, context }) => {
-		const access = await writeAccess(context.user.id, data.orgSlug);
+		const access = await writeAccess(context.user.id, data.scope);
 		if (!access) return notFoundResult;
 		return toMutationResult(await saveShift(access, data.input, data.id));
 	});
@@ -107,12 +171,12 @@ export const updateShift = createServerFn({ method: "POST" })
 /** シフトを消す */
 export const deleteShift = createServerFn({ method: "POST" })
 	.middleware([requireUserMiddleware])
-	.validator((data: { orgSlug: unknown; id: unknown }) => ({
-		orgSlug: requireSlug(data.orgSlug),
+	.validator((data: { scope: unknown; id: unknown }) => ({
+		scope: parseScope(data.scope),
 		id: requireId(data.id),
 	}))
 	.handler(async ({ data, context }) => {
-		const access = await writeAccess(context.user.id, data.orgSlug);
+		const access = await writeAccess(context.user.id, data.scope);
 		if (!access) return notFoundResult;
 		return toMutationResult(await removeShift(access, data.id));
 	});

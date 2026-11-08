@@ -7,7 +7,12 @@ import {
 	isWellFormedInviteCode,
 	normalizeInviteCode,
 } from "./invite-code";
-import { assignableInviteRoles, can, MEMBER_ROLES } from "./permissions";
+import {
+	assignableInviteRoles,
+	can,
+	MEMBER_ROLES,
+	strongestRole,
+} from "./permissions";
 import { slugSchema } from "./slug";
 
 describe("権限", () => {
@@ -42,6 +47,27 @@ describe("権限", () => {
 		expect(assignableInviteRoles("leader")).toEqual(["staff", "guest"]);
 		expect(assignableInviteRoles("staff")).toEqual([]);
 		expect(assignableInviteRoles("guest")).toEqual([]);
+	});
+});
+
+describe("強い方が勝つ（団体・テナント・イベントの役割）", () => {
+	it("いちばん強い役割になる", () => {
+		// 団体ではスタッフでも、テナントでリーダー（店長）ならリーダー
+		expect(strongestRole("staff", "leader")).toBe("leader");
+		// イベントだけリーダー
+		expect(strongestRole("staff", null, "leader")).toBe("leader");
+		// ゲストでも、イベントでスタッフならスタッフ
+		expect(strongestRole("guest", undefined, "staff")).toBe("staff");
+	});
+
+	it("テナント・イベントの役割で、団体の役割を弱めることはできない", () => {
+		expect(strongestRole("owner", "staff", "staff")).toBe("owner");
+		expect(strongestRole("leader", "staff")).toBe("leader");
+	});
+
+	it("割り当てがなければ団体の役割のまま", () => {
+		expect(strongestRole("staff")).toBe("staff");
+		expect(strongestRole("staff", null, undefined)).toBe("staff");
 	});
 });
 

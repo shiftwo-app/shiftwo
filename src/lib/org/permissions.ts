@@ -40,6 +40,32 @@ const ALLOWED: Record<OrgAction, readonly MemberRole[]> = {
 export const can = (role: MemberRole, action: OrgAction): boolean =>
 	ALLOWED[action].includes(role);
 
+/** 役割の強さ（大きいほど強い） */
+const ROLE_RANK: Record<MemberRole, number> = {
+	guest: 0,
+	staff: 1,
+	leader: 2,
+	owner: 3,
+};
+
+/**
+ * いくつかの役割のうち、いちばん強いものを返す（強い方が勝つ）。
+ * テナントの日常シフトでは「団体の役割・テナントでの役割」、イベントでは「団体・テナント・イベントでの役割」を渡す。
+ * テナントやイベントの役割で、団体の役割を弱めることはできない
+ */
+export const strongestRole = (
+	base: MemberRole,
+	...overrides: (MemberRole | null | undefined)[]
+): MemberRole =>
+	overrides.reduce<MemberRole>(
+		(strongest, role) =>
+			role && ROLE_RANK[role] > ROLE_RANK[strongest] ? role : strongest,
+		base,
+	);
+
+/** テナント・イベントで割り当てられる役割（店長など。オーナーは団体だけ、ゲストは団体の参加の仕方なので割り当てない） */
+export const SCOPED_ROLES: readonly MemberRole[] = ["leader", "staff"];
+
 /** 招待コードで渡せる役割。オーナーは招待では渡さない。リーダーが渡せるのはスタッフとゲストまで */
 export const assignableInviteRoles = (role: MemberRole): MemberRole[] => {
 	if (role === "owner") return ["leader", "staff", "guest"];

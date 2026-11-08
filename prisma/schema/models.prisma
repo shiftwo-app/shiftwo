@@ -17,10 +17,15 @@ model Staff {
   @@index([organizationId])
 }
 
+// 役割。日常シフトの役割はテナントごと（eventId なし）、イベントの役割はイベントごと（eventId あり）で、分けて持つ
 model Role {
   id              String    @id @default(uuid())
   organizationId  String
   organization    Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  tenantId        String
+  tenant          Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  eventId         String?
+  event           Event?    @relation(fields: [eventId], references: [id], onDelete: Cascade)
   name            String
   color           String
   requiredStaffCount Int
@@ -28,15 +33,26 @@ model Role {
   shifts          Shift[]
 
   @@index([organizationId])
+  @@index([tenantId, eventId])
 }
 
+// イベント（単発運用）。テナントの下に置く。URL は /o/<団体>/t/<テナント>/e/<slug>
 model Event {
-  id             String @id @default(uuid())
-  organizationId String
-  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  name           String
-  rooms          Room[]
+  id              String @id @default(uuid())
+  organizationId  String
+  organization    Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  tenantId        String
+  tenant          Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  slug            String
+  name            String
+  // 時間粒度の上書き（null ならテナントの値を使う）
+  timeUnitMinutes Int?
+  rooms           Room[]
+  roles           Role[]
+  shifts          Shift[]
+  members         EventMember[]
 
+  @@unique([tenantId, slug])
   @@index([organizationId])
 }
 
@@ -49,10 +65,15 @@ model Room {
   event     Event  @relation(fields: [eventId], references: [id], onDelete: Cascade)
 }
 
+// シフト。必ずテナントに属し、イベントに紐づかない（eventId なし）ものは日常シフト
 model Shift {
   id              String    @id @default(uuid())
   organizationId  String
   organization    Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  tenantId        String
+  tenant          Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  eventId         String?
+  event           Event?    @relation(fields: [eventId], references: [id], onDelete: Cascade)
   // 団体を消したときに一緒に消えるよう Cascade（スタッフ・役割を消すと、そのシフトも消える）
   staff           Staff     @relation(fields: [staffId], references: [id], onDelete: Cascade)
   staffId         String
@@ -63,6 +84,7 @@ model Shift {
   status          ShiftStatus @default(draft)
 
   @@index([organizationId, status])
+  @@index([tenantId, eventId, status])
 }
 
 enum ShiftStatus {
@@ -70,12 +92,51 @@ enum ShiftStatus {
   confirmed
 }
 
-// 団体ごとに 1 つ
-model ShiftSetting {
-  id              String    @id @default(uuid())
-  organizationId  String    @unique
+// テナント（店舗にあたる単位）。URL は /o/<団体>/t/<slug>。団体を作ると 1 つ作られる
+model Tenant {
+  id              String       @id @default(uuid())
+  organizationId  String
   organization    Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  slug            String
+  name            String
+  // 時間粒度（分）。イベントで上書きできる
   timeUnitMinutes Int
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+  events          Event[]
+  roles           Role[]
+  shifts          Shift[]
+  members         TenantMember[]
+
+  @@unique([organizationId, slug])
+}
+
+// テナントでの役割（店長など）。団体の役割より強いときだけ効く（強い方が勝つ）
+model TenantMember {
+  id        String     @id @default(uuid())
+  tenantId  String
+  tenant    Tenant     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  memberId  String
+  member    Member     @relation(fields: [memberId], references: [id], onDelete: Cascade)
+  role      MemberRole
+  createdAt DateTime   @default(now())
+
+  @@unique([tenantId, memberId])
+  @@index([memberId])
+}
+
+// イベントでの役割。団体・テナントの役割より強いときだけ効く（強い方が勝つ）
+model EventMember {
+  id        String     @id @default(uuid())
+  eventId   String
+  event     Event      @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  memberId  String
+  member    Member     @relation(fields: [memberId], references: [id], onDelete: Cascade)
+  role      MemberRole
+  createdAt DateTime   @default(now())
+
+  @@unique([eventId, memberId])
+  @@index([memberId])
 }
 
 // ---- 団体（複数の団体が同じインスタンスを使う）----
@@ -91,9 +152,9 @@ model Organization {
   invites      Invite[]
   staffs       Staff[]
   roles        Role[]
+  tenants      Tenant[]
   events       Event[]
   shifts       Shift[]
-  shiftSetting ShiftSetting?
 }
 
 enum MemberRole {
@@ -114,6 +175,8 @@ model Member {
   displayName    String
   createdAt      DateTime     @default(now())
   updatedAt      DateTime     @updatedAt
+  tenantRoles    TenantMember[]
+  eventRoles     EventMember[]
 
   @@unique([organizationId, userId])
   @@index([userId])

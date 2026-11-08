@@ -1,0 +1,18 @@
+import { createFileRoute } from "@tanstack/react-router";
+import {
+	createShiftHandler,
+	listShiftsHandler,
+} from "../../../../../../../server/shift-api.server";
+import { ShiftStatus } from "../../../../../../../types";
+
+type Params = { orgSlug: string; tenantSlug: string };
+
+// 日常シフトの確定シフト（GET）と、シフトの作成（POST）
+export const Route = createFileRoute("/api/o/$orgSlug/t/$tenantSlug/shifts/")({
+	server: {
+		handlers: {
+			GET: listShiftsHandler<Params>(ShiftStatus.confirmed),
+			POST: createShiftHandler<Params>(),
+		},
+	},
+});

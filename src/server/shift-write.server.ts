@@ -1,5 +1,6 @@
 // シフトの作成・更新・削除。入力を検証してから保存する。
-// どの操作も団体（organizationId）の中だけで行い、ほかの団体のスタッフ・役割・シフトには触れない。
+// どの操作もシフトの単位（団体・テナント・イベント）の中だけで行い、ほかの単位のスタッフ・役割・シフトには触れない。
+// 日常シフト（eventId なし）にはテナントの役割、イベントのシフトにはそのイベントの役割しか使えない。
 // API（server route）と server function の両方から使うので、結果は HTTP に依存しない形で返す
 import { z } from "zod";
 import { can, type MemberRole } from "../lib/org/permissions";
@@ -7,9 +8,13 @@ import { isPrismaError, PRISMA_ERROR } from "../lib/prisma-errors";
 import { prisma } from "../lib/prisma.server";
 import { type Shift, ShiftStatus } from "../types";
 import { shiftInputSchema, validateShiftTimeRange } from "./shift.schema";
+import type { ShiftScopeIds } from "./shifts.server";
 
-/** 書き込みをする人の団体と役割（requireOrgAccess で確かめたもの） */
-export type ShiftWriteAccess = { organizationId: string; role: MemberRole };
+/** 書き込みをする単位と、その単位での役割・時間粒度（requireScopeAccess で確かめたもの） */
+export type ShiftWriteAccess = ShiftScopeIds & {
+	role: MemberRole;
+	timeUnitMinutes: number;
+};
 
 export type ShiftWriteError = {
 	ok: false;
@@ -30,6 +35,8 @@ const fail = (
 
 const notFound = () =>
 	fail(404, "Shift not found", { errors: ["シフトが見つかりません"] });
+const forbiddenEdit = () =>
+	fail(403, "Forbidden", { errors: ["シフトを編集する権限がありません"] });
 const forbiddenConfirm = () =>
 	fail(403, "Forbidden", { errors: ["確定したシフトを扱う権限がありません"] });
 
@@ -38,6 +45,14 @@ const toWriteError = (error: unknown): ShiftWriteError => {
 	if (isPrismaError(error, PRISMA_ERROR.notFound)) return notFound();
 	throw error;
 };
+
+/** この単位のシフトだけを探す条件 */
+const inScope = (access: ShiftScopeIds, id: string) => ({
+	id,
+	organizationId: access.organizationId,
+	tenantId: access.tenantId,
+	eventId: access.eventId,
+});
 
 /**
  * 入力を検証してシフトを保存する。id があれば更新、なければ作成。
@@ -48,11 +63,7 @@ export const saveShift = async (
 	body: unknown,
 	id?: string,
 ): Promise<ShiftWriteResult> => {
-	if (!can(access.role, "shift.edit")) {
-		return fail(403, "Forbidden", {
-			errors: ["シフトを編集する権限がありません"],
-		});
-	}
+	if (!can(access.role, "shift.edit")) return forbiddenEdit();
 	const parsed = shiftInputSchema.safeParse(body);
 	if (!parsed.success) {
 		return fail(400, "Invalid shift", {
@@ -63,19 +74,14 @@ export const saveShift = async (
 	const input = parsed.data;
 	const canConfirm = can(access.role, "shift.confirm");
 	// 確定にするかは、サーバーが権限で決める
-	if (input.status === ShiftStatus.confirmed && !canConfirm)
+	if (input.status === ShiftStatus.confirmed && !canConfirm) {
 		return forbiddenConfirm();
-
-	const { organizationId } = access;
-	const setting = await prisma.shiftSetting.findUnique({
-		where: { organizationId },
-	});
-	if (!setting) return fail(409, "Shift setting is not configured");
+	}
 
 	const ruleErrors = validateShiftTimeRange(
 		input.timeRange.start,
 		input.timeRange.end,
-		setting.timeUnitMinutes,
+		access.timeUnitMinutes,
 	);
 	if (ruleErrors.length > 0) {
 		return fail(400, "Invalid time range", {
@@ -84,10 +90,14 @@ export const saveShift = async (
 		});
 	}
 
-	// スタッフと役割が、この団体のものかを確かめる（ほかの団体の ID を混ぜられないように）
+	// スタッフは団体のもの、役割はこの単位（日常シフトならテナント、イベントならそのイベント）のものかを確かめる
+	// （ほかの団体・テナント・イベントの ID を混ぜられないように）
+	const { organizationId, tenantId, eventId } = access;
 	const [staffCount, roleCount] = await Promise.all([
 		prisma.staff.count({ where: { id: input.staffId, organizationId } }),
-		prisma.role.count({ where: { id: input.roleId, organizationId } }),
+		prisma.role.count({
+			where: { id: input.roleId, organizationId, tenantId, eventId },
+		}),
 	]);
 	if (staffCount === 0 || roleCount === 0) {
 		return fail(400, "Staff or role does not exist", {
@@ -109,7 +119,7 @@ export const saveShift = async (
 	try {
 		if (id) {
 			const existing = await prisma.shift.findFirst({
-				where: { id, organizationId },
+				where: inScope(access, id),
 				select: { status: true },
 			});
 			if (!existing) return notFound();
@@ -120,7 +130,7 @@ export const saveShift = async (
 			return { ok: true, shift: shift as unknown as Shift };
 		}
 		const shift = await prisma.shift.create({
-			data: { ...data, organizationId },
+			data: { ...data, organizationId, tenantId, eventId },
 		});
 		return { ok: true, shift: shift as unknown as Shift };
 	} catch (error) {
@@ -133,13 +143,9 @@ export const removeShift = async (
 	access: ShiftWriteAccess,
 	id: string,
 ): Promise<ShiftWriteResult> => {
-	if (!can(access.role, "shift.edit")) {
-		return fail(403, "Forbidden", {
-			errors: ["シフトを編集する権限がありません"],
-		});
-	}
+	if (!can(access.role, "shift.edit")) return forbiddenEdit();
 	const existing = await prisma.shift.findFirst({
-		where: { id, organizationId: access.organizationId },
+		where: inScope(access, id),
 		select: { status: true },
 	});
 	if (!existing) return notFound();
