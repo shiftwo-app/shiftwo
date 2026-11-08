@@ -12,14 +12,16 @@ import { isPrismaError, PRISMA_ERROR } from "../lib/prisma-errors";
 import { prisma } from "../lib/prisma.server";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
-/** 新しい団体の時間粒度の既定（分） */
+/** 新しいテナントの時間粒度の既定（分） */
 export const DEFAULT_TIME_UNIT_MINUTES = 15;
+/** 団体を作ったときに 1 つ作るテナントの URL 名 */
+export const DEFAULT_TENANT_SLUG = "main";
 
 export type CreateOrganizationResult =
 	| { ok: true; slug: string }
 	| { ok: false; errors: string[] };
 
-/** 団体を作り、作った人をオーナーにする。時間粒度の設定も作る */
+/** 団体を作り、作った人をオーナーにする。テナントも 1 つ作る（店舗が 1 つなら、そのまま使える） */
 export const createOrganization = async (input: {
 	userId: string;
 	name: string;
@@ -38,8 +40,12 @@ export const createOrganization = async (input: {
 						displayName: input.displayName,
 					},
 				},
-				shiftSetting: {
-					create: { timeUnitMinutes: DEFAULT_TIME_UNIT_MINUTES },
+				tenants: {
+					create: {
+						slug: DEFAULT_TENANT_SLUG,
+						name: input.name,
+						timeUnitMinutes: DEFAULT_TIME_UNIT_MINUTES,
+					},
 				},
 			},
 			select: { slug: true },

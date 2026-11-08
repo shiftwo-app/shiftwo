@@ -1,3 +1,4 @@
+// 開発用の初期データ。pnpm prisma:seed（prisma db seed）で入れる。団体ごと消してから作り直す
 import { PrismaPg } from "@prisma/adapter-pg";
 import {
 	PrismaClient,
@@ -30,8 +31,15 @@ const upsertDemoUser = (email: string, name: string) =>
 		},
 	});
 
+/** 日本時間の日時 */
+const jst = (dateTime: string) => new Date(`${dateTime}:00+09:00`);
+const range = (date: string, start: string, end: string) => ({
+	start: jst(`${date}T${start}`),
+	end: jst(`${date}T${end}`),
+});
+
 async function main() {
-	// 既存データのクリーンアップ（団体を消すと、団体のスタッフ・役割・イベント・シフト・設定・メンバー・招待コードも消える）
+	// 既存データのクリーンアップ（団体を消すと、テナント・イベント・スタッフ・役割・シフト・メンバー・招待コードも消える）
 	await prisma.organization.deleteMany({});
 
 	const owner = await upsertDemoUser(DEMO_OWNER_EMAIL, "リーダー");
@@ -40,10 +48,11 @@ async function main() {
 		"別団体のオーナー",
 	);
 
+	// ---- 団体「デモ団体」：テナントが 2 つ（渋谷店・新宿店）。渋谷店にイベントが 1 つ ----
 	const org = await prisma.organization.create({
 		data: {
 			slug: "demo",
-			name: "WordCamp 2024 運営",
+			name: "デモ団体",
 			members: {
 				create: { userId: owner.id, role: "owner", displayName: "リーダー" },
 			},
@@ -51,7 +60,206 @@ async function main() {
 	});
 	const organizationId = org.id;
 
-	// 団体どうしのデータが混ざらないことを確かめるための、もう 1 つの団体（leader@example.com は所属しない）
+	const shibuya = await prisma.tenant.create({
+		data: {
+			organizationId,
+			slug: "shibuya",
+			name: "渋谷店",
+			timeUnitMinutes: 30,
+		},
+	});
+	const shinjuku = await prisma.tenant.create({
+		data: {
+			organizationId,
+			slug: "shinjuku",
+			name: "新宿店",
+			timeUnitMinutes: 30,
+		},
+	});
+
+	// スタッフは団体全体で共通（同じ人が複数のテナント・イベントに入れる）
+	const staffOf = (
+		name: string,
+		unavailableTimes: { start: Date; end: Date }[],
+	) =>
+		prisma.staff.create({ data: { organizationId, name, unavailableTimes } });
+	const yamada = await staffOf("山田太郎", [
+		range("2024-06-01", "09:00", "12:00"),
+	]);
+	const sato = await staffOf("佐藤花子", [
+		range("2024-06-02", "13:00", "18:00"),
+	]);
+	const suzuki = await staffOf("鈴木一郎", []);
+	const takahashi = await staffOf("高橋真理", [
+		range("2024-06-03", "10:00", "15:00"),
+	]);
+
+	// 日常シフトの役割（テナントごと）
+	const dailyRole = (
+		tenantId: string,
+		name: string,
+		color: string,
+		requiredStaffCount: number,
+	) =>
+		prisma.role.create({
+			data: { organizationId, tenantId, name, color, requiredStaffCount },
+		});
+	const register = await dailyRole(shibuya.id, "レジ", "#F59E0B", 2);
+	const stocking = await dailyRole(shibuya.id, "品出し", "#10B981", 1);
+	const shinjukuRegister = await dailyRole(shinjuku.id, "レジ", "#F59E0B", 1);
+
+	// 日常シフト（イベントに紐づかないシフト）
+	const dailyShift = (
+		tenantId: string,
+		staffId: string,
+		roleId: string,
+		timeRange: { start: Date; end: Date },
+		status: ShiftStatus,
+	) => ({
+		organizationId,
+		tenantId,
+		staffId,
+		roleId,
+		timeRange,
+		isPreferredRole: true,
+		status,
+	});
+	await prisma.shift.createMany({
+		data: [
+			dailyShift(
+				shibuya.id,
+				yamada.id,
+				register.id,
+				range("2024-06-01", "10:00", "15:00"),
+				ShiftStatus.confirmed,
+			),
+			dailyShift(
+				shibuya.id,
+				suzuki.id,
+				stocking.id,
+				range("2024-06-01", "09:00", "12:00"),
+				ShiftStatus.confirmed,
+			),
+			dailyShift(
+				shibuya.id,
+				takahashi.id,
+				register.id,
+				range("2024-06-01", "14:00", "20:00"),
+				ShiftStatus.draft,
+			),
+			dailyShift(
+				shinjuku.id,
+				sato.id,
+				shinjukuRegister.id,
+				range("2024-06-01", "11:00", "17:00"),
+				ShiftStatus.confirmed,
+			),
+		],
+	});
+
+	// ---- イベント（単発運用）：渋谷店の「WordCamp 2024」。役割はイベントごとで、時間粒度は 15 分に上書き ----
+	const event = await prisma.event.create({
+		data: {
+			organizationId,
+			tenantId: shibuya.id,
+			slug: "wordcamp-2024",
+			name: "WordCamp 2024",
+			timeUnitMinutes: 15,
+		},
+	});
+	await prisma.room.createMany({
+		data: [
+			{
+				name: "メインホール",
+				eventId: event.id,
+				timeTable: [
+					range("2024-06-01", "09:00", "18:00"),
+					range("2024-06-02", "09:00", "18:00"),
+				],
+			},
+			{
+				name: "サブホール",
+				eventId: event.id,
+				timeTable: [
+					range("2024-06-01", "10:00", "17:00"),
+					range("2024-06-02", "10:00", "17:00"),
+				],
+			},
+		],
+	});
+	const eventRole = (name: string, color: string, requiredStaffCount: number) =>
+		prisma.role.create({
+			data: {
+				organizationId,
+				tenantId: shibuya.id,
+				eventId: event.id,
+				name,
+				color,
+				requiredStaffCount,
+			},
+		});
+	const admin = await eventRole("管理者", "#FF5733", 1);
+	const moderator = await eventRole("司会進行", "#33FFF6", 2);
+	await eventRole("タイムキーパー", "#33FF57", 3);
+	await eventRole("チェッカー", "#3357FF", 4);
+	const reception = await eventRole("受付", "#3357FF", 4);
+	await prisma.staff.update({
+		where: { id: yamada.id },
+		data: {
+			preferredRoles: { connect: [{ id: admin.id }, { id: reception.id }] },
+		},
+	});
+	await prisma.staff.update({
+		where: { id: sato.id },
+		data: { preferredRoles: { connect: [{ id: reception.id }] } },
+	});
+
+	const eventShift = (
+		staffId: string,
+		roleId: string,
+		timeRange: { start: Date; end: Date },
+		status: ShiftStatus,
+	) => ({
+		organizationId,
+		tenantId: shibuya.id,
+		eventId: event.id,
+		staffId,
+		roleId,
+		timeRange,
+		isPreferredRole: true,
+		status,
+	});
+	await prisma.shift.createMany({
+		data: [
+			eventShift(
+				yamada.id,
+				reception.id,
+				range("2024-06-01", "13:00", "18:00"),
+				ShiftStatus.confirmed,
+			),
+			eventShift(
+				sato.id,
+				reception.id,
+				range("2024-06-01", "09:00", "14:00"),
+				ShiftStatus.confirmed,
+			),
+			eventShift(
+				suzuki.id,
+				moderator.id,
+				range("2024-06-02", "09:00", "18:00"),
+				ShiftStatus.draft,
+			),
+			eventShift(
+				takahashi.id,
+				moderator.id,
+				range("2024-06-01", "15:00", "18:00"),
+				ShiftStatus.draft,
+			),
+		],
+	});
+
+	// ---- 団体どうしのデータが混ざらないことを確かめるための、もう 1 つの団体（leader@example.com は所属しない）。
+	// テナントは 1 つなので、テナントを選ぶ手順は出ない ----
 	const otherOrg = await prisma.organization.create({
 		data: {
 			slug: "other",
@@ -63,227 +271,20 @@ async function main() {
 					displayName: "別団体のオーナー",
 				},
 			},
-			shiftSetting: { create: { timeUnitMinutes: 15 } },
-			roles: {
-				create: {
-					name: "別団体の役割",
-					color: "#999999",
-					requiredStaffCount: 1,
-				},
+			tenants: {
+				create: { slug: "main", name: "別の団体", timeUnitMinutes: 15 },
 			},
 		},
+		include: { tenants: true },
 	});
-
-	await prisma.role.createMany({
-		data: [
-			{
-				organizationId,
-				name: "管理者",
-				color: "#FF5733",
-				requiredStaffCount: 1,
-			},
-			{
-				organizationId,
-				name: "司会進行",
-				color: "#33FFF6",
-				requiredStaffCount: 2,
-			},
-			{
-				organizationId,
-				name: "タイムキーパー",
-				color: "#33FF57",
-				requiredStaffCount: 3,
-			},
-			{
-				organizationId,
-				name: "チェッカー",
-				color: "#3357FF",
-				requiredStaffCount: 4,
-			},
-			{
-				organizationId,
-				name: "受付",
-				color: "#3357FF",
-				requiredStaffCount: 4,
-			},
-			{
-				organizationId,
-				name: "会場誘導",
-				color: "#3357FF",
-				requiredStaffCount: 4,
-			},
-			{
-				organizationId,
-				name: "配信・収録補助",
-				color: "#3357FF",
-				requiredStaffCount: 4,
-			},
-		],
-	});
-
-	const adminRole = await prisma.role.findFirst({
-		where: { organizationId, name: "管理者" },
-	});
-
-	const receptionistRole = await prisma.role.findFirst({
-		where: { organizationId, name: "受付" },
-	});
-
-	const moderatorRole = await prisma.role.findFirst({
-		where: { organizationId, name: "司会進行" },
-	});
-
-	if (!adminRole || !receptionistRole || !moderatorRole) {
-		throw new Error("管理者または受付、司会進行のロールが見つかりません");
-	}
-
-	const staff1 = await prisma.staff.create({
+	await prisma.role.create({
 		data: {
-			organizationId,
-			name: "山田太郎",
-			preferredRoles: {
-				connect: [{ id: adminRole.id }, { id: receptionistRole.id }],
-			},
-			unavailableTimes: [
-				{
-					start: new Date("2024-06-01T09:00:00+09:00"),
-					end: new Date("2024-06-01T12:00:00+09:00"),
-				},
-			],
+			organizationId: otherOrg.id,
+			tenantId: otherOrg.tenants[0].id,
+			name: "別団体の役割",
+			color: "#999999",
+			requiredStaffCount: 1,
 		},
-	});
-
-	const staff2 = await prisma.staff.create({
-		data: {
-			organizationId,
-			name: "佐藤花子",
-			preferredRoles: {
-				connect: [{ id: receptionistRole.id }],
-			},
-			unavailableTimes: [
-				{
-					start: new Date("2024-06-02T13:00:00+09:00"),
-					end: new Date("2024-06-02T18:00:00+09:00"),
-				},
-			],
-		},
-	});
-
-	const staff3 = await prisma.staff.create({
-		data: {
-			organizationId,
-			name: "鈴木一郎",
-			preferredRoles: {
-				connect: [{ id: moderatorRole.id }],
-			},
-			unavailableTimes: [],
-		},
-	});
-
-	const staff4 = await prisma.staff.create({
-		data: {
-			organizationId,
-			name: "高橋真理",
-			preferredRoles: {
-				connect: [{ id: adminRole.id }, { id: moderatorRole.id }],
-			},
-			unavailableTimes: [
-				{
-					start: new Date("2024-06-03T10:00:00+09:00"),
-					end: new Date("2024-06-03T15:00:00+09:00"),
-				},
-			],
-		},
-	});
-
-	const event = await prisma.event.create({
-		data: { organizationId, name: "WordCamp2024" },
-	});
-
-	await prisma.room.createMany({
-		data: [
-			{
-				name: "メインホール",
-				eventId: event.id,
-				timeTable: [
-					{
-						start: new Date("2024-06-01T09:00:00+09:00"),
-						end: new Date("2024-06-01T18:00:00+09:00"),
-					},
-					{
-						start: new Date("2024-06-02T09:00:00+09:00"),
-						end: new Date("2024-06-02T18:00:00+09:00"),
-					},
-				],
-			},
-			{
-				name: "サブホール",
-				eventId: event.id,
-				timeTable: [
-					{
-						start: new Date("2024-06-01T10:00:00+09:00"),
-						end: new Date("2024-06-01T17:00:00+09:00"),
-					},
-					{
-						start: new Date("2024-06-02T10:00:00+09:00"),
-						end: new Date("2024-06-02T17:00:00+09:00"),
-					},
-				],
-			},
-		],
-	});
-
-	await prisma.shift.createMany({
-		data: [
-			{
-				organizationId,
-				staffId: staff1.id,
-				roleId: receptionistRole.id,
-				timeRange: {
-					start: new Date("2024-06-01T13:00:00+09:00"),
-					end: new Date("2024-06-01T18:00:00+09:00"),
-				},
-				isPreferredRole: true,
-				status: ShiftStatus.confirmed,
-			},
-			{
-				organizationId,
-				staffId: staff2.id,
-				roleId: receptionistRole.id,
-				timeRange: {
-					start: new Date("2024-06-01T09:00:00+09:00"),
-					end: new Date("2024-06-01T14:00:00+09:00"),
-				},
-				isPreferredRole: true,
-				status: ShiftStatus.confirmed,
-			},
-			{
-				organizationId,
-				staffId: staff3.id,
-				roleId: moderatorRole.id,
-				timeRange: {
-					start: new Date("2024-06-02T09:00:00+09:00"),
-					end: new Date("2024-06-02T18:00:00+09:00"),
-				},
-				isPreferredRole: true,
-				status: ShiftStatus.draft,
-			},
-			{
-				organizationId,
-				staffId: staff4.id,
-				roleId: moderatorRole.id,
-				timeRange: {
-					start: new Date("2024-06-01T15:00:00+09:00"),
-					end: new Date("2024-06-01T18:00:00+09:00"),
-				},
-				isPreferredRole: true,
-				status: ShiftStatus.draft,
-			},
-		],
-	});
-
-	await prisma.shiftSetting.create({
-		data: { organizationId, timeUnitMinutes: 30 },
 	});
 
 	console.log(

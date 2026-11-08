@@ -2,7 +2,7 @@ import type {
 	Staff as PrismaStaff,
 	Role as PrismaRole,
 	Shift as PrismaShift,
-	ShiftSetting as PrismaShiftSetting,
+	Tenant as PrismaTenant,
 	Event as PrismaEvent,
 	Room as PrismaRoom,
 } from "../generated/prisma-postgresql/client";
@@ -16,7 +16,7 @@ export enum ShiftStatus {
 	draft = "draft",
 	confirmed = "confirmed",
 }
-export type ShiftSetting = PrismaShiftSetting;
+export type Tenant = PrismaTenant;
 export type Event = PrismaEvent;
 export type Room = PrismaRoom;
 

@@ -7,6 +7,7 @@ import {
 	type ShiftMutationResult,
 	updateShift,
 } from "../server/shifts.functions";
+import type { ShiftScopeParams } from "../lib/shift-scope";
 import type { Role, Shift, ShiftStatus, Staff } from "../types";
 import ShiftForm, { type ShiftFormValue } from "./ShiftForm";
 import ShiftTimeline from "./ShiftTimeline";
@@ -46,7 +47,7 @@ const ShiftBoard = ({
 	staffs,
 	timeUnitMinutes,
 	newShiftStatus,
-	orgSlug,
+	scope,
 	canEdit,
 }: {
 	shifts: Shift[];
@@ -55,8 +56,8 @@ const ShiftBoard = ({
 	timeUnitMinutes: number;
 	/** この画面で作るシフトの status */
 	newShiftStatus: ShiftStatus;
-	/** 団体の URL 名。保存はこの団体に対して行う */
-	orgSlug: string;
+	/** シフトの単位（団体・テナント・イベント）。保存はこの単位に対して行う */
+	scope: ShiftScopeParams;
 	/** 編集できる役割か（できなければ編集モードを出さない。守りはサーバー側） */
 	canEdit: boolean;
 }) => {
@@ -100,7 +101,7 @@ const ShiftBoard = ({
 			() =>
 				update({
 					data: {
-						orgSlug,
+						scope,
 						id: shift.id,
 						input: toPayload(shift, { start, end }),
 					},
@@ -116,7 +117,7 @@ const ShiftBoard = ({
 
 	const handleDelete = (shift: Shift) => {
 		void run(
-			() => remove({ data: { orgSlug, id: shift.id } }),
+			() => remove({ data: { scope, id: shift.id } }),
 			() =>
 				setLastAction({
 					type: "delete",
@@ -130,7 +131,7 @@ const ShiftBoard = ({
 		run(
 			() =>
 				create({
-					data: { orgSlug, input: { ...value, status: newShiftStatus } },
+					data: { scope, input: { ...value, status: newShiftStatus } },
 				}),
 			(shift) => setLastAction({ type: "create", id: shift.id, label: "作成" }),
 		);
@@ -143,17 +144,17 @@ const ShiftBoard = ({
 				void run(
 					() =>
 						update({
-							data: { orgSlug, id: lastAction.id, input: lastAction.before },
+							data: { scope, id: lastAction.id, input: lastAction.before },
 						}),
 					clear,
 				);
 				break;
 			case "create":
-				void run(() => remove({ data: { orgSlug, id: lastAction.id } }), clear);
+				void run(() => remove({ data: { scope, id: lastAction.id } }), clear);
 				break;
 			case "delete":
 				void run(
-					() => create({ data: { orgSlug, input: lastAction.before } }),
+					() => create({ data: { scope, input: lastAction.before } }),
 					clear,
 				);
 				break;

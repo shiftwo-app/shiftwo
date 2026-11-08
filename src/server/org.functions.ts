@@ -86,12 +86,19 @@ export const getOrganization = createServerFn({ method: "GET" })
 	.handler(async ({ data, context }) => {
 		const membership = await findMembership(context.user.id, data.orgSlug);
 		if (!membership) return null;
+		const tenants = await prisma.tenant.findMany({
+			where: { organizationId: membership.organization.id },
+			select: { slug: true, name: true },
+			orderBy: { createdAt: "asc" },
+		});
 		return {
 			organization: {
 				slug: membership.organization.slug,
 				name: membership.organization.name,
 			},
 			member: membership.member,
+			// テナントが 1 つなら、テナントを選ぶ手順は出さない
+			tenants,
 		};
 	});
 
