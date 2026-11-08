@@ -19,6 +19,8 @@ describe.skipIf(!hasDatabase)("MCP の道具の権限（DB）", async () => {
 	const org = await import("./org.server");
 	const { createShiftwoMcpServer } = await import("./mcp-tools.server");
 	const { withMcpAuth } = await import("./mcp-auth.server");
+	const { auth } = await import("../lib/auth.server");
+	const { mcpResourceUrl } = await import("../lib/mcp-config");
 
 	const suffix = crypto.randomUUID().slice(0, 8);
 	const userIds: string[] = [];
@@ -266,5 +268,58 @@ describe.skipIf(!hasDatabase)("MCP の道具の権限（DB）", async () => {
 			}),
 		);
 		expect(forged.status).toBe(401);
+	});
+	it("今の同意で狭めたスコープは、前に出したトークンでも使えない", async () => {
+		const clientId = `mcp-test-${suffix}`;
+		await prisma.oauthClient.create({
+			data: {
+				id: crypto.randomUUID(),
+				clientId,
+				name: "test",
+				redirectUris: ["http://127.0.0.1:9999/callback"],
+			},
+		});
+		// 書ける範囲で出したトークン
+		const { token } = await auth.api.signJWT({
+			body: {
+				payload: {
+					// OAuth で出すトークンと同じ発行者（Better Auth の baseURL）
+					iss: (await auth.$context).baseURL,
+					sub: owner,
+					azp: clientId,
+					aud: mcpResourceUrl(process.env.BETTER_AUTH_URL),
+					scope: `${MCP_SCOPE_READ} ${MCP_SCOPE_WRITE}`,
+				},
+			},
+		});
+		let seen: Set<string> | null = null;
+		const guarded = withMcpAuth(async (_request, principal) => {
+			seen = principal.scopes;
+			return new Response("ok");
+		});
+		const call = () =>
+			guarded(
+				new Request("http://localhost:3000/api/mcp", {
+					method: "POST",
+					headers: { authorization: `Bearer ${token}` },
+				}),
+			);
+
+		// 同意がなければ（つながりを切ったあと）受け付けない
+		expect((await call()).status).toBe(401);
+
+		// つなぎ直して「見るだけ」に同意した
+		await prisma.oauthConsent.create({
+			data: {
+				id: crypto.randomUUID(),
+				clientId,
+				userId: owner,
+				scopes: [MCP_SCOPE_READ],
+			},
+		});
+		const accepted = await call();
+		expect(accepted.status, await accepted.clone().text()).toBe(200);
+		expect(seen && [...seen!]).toEqual([MCP_SCOPE_READ]);
+		await prisma.oauthClient.delete({ where: { clientId } });
 	});
 });

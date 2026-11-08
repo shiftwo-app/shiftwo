@@ -112,8 +112,15 @@ export const disconnectApp = async (userId: string, clientId: string) => {
 	]);
 };
 
-/** このアプリに、この人の同意が今も残っているか（アプリが止められていないか） */
-export const hasActiveConsent = async (userId: string, clientId: string) => {
+/**
+ * このアプリに、この人が今も同意しているスコープ。同意がない（つながりを切った）・アプリが止められているなら null。
+ * トークンのスコープは、出したときの同意のもの。あとで同意し直して範囲を狭めたときに古いトークンで広い範囲を使えないよう、
+ * /api/mcp はトークンのスコープとこれの重なりだけを認める
+ */
+export const findActiveConsentScopes = async (
+	userId: string,
+	clientId: string,
+): Promise<string[] | null> => {
 	const consent = await prisma.oauthConsent.findFirst({
 		// disabled は NULL のこともある（SQL の <> true は NULL を外してしまうので、OR で書く）
 		where: {
@@ -121,7 +128,7 @@ export const hasActiveConsent = async (userId: string, clientId: string) => {
 			clientId,
 			client: { OR: [{ disabled: false }, { disabled: null }] },
 		},
-		select: { id: true },
+		select: { scopes: true },
 	});
-	return consent !== null;
+	return consent ? readStringList(consent.scopes) : null;
 };

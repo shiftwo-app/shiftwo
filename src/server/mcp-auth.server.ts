@@ -12,7 +12,7 @@ import {
 } from "jose";
 import { auth } from "../lib/auth.server";
 import { MCP_SCOPE_READ, mcpResourceUrl } from "../lib/mcp-config";
-import { hasActiveConsent } from "./oauth-apps.server";
+import { findActiveConsentScopes } from "./oauth-apps.server";
 
 /** 確かめたトークンの持ち主と、許された範囲 */
 export type McpPrincipal = {
@@ -67,17 +67,20 @@ const verify = async (request: Request): Promise<McpPrincipal> => {
 	const confirmation = payload.cnf as { jkt?: unknown } | undefined;
 	if (confirmation?.jkt)
 		throw unauthorized("DPoP-bound tokens are not supported");
-	const scopes = new Set<string>(
-		typeof payload.scope === "string" ? payload.scope.split(" ") : [],
-	);
-	if (!scopes.has(MCP_SCOPE_READ)) {
-		throw unauthorized("token does not grant shiftwo:read");
-	}
 	const userId = String(payload.sub);
 	const clientId = String(payload.azp);
 	// アカウントの設定でつながりを切った（同意を消した）アプリのトークンは、期限の前でも受け付けない
-	if (!(await hasActiveConsent(userId, clientId))) {
-		throw unauthorized("the user has disconnected this app");
+	const consented = await findActiveConsentScopes(userId, clientId);
+	if (!consented) throw unauthorized("the user has disconnected this app");
+	// 認めるのは、トークンのスコープと、今の同意のスコープの重なりだけ
+	// （つなぎ直して「見るだけ」にしたあと、前の書けるトークンで書けないように）
+	const tokenScopes =
+		typeof payload.scope === "string" ? payload.scope.split(" ") : [];
+	const scopes = new Set(
+		tokenScopes.filter((scope) => consented.includes(scope)),
+	);
+	if (!scopes.has(MCP_SCOPE_READ)) {
+		throw unauthorized("token does not grant shiftwo:read");
 	}
 	return {
 		userId,
