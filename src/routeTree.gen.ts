@@ -14,13 +14,18 @@ import { Route as LoginRouteImport } from './routes/login'
 import { Route as SignupRouteImport } from './routes/signup'
 import { Route as WelcomeRouteImport } from './routes/welcome'
 import { Route as AuthedIndexRouteImport } from './routes/_authed/index'
-import { Route as AuthedDraftRouteImport } from './routes/_authed/draft'
-import { Route as ApiStaffRouteImport } from './routes/api/staff'
+import { Route as AuthedJoinRouteImport } from './routes/_authed/join'
 import { Route as LoginVerifyRouteImport } from './routes/login_.verify'
+import { Route as AuthedOOrgSlugRouteImport } from './routes/_authed/o/$orgSlug'
+import { Route as AuthedOrgsNewRouteImport } from './routes/_authed/orgs/new'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
-import { Route as ApiShiftsIndexRouteImport } from './routes/api/shifts/index'
-import { Route as ApiShiftsIdRouteImport } from './routes/api/shifts/$id'
-import { Route as ApiShiftsDraftRouteImport } from './routes/api/shifts/draft'
+import { Route as AuthedOOrgSlugIndexRouteImport } from './routes/_authed/o/$orgSlug/index'
+import { Route as AuthedOOrgSlugDraftRouteImport } from './routes/_authed/o/$orgSlug/draft'
+import { Route as AuthedOOrgSlugSettingsRouteImport } from './routes/_authed/o/$orgSlug/settings'
+import { Route as ApiOOrgSlugStaffRouteImport } from './routes/api/o/$orgSlug/staff'
+import { Route as ApiOOrgSlugShiftsIndexRouteImport } from './routes/api/o/$orgSlug/shifts/index'
+import { Route as ApiOOrgSlugShiftsIdRouteImport } from './routes/api/o/$orgSlug/shifts/$id'
+import { Route as ApiOOrgSlugShiftsDraftRouteImport } from './routes/api/o/$orgSlug/shifts/draft'
 
 const AuthedRoute = AuthedRouteImport.update({
   id: '/_authed',
@@ -46,39 +51,64 @@ const AuthedIndexRoute = AuthedIndexRouteImport.update({
   path: '/',
   getParentRoute: () => AuthedRoute,
 } as any)
-const AuthedDraftRoute = AuthedDraftRouteImport.update({
-  id: '/draft',
-  path: '/draft',
+const AuthedJoinRoute = AuthedJoinRouteImport.update({
+  id: '/join',
+  path: '/join',
   getParentRoute: () => AuthedRoute,
-} as any)
-const ApiStaffRoute = ApiStaffRouteImport.update({
-  id: '/api/staff',
-  path: '/api/staff',
-  getParentRoute: () => rootRouteImport,
 } as any)
 const LoginVerifyRoute = LoginVerifyRouteImport.update({
   id: '/login_/verify',
   path: '/login/verify',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AuthedOOrgSlugRoute = AuthedOOrgSlugRouteImport.update({
+  id: '/o/$orgSlug',
+  path: '/o/$orgSlug',
+  getParentRoute: () => AuthedRoute,
+} as any)
+const AuthedOrgsNewRoute = AuthedOrgsNewRouteImport.update({
+  id: '/orgs/new',
+  path: '/orgs/new',
+  getParentRoute: () => AuthedRoute,
+} as any)
 const ApiAuthSplatRoute = ApiAuthSplatRouteImport.update({
   id: '/api/auth/$',
   path: '/api/auth/$',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ApiShiftsIndexRoute = ApiShiftsIndexRouteImport.update({
-  id: '/api/shifts/',
-  path: '/api/shifts/',
+const AuthedOOrgSlugIndexRoute = AuthedOOrgSlugIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => AuthedOOrgSlugRoute,
+} as any)
+const AuthedOOrgSlugDraftRoute = AuthedOOrgSlugDraftRouteImport.update({
+  id: '/draft',
+  path: '/draft',
+  getParentRoute: () => AuthedOOrgSlugRoute,
+} as any)
+const AuthedOOrgSlugSettingsRoute = AuthedOOrgSlugSettingsRouteImport.update({
+  id: '/settings',
+  path: '/settings',
+  getParentRoute: () => AuthedOOrgSlugRoute,
+} as any)
+const ApiOOrgSlugStaffRoute = ApiOOrgSlugStaffRouteImport.update({
+  id: '/api/o/$orgSlug/staff',
+  path: '/api/o/$orgSlug/staff',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ApiShiftsIdRoute = ApiShiftsIdRouteImport.update({
-  id: '/api/shifts/$id',
-  path: '/api/shifts/$id',
+const ApiOOrgSlugShiftsIndexRoute = ApiOOrgSlugShiftsIndexRouteImport.update({
+  id: '/api/o/$orgSlug/shifts/',
+  path: '/api/o/$orgSlug/shifts/',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ApiShiftsDraftRoute = ApiShiftsDraftRouteImport.update({
-  id: '/api/shifts/draft',
-  path: '/api/shifts/draft',
+const ApiOOrgSlugShiftsIdRoute = ApiOOrgSlugShiftsIdRouteImport.update({
+  id: '/api/o/$orgSlug/shifts/$id',
+  path: '/api/o/$orgSlug/shifts/$id',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiOOrgSlugShiftsDraftRoute = ApiOOrgSlugShiftsDraftRouteImport.update({
+  id: '/api/o/$orgSlug/shifts/draft',
+  path: '/api/o/$orgSlug/shifts/draft',
   getParentRoute: () => rootRouteImport,
 } as any)
 
@@ -87,26 +117,35 @@ export interface FileRoutesByFullPath {
   '/login': typeof LoginRoute
   '/signup': typeof SignupRoute
   '/welcome': typeof WelcomeRoute
-  '/draft': typeof AuthedDraftRoute
-  '/api/staff': typeof ApiStaffRoute
+  '/join': typeof AuthedJoinRoute
   '/login/verify': typeof LoginVerifyRoute
+  '/o/$orgSlug': typeof AuthedOOrgSlugRouteWithChildren
+  '/orgs/new': typeof AuthedOrgsNewRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
-  '/api/shifts/$id': typeof ApiShiftsIdRoute
-  '/api/shifts/draft': typeof ApiShiftsDraftRoute
-  '/api/shifts/': typeof ApiShiftsIndexRoute
+  '/o/$orgSlug/draft': typeof AuthedOOrgSlugDraftRoute
+  '/o/$orgSlug/settings': typeof AuthedOOrgSlugSettingsRoute
+  '/api/o/$orgSlug/staff': typeof ApiOOrgSlugStaffRoute
+  '/o/$orgSlug/': typeof AuthedOOrgSlugIndexRoute
+  '/api/o/$orgSlug/shifts/$id': typeof ApiOOrgSlugShiftsIdRoute
+  '/api/o/$orgSlug/shifts/draft': typeof ApiOOrgSlugShiftsDraftRoute
+  '/api/o/$orgSlug/shifts/': typeof ApiOOrgSlugShiftsIndexRoute
 }
 export interface FileRoutesByTo {
   '/login': typeof LoginRoute
   '/signup': typeof SignupRoute
   '/welcome': typeof WelcomeRoute
-  '/draft': typeof AuthedDraftRoute
-  '/api/staff': typeof ApiStaffRoute
+  '/join': typeof AuthedJoinRoute
   '/login/verify': typeof LoginVerifyRoute
   '/': typeof AuthedIndexRoute
+  '/orgs/new': typeof AuthedOrgsNewRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
-  '/api/shifts/$id': typeof ApiShiftsIdRoute
-  '/api/shifts/draft': typeof ApiShiftsDraftRoute
-  '/api/shifts': typeof ApiShiftsIndexRoute
+  '/o/$orgSlug/draft': typeof AuthedOOrgSlugDraftRoute
+  '/o/$orgSlug/settings': typeof AuthedOOrgSlugSettingsRoute
+  '/api/o/$orgSlug/staff': typeof ApiOOrgSlugStaffRoute
+  '/o/$orgSlug': typeof AuthedOOrgSlugIndexRoute
+  '/api/o/$orgSlug/shifts/$id': typeof ApiOOrgSlugShiftsIdRoute
+  '/api/o/$orgSlug/shifts/draft': typeof ApiOOrgSlugShiftsDraftRoute
+  '/api/o/$orgSlug/shifts': typeof ApiOOrgSlugShiftsIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -114,14 +153,19 @@ export interface FileRoutesById {
   '/login': typeof LoginRoute
   '/signup': typeof SignupRoute
   '/welcome': typeof WelcomeRoute
-  '/_authed/draft': typeof AuthedDraftRoute
-  '/api/staff': typeof ApiStaffRoute
+  '/_authed/join': typeof AuthedJoinRoute
   '/login_/verify': typeof LoginVerifyRoute
   '/_authed/': typeof AuthedIndexRoute
+  '/_authed/o/$orgSlug': typeof AuthedOOrgSlugRouteWithChildren
+  '/_authed/orgs/new': typeof AuthedOrgsNewRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
-  '/api/shifts/$id': typeof ApiShiftsIdRoute
-  '/api/shifts/draft': typeof ApiShiftsDraftRoute
-  '/api/shifts/': typeof ApiShiftsIndexRoute
+  '/_authed/o/$orgSlug/draft': typeof AuthedOOrgSlugDraftRoute
+  '/_authed/o/$orgSlug/settings': typeof AuthedOOrgSlugSettingsRoute
+  '/api/o/$orgSlug/staff': typeof ApiOOrgSlugStaffRoute
+  '/_authed/o/$orgSlug/': typeof AuthedOOrgSlugIndexRoute
+  '/api/o/$orgSlug/shifts/$id': typeof ApiOOrgSlugShiftsIdRoute
+  '/api/o/$orgSlug/shifts/draft': typeof ApiOOrgSlugShiftsDraftRoute
+  '/api/o/$orgSlug/shifts/': typeof ApiOOrgSlugShiftsIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -130,40 +174,54 @@ export interface FileRouteTypes {
     | '/login'
     | '/signup'
     | '/welcome'
-    | '/draft'
-    | '/api/staff'
+    | '/join'
     | '/login/verify'
+    | '/o/$orgSlug'
+    | '/orgs/new'
     | '/api/auth/$'
-    | '/api/shifts/$id'
-    | '/api/shifts/draft'
-    | '/api/shifts/'
+    | '/o/$orgSlug/draft'
+    | '/o/$orgSlug/settings'
+    | '/api/o/$orgSlug/staff'
+    | '/o/$orgSlug/'
+    | '/api/o/$orgSlug/shifts/$id'
+    | '/api/o/$orgSlug/shifts/draft'
+    | '/api/o/$orgSlug/shifts/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/login'
     | '/signup'
     | '/welcome'
-    | '/draft'
-    | '/api/staff'
+    | '/join'
     | '/login/verify'
     | '/'
+    | '/orgs/new'
     | '/api/auth/$'
-    | '/api/shifts/$id'
-    | '/api/shifts/draft'
-    | '/api/shifts'
+    | '/o/$orgSlug/draft'
+    | '/o/$orgSlug/settings'
+    | '/api/o/$orgSlug/staff'
+    | '/o/$orgSlug'
+    | '/api/o/$orgSlug/shifts/$id'
+    | '/api/o/$orgSlug/shifts/draft'
+    | '/api/o/$orgSlug/shifts'
   id:
     | '__root__'
     | '/_authed'
     | '/login'
     | '/signup'
     | '/welcome'
-    | '/_authed/draft'
-    | '/api/staff'
+    | '/_authed/join'
     | '/login_/verify'
     | '/_authed/'
+    | '/_authed/o/$orgSlug'
+    | '/_authed/orgs/new'
     | '/api/auth/$'
-    | '/api/shifts/$id'
-    | '/api/shifts/draft'
-    | '/api/shifts/'
+    | '/_authed/o/$orgSlug/draft'
+    | '/_authed/o/$orgSlug/settings'
+    | '/api/o/$orgSlug/staff'
+    | '/_authed/o/$orgSlug/'
+    | '/api/o/$orgSlug/shifts/$id'
+    | '/api/o/$orgSlug/shifts/draft'
+    | '/api/o/$orgSlug/shifts/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -171,12 +229,12 @@ export interface RootRouteChildren {
   LoginRoute: typeof LoginRoute
   SignupRoute: typeof SignupRoute
   WelcomeRoute: typeof WelcomeRoute
-  ApiStaffRoute: typeof ApiStaffRoute
   LoginVerifyRoute: typeof LoginVerifyRoute
   ApiAuthSplatRoute: typeof ApiAuthSplatRoute
-  ApiShiftsIdRoute: typeof ApiShiftsIdRoute
-  ApiShiftsDraftRoute: typeof ApiShiftsDraftRoute
-  ApiShiftsIndexRoute: typeof ApiShiftsIndexRoute
+  ApiOOrgSlugStaffRoute: typeof ApiOOrgSlugStaffRoute
+  ApiOOrgSlugShiftsIdRoute: typeof ApiOOrgSlugShiftsIdRoute
+  ApiOOrgSlugShiftsDraftRoute: typeof ApiOOrgSlugShiftsDraftRoute
+  ApiOOrgSlugShiftsIndexRoute: typeof ApiOOrgSlugShiftsIndexRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -216,19 +274,12 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthedIndexRouteImport
       parentRoute: typeof AuthedRoute
     }
-    '/_authed/draft': {
-      id: '/_authed/draft'
-      path: '/draft'
-      fullPath: '/draft'
-      preLoaderRoute: typeof AuthedDraftRouteImport
+    '/_authed/join': {
+      id: '/_authed/join'
+      path: '/join'
+      fullPath: '/join'
+      preLoaderRoute: typeof AuthedJoinRouteImport
       parentRoute: typeof AuthedRoute
-    }
-    '/api/staff': {
-      id: '/api/staff'
-      path: '/api/staff'
-      fullPath: '/api/staff'
-      preLoaderRoute: typeof ApiStaffRouteImport
-      parentRoute: typeof rootRouteImport
     }
     '/login_/verify': {
       id: '/login_/verify'
@@ -237,6 +288,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LoginVerifyRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/_authed/o/$orgSlug': {
+      id: '/_authed/o/$orgSlug'
+      path: '/o/$orgSlug'
+      fullPath: '/o/$orgSlug'
+      preLoaderRoute: typeof AuthedOOrgSlugRouteImport
+      parentRoute: typeof AuthedRoute
+    }
+    '/_authed/orgs/new': {
+      id: '/_authed/orgs/new'
+      path: '/orgs/new'
+      fullPath: '/orgs/new'
+      preLoaderRoute: typeof AuthedOrgsNewRouteImport
+      parentRoute: typeof AuthedRoute
+    }
     '/api/auth/$': {
       id: '/api/auth/$'
       path: '/api/auth/$'
@@ -244,38 +309,86 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiAuthSplatRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/shifts/': {
-      id: '/api/shifts/'
-      path: '/api/shifts'
-      fullPath: '/api/shifts/'
-      preLoaderRoute: typeof ApiShiftsIndexRouteImport
+    '/_authed/o/$orgSlug/': {
+      id: '/_authed/o/$orgSlug/'
+      path: '/'
+      fullPath: '/o/$orgSlug/'
+      preLoaderRoute: typeof AuthedOOrgSlugIndexRouteImport
+      parentRoute: typeof AuthedOOrgSlugRoute
+    }
+    '/_authed/o/$orgSlug/draft': {
+      id: '/_authed/o/$orgSlug/draft'
+      path: '/draft'
+      fullPath: '/o/$orgSlug/draft'
+      preLoaderRoute: typeof AuthedOOrgSlugDraftRouteImport
+      parentRoute: typeof AuthedOOrgSlugRoute
+    }
+    '/_authed/o/$orgSlug/settings': {
+      id: '/_authed/o/$orgSlug/settings'
+      path: '/settings'
+      fullPath: '/o/$orgSlug/settings'
+      preLoaderRoute: typeof AuthedOOrgSlugSettingsRouteImport
+      parentRoute: typeof AuthedOOrgSlugRoute
+    }
+    '/api/o/$orgSlug/staff': {
+      id: '/api/o/$orgSlug/staff'
+      path: '/api/o/$orgSlug/staff'
+      fullPath: '/api/o/$orgSlug/staff'
+      preLoaderRoute: typeof ApiOOrgSlugStaffRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/shifts/$id': {
-      id: '/api/shifts/$id'
-      path: '/api/shifts/$id'
-      fullPath: '/api/shifts/$id'
-      preLoaderRoute: typeof ApiShiftsIdRouteImport
+    '/api/o/$orgSlug/shifts/': {
+      id: '/api/o/$orgSlug/shifts/'
+      path: '/api/o/$orgSlug/shifts'
+      fullPath: '/api/o/$orgSlug/shifts/'
+      preLoaderRoute: typeof ApiOOrgSlugShiftsIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/shifts/draft': {
-      id: '/api/shifts/draft'
-      path: '/api/shifts/draft'
-      fullPath: '/api/shifts/draft'
-      preLoaderRoute: typeof ApiShiftsDraftRouteImport
+    '/api/o/$orgSlug/shifts/$id': {
+      id: '/api/o/$orgSlug/shifts/$id'
+      path: '/api/o/$orgSlug/shifts/$id'
+      fullPath: '/api/o/$orgSlug/shifts/$id'
+      preLoaderRoute: typeof ApiOOrgSlugShiftsIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/o/$orgSlug/shifts/draft': {
+      id: '/api/o/$orgSlug/shifts/draft'
+      path: '/api/o/$orgSlug/shifts/draft'
+      fullPath: '/api/o/$orgSlug/shifts/draft'
+      preLoaderRoute: typeof ApiOOrgSlugShiftsDraftRouteImport
       parentRoute: typeof rootRouteImport
     }
   }
 }
 
+interface AuthedOOrgSlugRouteChildren {
+  AuthedOOrgSlugDraftRoute: typeof AuthedOOrgSlugDraftRoute
+  AuthedOOrgSlugSettingsRoute: typeof AuthedOOrgSlugSettingsRoute
+  AuthedOOrgSlugIndexRoute: typeof AuthedOOrgSlugIndexRoute
+}
+
+const AuthedOOrgSlugRouteChildren: AuthedOOrgSlugRouteChildren = {
+  AuthedOOrgSlugDraftRoute: AuthedOOrgSlugDraftRoute,
+  AuthedOOrgSlugSettingsRoute: AuthedOOrgSlugSettingsRoute,
+  AuthedOOrgSlugIndexRoute: AuthedOOrgSlugIndexRoute,
+}
+
+const AuthedOOrgSlugRouteWithChildren = AuthedOOrgSlugRoute._addFileChildren(
+  AuthedOOrgSlugRouteChildren,
+)
+
 interface AuthedRouteChildren {
-  AuthedDraftRoute: typeof AuthedDraftRoute
+  AuthedJoinRoute: typeof AuthedJoinRoute
   AuthedIndexRoute: typeof AuthedIndexRoute
+  AuthedOOrgSlugRoute: typeof AuthedOOrgSlugRouteWithChildren
+  AuthedOrgsNewRoute: typeof AuthedOrgsNewRoute
 }
 
 const AuthedRouteChildren: AuthedRouteChildren = {
-  AuthedDraftRoute: AuthedDraftRoute,
+  AuthedJoinRoute: AuthedJoinRoute,
   AuthedIndexRoute: AuthedIndexRoute,
+  AuthedOOrgSlugRoute: AuthedOOrgSlugRouteWithChildren,
+  AuthedOrgsNewRoute: AuthedOrgsNewRoute,
 }
 
 const AuthedRouteWithChildren =
@@ -286,12 +399,12 @@ const rootRouteChildren: RootRouteChildren = {
   LoginRoute: LoginRoute,
   SignupRoute: SignupRoute,
   WelcomeRoute: WelcomeRoute,
-  ApiStaffRoute: ApiStaffRoute,
   LoginVerifyRoute: LoginVerifyRoute,
   ApiAuthSplatRoute: ApiAuthSplatRoute,
-  ApiShiftsIdRoute: ApiShiftsIdRoute,
-  ApiShiftsDraftRoute: ApiShiftsDraftRoute,
-  ApiShiftsIndexRoute: ApiShiftsIndexRoute,
+  ApiOOrgSlugStaffRoute: ApiOOrgSlugStaffRoute,
+  ApiOOrgSlugShiftsIdRoute: ApiOOrgSlugShiftsIdRoute,
+  ApiOOrgSlugShiftsDraftRoute: ApiOOrgSlugShiftsDraftRoute,
+  ApiOOrgSlugShiftsIndexRoute: ApiOOrgSlugShiftsIndexRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

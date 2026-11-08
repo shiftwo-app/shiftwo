@@ -46,6 +46,8 @@ const ShiftBoard = ({
 	staffs,
 	timeUnitMinutes,
 	newShiftStatus,
+	orgSlug,
+	canEdit,
 }: {
 	shifts: Shift[];
 	roles: Role[];
@@ -53,6 +55,10 @@ const ShiftBoard = ({
 	timeUnitMinutes: number;
 	/** この画面で作るシフトの status */
 	newShiftStatus: ShiftStatus;
+	/** 団体の URL 名。保存はこの団体に対して行う */
+	orgSlug: string;
+	/** 編集できる役割か（できなければ編集モードを出さない。守りはサーバー側） */
+	canEdit: boolean;
 }) => {
 	const router = useRouter();
 	const create = useServerFn(createShift);
@@ -93,7 +99,11 @@ const ShiftBoard = ({
 		run(
 			() =>
 				update({
-					data: { id: shift.id, input: toPayload(shift, { start, end }) },
+					data: {
+						orgSlug,
+						id: shift.id,
+						input: toPayload(shift, { start, end }),
+					},
 				}),
 			() =>
 				setLastAction({
@@ -106,7 +116,7 @@ const ShiftBoard = ({
 
 	const handleDelete = (shift: Shift) => {
 		void run(
-			() => remove({ data: shift.id }),
+			() => remove({ data: { orgSlug, id: shift.id } }),
 			() =>
 				setLastAction({
 					type: "delete",
@@ -118,7 +128,10 @@ const ShiftBoard = ({
 
 	const handleCreate = (value: ShiftFormValue) =>
 		run(
-			() => create({ data: { ...value, status: newShiftStatus } }),
+			() =>
+				create({
+					data: { orgSlug, input: { ...value, status: newShiftStatus } },
+				}),
 			(shift) => setLastAction({ type: "create", id: shift.id, label: "作成" }),
 		);
 
@@ -129,15 +142,20 @@ const ShiftBoard = ({
 			case "update":
 				void run(
 					() =>
-						update({ data: { id: lastAction.id, input: lastAction.before } }),
+						update({
+							data: { orgSlug, id: lastAction.id, input: lastAction.before },
+						}),
 					clear,
 				);
 				break;
 			case "create":
-				void run(() => remove({ data: lastAction.id }), clear);
+				void run(() => remove({ data: { orgSlug, id: lastAction.id } }), clear);
 				break;
 			case "delete":
-				void run(() => create({ data: lastAction.before }), clear);
+				void run(
+					() => create({ data: { orgSlug, input: lastAction.before } }),
+					clear,
+				);
 				break;
 		}
 	};
@@ -146,38 +164,40 @@ const ShiftBoard = ({
 
 	return (
 		<div className="space-y-3">
-			<div className="flex flex-wrap items-center justify-end gap-3">
-				{editMode && (
-					<button
-						type="button"
-						onClick={handleUndo}
-						disabled={!lastAction || busy}
-						className="rounded border px-3 py-1 text-sm disabled:opacity-40"
-					>
-						{lastAction ? `元に戻す（${lastAction.label}）` : "元に戻す"}
-					</button>
-				)}
-				<div
-					role="group"
-					aria-label="操作モード"
-					className="flex rounded border"
-				>
-					{[
-						{ value: false, label: "閲覧" },
-						{ value: true, label: "編集" },
-					].map((option) => (
+			{canEdit && (
+				<div className="flex flex-wrap items-center justify-end gap-3">
+					{editMode && (
 						<button
-							key={option.label}
 							type="button"
-							aria-pressed={editMode === option.value}
-							onClick={() => setEditMode(option.value)}
-							className={`px-3 py-1 text-sm ${editMode === option.value ? "bg-gray-800 text-white" : ""}`}
+							onClick={handleUndo}
+							disabled={!lastAction || busy}
+							className="rounded border px-3 py-1 text-sm disabled:opacity-40"
 						>
-							{option.label}
+							{lastAction ? `元に戻す（${lastAction.label}）` : "元に戻す"}
 						</button>
-					))}
+					)}
+					<div
+						role="group"
+						aria-label="操作モード"
+						className="flex rounded border"
+					>
+						{[
+							{ value: false, label: "閲覧" },
+							{ value: true, label: "編集" },
+						].map((option) => (
+							<button
+								key={option.label}
+								type="button"
+								aria-pressed={editMode === option.value}
+								onClick={() => setEditMode(option.value)}
+								className={`px-3 py-1 text-sm ${editMode === option.value ? "bg-gray-800 text-white" : ""}`}
+							>
+								{option.label}
+							</button>
+						))}
+					</div>
 				</div>
-			</div>
+			)}
 
 			{errors.length > 0 && (
 				<ul
@@ -190,7 +210,7 @@ const ShiftBoard = ({
 				</ul>
 			)}
 
-			{editMode && (
+			{canEdit && editMode && (
 				<ShiftForm
 					roles={roles}
 					staffs={staffs}
@@ -211,7 +231,7 @@ const ShiftBoard = ({
 				staffs={staffs}
 				timeUnitMinutes={timeUnitMinutes}
 				editing={
-					editMode
+					canEdit && editMode
 						? { onChangeTime: handleChangeTime, onDelete: handleDelete }
 						: undefined
 				}
