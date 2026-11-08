@@ -1,0 +1,68 @@
+# main への PR と push で、書式・lint・型・テスト（Postgres での結合テストまで）・マイグレーション・build を確かめる。
+# main のルールセットで、このジョブ（ci）が通ることをマージの条件にしている
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  ci:
+    name: ci
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_DB: shiftwo
+          POSTGRES_USER: shiftwo
+          POSTGRES_PASSWORD: shiftwo-ci
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U shiftwo -d shiftwo"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      DATABASE_URL: postgresql://shiftwo:shiftwo-ci@localhost:5432/shiftwo
+      SHADOW_DATABASE_URL: postgresql://shiftwo:shiftwo-ci@localhost:5432/shiftwo_shadow
+      BETTER_AUTH_SECRET: ci-only-secret-not-used-anywhere-else-0123456789
+      BETTER_AUTH_URL: http://localhost:3000
+    steps:
+      - uses: actions/checkout@v5
+      # pnpm の版は package.json の packageManager から読む
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v5
+        with:
+          node-version-file: .node-version
+          cache: pnpm
+      # postinstall で Prisma Client も作る
+      - run: pnpm install --frozen-lockfile
+      - name: マイグレーションを当てる（結合テスト用）
+        run: |
+          PGPASSWORD=shiftwo-ci psql -h localhost -U shiftwo -d shiftwo -c 'CREATE DATABASE shiftwo_shadow'
+          pnpm exec prisma migrate deploy
+      - run: pnpm check
+      - run: pnpm test
+      - name: マイグレーションとモデルが合っているか（Postgres と SQLite）
+        run: pnpm prisma:migrate check
+      - name: build（Node）
+        run: pnpm build
+      - name: build（Cloudflare・D1）
+        run: pnpm build:cloudflare
+      - name: build（Cloudflare・Hyperdrive）
+        run: pnpm build:cloudflare
+        env:
+          CLOUDFLARE_DATABASE: postgresql
+      - name: 依存の監査（本番の依存）
+        run: pnpm audit --prod
