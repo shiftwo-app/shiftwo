@@ -1,4 +1,4 @@
-FROM node:22-slim
+FROM node:26-slim
 
 # 必要最小限のパッケージのみインストール
 RUN apt-get update && apt-get install -y \
