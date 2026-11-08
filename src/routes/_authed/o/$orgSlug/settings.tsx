@@ -1,5 +1,7 @@
 import { createFileRoute, useRouter } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
+import Avatar from "../../../../components/Avatar";
+import DiscordGuildSection from "../../../../components/manage/DiscordGuildSection";
 import StaffSection from "../../../../components/manage/StaffSection";
 import TenantsSection from "../../../../components/manage/TenantsSection";
 import { useId, useState } from "react";
@@ -118,6 +120,9 @@ function SettingsPage() {
 				current={member.displayName}
 				run={run}
 			/>
+			{hasPermission(perms, "org.settings") && (
+				<DiscordGuildSection orgSlug={organization.slug} run={run} />
+			)}
 			{hasPermission(perms, "tenant.manage") && (
 				<TenantsSection
 					orgSlug={organization.slug}
@@ -229,6 +234,7 @@ function MembersSection({
 		id: string;
 		isOwner: boolean;
 		displayName: string;
+		avatarUrl: string | null;
 		roleIds: string[];
 		isMe: boolean;
 	}[];
@@ -254,6 +260,7 @@ function MembersSection({
 					return (
 						<li key={m.id} className="space-y-2 px-3 py-2 text-sm">
 							<div className="flex flex-wrap items-center gap-2">
+								<Avatar name={m.displayName} url={m.avatarUrl} size={24} />
 								<span className="font-semibold">
 									{m.displayName}
 									{m.isMe && "（あなた）"}

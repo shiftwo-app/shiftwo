@@ -36,10 +36,39 @@ export const auth = betterAuth({
 					clientSecret: discord.clientSecret,
 					// Discord でメールアドレスを確認していなければ、ログインさせない（下の databaseHooks と二重の守り）
 					requireEmailVerification: true,
+					// サーバーの一覧（団体の参加の条件にするサーバーを選ぶ）と、サーバーでのプロフィール
+					// （サーバーのメンバーかどうかと、サーバーでのアイコン）を読む
+					scope: ["identify", "email", "guilds", "guilds.members.read"],
 				},
 			}
 		: {},
+	account: {
+		accountLinking: {
+			enabled: true,
+			// メールで登録した人が、メールアドレスの違う Discord アカウントを連携できるようにする
+			// （ログインした本人が自分で連携する操作だけ。メールアドレスによる自動の紐づけは、これまでどおり確認済みのときだけ）
+			allowDifferentEmails: true,
+		},
+	},
 	databaseHooks: {
+		session: {
+			create: {
+				// ログインのたびに、団体の Discord サーバーの条件を確かめ直す（抜けた人は見られなくし、戻った人は戻す）。
+				// 失敗してもログインは止めない
+				after: async (session) => {
+					try {
+						const { refreshDiscordMemberships } =
+							await import("../server/discord-membership.server");
+						await refreshDiscordMemberships(session.userId);
+					} catch (error) {
+						console.error(
+							"Discord サーバーの条件を確かめられませんでした",
+							error,
+						);
+					}
+				},
+			},
+		},
 		user: {
 			create: {
 				// メールアドレスを確認できていないアカウントは作らない（アカウントの乗っ取りの下準備を防ぐ）。

@@ -17,6 +17,7 @@ import {
 	parsePermissions,
 } from "../lib/org/permissions";
 import { isPrismaError, PRISMA_ERROR } from "../lib/prisma-errors";
+import { checkGuildMembership, type GuildChecker } from "./discord.server";
 import { prisma } from "../lib/prisma.server";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -294,6 +295,8 @@ export type InvitePreview =
 			organizationSlug: string;
 			roleName: string;
 			alreadyMember: boolean;
+			/** 参加するのに Discord サーバーのメンバーである必要があるとき、そのサーバーの名前 */
+			requiredDiscordGuildName: string | null;
 	  }
 	| { ok: false; reason: InviteUnusableReason | "not_found" };
 
@@ -308,8 +311,16 @@ export const previewInvite = async (
 	const invite = await prisma.invite.findUnique({
 		where: { code },
 		include: {
-			organization: { select: { id: true, name: true, slug: true } },
-			role: { select: { name: true } },
+			organization: {
+				select: {
+					id: true,
+					name: true,
+					slug: true,
+					discordGuildId: true,
+					discordGuildName: true,
+				},
+			},
+			role: { select: { name: true, permissions: true } },
 		},
 	});
 	if (!invite) return { ok: false, reason: "not_found" };
@@ -324,6 +335,12 @@ export const previewInvite = async (
 		organizationSlug: invite.organization.slug,
 		roleName: invite.role.name,
 		alreadyMember: existing > 0,
+		requiredDiscordGuildName: requiresGuild(
+			invite.organization.discordGuildId,
+			invite.role.permissions,
+		)
+			? (invite.organization.discordGuildName ?? "指定のサーバー")
+			: null,
 	};
 };
 
@@ -331,8 +348,25 @@ export type AcceptInviteResult =
 	| { ok: true; slug: string }
 	| {
 			ok: false;
-			reason: InviteUnusableReason | "not_found" | "already_member";
+			reason:
+				| InviteUnusableReason
+				| "not_found"
+				| "already_member"
+				/** Discord を連携していない */
+				| "discord_required"
+				/** 団体の Discord サーバーのメンバーではない */
+				| "not_in_guild"
+				/** Discord に確かめられなかった */
+				| "discord_unavailable";
 	  };
+
+/** 団体が Discord サーバーを指定していて、ロールに免除（guild.bypass）がなければ、確かめる必要がある */
+const requiresGuild = (
+	guildId: string | null,
+	rolePermissions: unknown,
+): guildId is string =>
+	guildId !== null &&
+	!parsePermissions(rolePermissions).includes("guild.bypass");
 
 /**
  * 招待コードで団体に参加し、招待コードのロールを付ける。使った回数は、上限を超えないことを条件に
@@ -343,10 +377,40 @@ export const acceptInvite = async (input: {
 	code: string;
 	displayName: string;
 	now?: Date;
+	/** Discord サーバーのメンバーかを確かめる（テストで差し替える） */
+	checker?: GuildChecker;
 }): Promise<AcceptInviteResult> => {
 	const now = input.now ?? new Date();
 	const code = normalizeInviteCode(input.code);
 	if (!isWellFormedInviteCode(code)) return { ok: false, reason: "not_found" };
+
+	// 団体が Discord サーバーを指定していれば、参加の前にメンバーかを確かめる（Discord への問い合わせは
+	// トランザクションの外で行う）。ゲストなど免除のロールの招待コードなら確かめない
+	const target = await prisma.invite.findUnique({
+		where: { code },
+		select: {
+			organization: { select: { discordGuildId: true } },
+			role: { select: { permissions: true } },
+		},
+	});
+	let avatarUrl: string | null = null;
+	if (
+		target &&
+		requiresGuild(target.organization.discordGuildId, target.role.permissions)
+	) {
+		const check = await (input.checker ?? checkGuildMembership)(
+			input.userId,
+			target.organization.discordGuildId,
+		);
+		if (check.status === "no_discord")
+			return { ok: false, reason: "discord_required" };
+		if (check.status === "not_member")
+			return { ok: false, reason: "not_in_guild" };
+		if (check.status === "unknown") {
+			return { ok: false, reason: "discord_unavailable" };
+		}
+		avatarUrl = check.avatarUrl;
+	}
 
 	return prisma.$transaction(async (tx) => {
 		const invite = await tx.invite.findUnique({
@@ -381,6 +445,7 @@ export const acceptInvite = async (input: {
 				organizationId: invite.organizationId,
 				userId: input.userId,
 				displayName: input.displayName,
+				avatarUrl,
 				roles: { create: { roleId: invite.roleId } },
 			},
 		});
