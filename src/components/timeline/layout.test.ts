@@ -52,6 +52,7 @@ const positions: Position[] = [
 		color: "#3357FF",
 		requiredStaffCount: 2,
 		isBreak: false,
+		staffingRules: [],
 	},
 	{
 		id: "r2",
@@ -62,6 +63,7 @@ const positions: Position[] = [
 		color: "#33FFF6",
 		requiredStaffCount: 1,
 		isBreak: false,
+		staffingRules: [],
 	},
 ];
 const staffs = [

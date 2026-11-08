@@ -37,6 +37,9 @@ model Position {
   name            String
   color           String
   requiredStaffCount Int
+  // 時間帯ごとの必要人員（{ date, start, end, count } の配列。src/lib/staffing.ts）。
+  // requiredStaffCount を基本にして、決まりのある時間帯だけ人数を変える
+  staffingRules   Json      @default("[]")
   // 休憩の持ち場か（レポートで、このシフトを休憩として数える。充足率には入れない）
   isBreak         Boolean   @default(false)
   preferredBy     Staff[]   @relation("StaffPreferredRoles")

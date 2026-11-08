@@ -5,6 +5,11 @@ import {
 	type Interval,
 	toMs,
 } from "../timeline/layout";
+import {
+	parseStaffingRules,
+	requirementSegments,
+	staffingSegments,
+} from "../../lib/staffing";
 
 export type ReportShift = {
 	id: string;
@@ -19,6 +24,8 @@ export type ReportPosition = {
 	color: string;
 	requiredStaffCount: number;
 	isBreak: boolean;
+	/** 時間帯ごとの必要人員（DB の Json のまま。parseStaffingRules で読む） */
+	staffingRules?: unknown;
 };
 export type ReportStaff = { id: string; name: string };
 
@@ -96,7 +103,7 @@ const unionLength = (intervals: Interval[]): number => {
 /**
  * 1 日分（day は日本時間の 0 時）のレポートを作る。
  * - 充足率：その日の時間帯で、持ち場ごとに「入っている人数（必要な人数まで）× 時間」÷「必要な人数 × 時間」
- *   （同じ人の重なった割り当ては 1 人と数える。休憩の持ち場と、必要な人数が 0 の持ち場は除く）
+ *   （必要な人数は時間帯ごとの決まりを当てはめる。同じ人の重なった割り当ては 1 人と数える。休憩の持ち場と、その日に必要な人数が 0 の持ち場は除く）
  * - 休憩：休憩の持ち場のシフト ＋ シフトのあいだの、breakGapMinutes 分以上の空き
  */
 export const buildDayReport = (input: {
@@ -131,12 +138,17 @@ export const buildDayReport = (input: {
 			: null;
 
 	const positions: PositionFill[] = window
-		? input.positions
-				.filter(
-					(position) => !position.isBreak && position.requiredStaffCount > 0,
-				)
-				.map((position) => {
-					const segments = coverageSegments(
+		? input.positions.flatMap((position) => {
+				if (position.isBreak) return [];
+				const requirement = requirementSegments(
+					position.requiredStaffCount,
+					parseStaffingRules(position.staffingRules),
+					window,
+				);
+				// その日の時間帯に必要な人がいない持ち場は除く
+				if (requirement.every((segment) => segment.required === 0)) return [];
+				const segments = staffingSegments(
+					coverageSegments(
 						work
 							.filter((item) => item.shift.positionId === position.id)
 							.map((item) => ({
@@ -145,27 +157,34 @@ export const buildDayReport = (input: {
 								key: item.shift.staffId,
 							})),
 						window,
-					);
-					const required = position.requiredStaffCount;
-					const filledMs = segments.reduce(
-						(sum, segment) =>
-							sum +
-							Math.min(segment.count, required) * (segment.end - segment.start),
-						0,
-					);
-					const neededMs = required * (window.end - window.start);
-					const rate = neededMs > 0 ? filledMs / neededMs : 1;
-					return {
+					),
+					requirement,
+				);
+				const length = (segment: { start: number; end: number }) =>
+					segment.end - segment.start;
+				const filledMs = segments.reduce(
+					(sum, segment) =>
+						sum + Math.min(segment.count, segment.required) * length(segment),
+					0,
+				);
+				const neededMs = segments.reduce(
+					(sum, segment) => sum + segment.required * length(segment),
+					0,
+				);
+				const rate = neededMs > 0 ? filledMs / neededMs : 1;
+				return [
+					{
 						id: position.id,
 						name: position.name,
 						color: position.color,
-						required,
+						required: position.requiredStaffCount,
 						filledMs,
 						neededMs,
 						rate,
 						level: fillLevelOf(rate),
-					};
-				})
+					},
+				];
+			})
 		: [];
 
 	const gapMs = input.breakGapMinutes * 60_000;
