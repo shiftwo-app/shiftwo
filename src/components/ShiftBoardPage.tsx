@@ -22,6 +22,7 @@ const ShiftBoardPage = ({
 		canEdit: boolean;
 		liveTransport: RealtimeTransport;
 		preferenceConflicts: Record<string, string[]>;
+		positionsEnabled: boolean;
 	};
 	scope: ShiftScopeParams;
 	status: ShiftStatus;
@@ -29,9 +30,9 @@ const ShiftBoardPage = ({
 	<main className="mx-auto max-w-7xl px-4 py-6 sm:px-6">
 		<PageHeader
 			title={title}
-			description={`${board.canEdit ? "編集できます" : "閲覧だけできます"}・時間は ${board.timeUnitMinutes} 分きざみ`}
+			description={`${board.canEdit ? "編集できます" : "閲覧だけできます"}・時間は ${board.timeUnitMinutes} 分きざみ${board.positionsEnabled ? "" : "・持ち場は使っていません"}`}
 		/>
-		{board.positions.length === 0 && (
+		{board.positionsEnabled && board.positions.length === 0 && (
 			<Alert tone="info" className="mb-4">
 				{scope.eventSlug
 					? "このイベントの持ち場がまだありません。"
@@ -48,6 +49,7 @@ const ShiftBoardPage = ({
 			canEdit={board.canEdit}
 			liveTransport={board.liveTransport}
 			preferenceConflicts={board.preferenceConflicts}
+			positionsEnabled={board.positionsEnabled}
 		/>
 	</main>
 );

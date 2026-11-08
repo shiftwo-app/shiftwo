@@ -6,6 +6,7 @@ import Alert from "../../../../../../../../components/ui/Alert";
 import PageHeader from "../../../../../../../../components/ui/PageHeader";
 import Section from "../../../../../../../../components/ui/Section";
 import PositionsEditor from "../../../../../../../../components/manage/PositionsEditor";
+import PositionsToggle from "../../../../../../../../components/manage/PositionsToggle";
 import ScopedRolesEditor from "../../../../../../../../components/manage/ScopedRolesEditor";
 import TenantOrEventForm from "../../../../../../../../components/manage/TenantOrEventForm";
 import { useMutationRunner } from "../../../../../../../../components/manage/useMutationRunner";
@@ -83,12 +84,32 @@ function EventSettingsPage() {
 						/>
 					</Section>
 				)}
+				{canManageEvent && (
+					<Section
+						id="event-settings-positions-toggle"
+						title="持ち場を使うか"
+						description="使わないときは、シフトを人と時間だけで組みます（持ち場の選択・持ち場別の表示・必要な人数・希望の持ち場を出しません）。"
+					>
+						<PositionsToggle
+							scope={params}
+							value={eventContext.positionsOverride}
+							inherited={eventContext.inheritedPositionsEnabled}
+							inheritLabel="テナントと同じ"
+							run={run}
+						/>
+					</Section>
+				)}
 				{canManagePositions && (
 					<Section
 						id="event-settings-positions"
 						title="このイベントの持ち場"
 						description="日常シフトの持ち場とは別に持ちます。"
 					>
+						{!eventContext.positionsEnabled && (
+							<Alert tone="info">
+								このイベントでは持ち場を使っていません。使うようにすると、ここで決めた持ち場を使えます。
+							</Alert>
+						)}
 						<PositionsEditor scope={params} positions={positions} run={run} />
 					</Section>
 				)}

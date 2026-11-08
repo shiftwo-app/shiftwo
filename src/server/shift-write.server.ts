@@ -15,10 +15,11 @@ import { type Shift, ShiftStatus } from "../types";
 import { shiftInputSchema, validateShiftTimeRange } from "./shift.schema";
 import type { ShiftScopeIds } from "./shifts.server";
 
-/** 書き込みをする単位と、その単位での権限・時間粒度（requireScopeAccess で確かめたもの） */
+/** 書き込みをする単位と、その単位での権限・時間粒度・持ち場を使うか（requireScopeAccess で確かめたもの） */
 export type ShiftWriteAccess = ShiftScopeIds & {
 	permissions: Permission[];
 	timeUnitMinutes: number;
+	positionsEnabled: boolean;
 };
 
 export type ShiftWriteError = {
@@ -114,12 +115,21 @@ export const saveShift = async (
 
 	// スタッフは団体のもの、持ち場はこの単位（日常シフトならテナント、イベントならそのイベント）のものかを確かめる
 	// （ほかの団体・テナント・イベントの ID を混ぜられないように）
+	// 持ち場を使わない単位では、持ち場は持たせない（送られてきても捨てる）。使う単位では必須
 	const { organizationId, tenantId, eventId } = access;
+	const positionId = access.positionsEnabled ? input.positionId : null;
+	if (access.positionsEnabled && !positionId) {
+		return fail(400, "Position is required", {
+			errors: ["持ち場を選んでください"],
+		});
+	}
 	const [staffCount, positionCount] = await Promise.all([
 		prisma.staff.count({ where: { id: input.staffId, organizationId } }),
-		prisma.position.count({
-			where: { id: input.positionId, organizationId, tenantId, eventId },
-		}),
+		positionId
+			? prisma.position.count({
+					where: { id: positionId, organizationId, tenantId, eventId },
+				})
+			: Promise.resolve(1),
 	]);
 	if (staffCount === 0 || positionCount === 0) {
 		return fail(400, "Staff or position does not exist", {
@@ -129,7 +139,7 @@ export const saveShift = async (
 
 	const data = {
 		staffId: input.staffId,
-		positionId: input.positionId,
+		positionId,
 		timeRange: {
 			start: input.timeRange.start.toISOString(),
 			end: input.timeRange.end.toISOString(),

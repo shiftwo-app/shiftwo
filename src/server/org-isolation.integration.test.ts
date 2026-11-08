@@ -299,6 +299,7 @@ describe.skipIf(!hasDatabase)(
 			eventId: event?.id ?? null,
 			permissions,
 			timeUnitMinutes: 15,
+			positionsEnabled: true,
 		});
 
 		describe("団体", () => {

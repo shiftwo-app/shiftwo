@@ -61,6 +61,7 @@ export const getPreferencePage = createServerFn({ method: "GET" })
 				pastDeadline: isPastDeadline(preference.deadline, new Date()),
 				period: preference.period,
 				timeUnitMinutes: preference.timeUnitMinutes,
+				positionsEnabled: preference.positionsEnabled,
 				canManageAll: preference.canManageAll,
 				canSetDeadline: preference.canSetDeadline,
 				positions,

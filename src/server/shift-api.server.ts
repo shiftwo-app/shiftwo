@@ -53,6 +53,7 @@ const writeAccessOf = (access: ScopeAccess): ShiftWriteAccess => ({
 	...idsOf(access),
 	permissions: access.permissions,
 	timeUnitMinutes: access.timeUnitMinutes,
+	positionsEnabled: access.positionsEnabled,
 });
 
 /** シフトの一覧（GET） */

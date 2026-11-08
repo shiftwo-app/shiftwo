@@ -208,13 +208,18 @@ const toRow = (
 	const lanes = assignLanes(sorted);
 	const items = sorted.map((item, index) => ({
 		...item,
-		position: lookup.positions.get(item.shift.positionId),
+		position: item.shift.positionId
+			? lookup.positions.get(item.shift.positionId)
+			: undefined,
 		staff: lookup.staffs.get(item.shift.staffId),
 		lane: lanes[index] ?? 0,
 	}));
 	const laneCount = Math.max(1, ...items.map((item) => item.lane + 1));
 	return { id, label, color, items, laneCount, requiredCount, avatarUrl };
 };
+
+/** 持ち場別の表示で、持ち場のないシフトをまとめる行の ID */
+export const UNASSIGNED_ROW_ID = "unassigned";
 
 /**
  * 縦軸（FR-1-2）に合わせて行を作る。持ち場別なら持ち場ごと、スタッフ別ならスタッフごとに 1 行。
@@ -231,7 +236,7 @@ export const buildRows = (
 		staffs: new Map(staffs.map((staff) => [staff.id, staff])),
 	};
 	if (axis === "position") {
-		return positions.map((position) =>
+		const rows = positions.map((position) =>
 			toRow(
 				position.id,
 				position.name,
@@ -241,6 +246,12 @@ export const buildRows = (
 				position.requiredStaffCount,
 			),
 		);
+		// 持ち場のないシフト（持ち場を使っていなかったときに作ったもの）は、最後の 1 行にまとめる
+		const unassigned = shifts.filter((shift) => !shift.positionId);
+		if (unassigned.length > 0) {
+			rows.push(toRow(UNASSIGNED_ROW_ID, "持ち場なし", unassigned, lookup));
+		}
+		return rows;
 	}
 	return staffs.map((staff) =>
 		toRow(

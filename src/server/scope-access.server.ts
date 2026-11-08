@@ -1,6 +1,7 @@
 // テナント・イベントの単位でのアクセスの確認。シフトを読み書きするときは、必ずここを通す。
 // 団体のメンバーで、そのテナント（とイベント）がその団体の下にあり、
 // 「団体の権限に、テナント・イベントで割り当てたロールのシフトに関わる権限を上乗せしたもの」で、その操作をしてよいかを確かめる
+import { resolvePositionsEnabled } from "../lib/positions";
 import { prisma } from "../lib/prisma.server";
 import {
 	hasPermission,
@@ -18,17 +19,30 @@ import type { ShiftScopeParams } from "../lib/shift-scope";
 export type { ShiftScopeParams };
 
 export type ScopeAccess = OrgMembership & {
-	tenant: { id: string; slug: string; name: string; timeUnitMinutes: number };
+	tenant: {
+		id: string;
+		slug: string;
+		name: string;
+		timeUnitMinutes: number;
+		/** 持ち場を使うかの上書き（null なら団体の設定） */
+		positionsEnabled: boolean | null;
+	};
 	event: {
 		id: string;
 		slug: string;
 		name: string;
 		timeUnitMinutes: number | null;
+		/** 持ち場を使うかの上書き（null ならテナントの設定） */
+		positionsEnabled: boolean | null;
 	} | null;
 	/** この単位での権限（団体の権限＋テナント・イベントのロールから上乗せされたもの） */
 	permissions: Permission[];
 	/** この単位で使う時間粒度（イベントの上書きがあればそれ、なければテナントの値） */
 	timeUnitMinutes: number;
+	/** この単位で持ち場を使うか（イベント → テナント → 団体の順に決まる） */
+	positionsEnabled: boolean;
+	/** 団体の基本の設定（持ち場を使うか） */
+	organizationPositionsEnabled: boolean;
 };
 
 /** 所属・テナント・イベントを調べ、この単位での権限を返す。どれかが見つからなければ null */
@@ -49,6 +63,8 @@ export const findScopeAccess = async (
 			slug: true,
 			name: true,
 			timeUnitMinutes: true,
+			positionsEnabled: true,
+			organization: { select: { positionsEnabled: true } },
 			members: {
 				where: { memberId: membership.member.id },
 				select: { role: { select: { permissions: true } } },
@@ -67,6 +83,7 @@ export const findScopeAccess = async (
 				slug: true,
 				name: true,
 				timeUnitMinutes: true,
+				positionsEnabled: true,
 				members: {
 					where: { memberId: membership.member.id },
 					select: { role: { select: { permissions: true } } },
@@ -79,6 +96,7 @@ export const findScopeAccess = async (
 			slug: found.slug,
 			name: found.name,
 			timeUnitMinutes: found.timeUnitMinutes,
+			positionsEnabled: found.positionsEnabled,
 		};
 		eventRoles = found.members.map((m) => m.role);
 	}
@@ -90,6 +108,7 @@ export const findScopeAccess = async (
 			slug: tenant.slug,
 			name: tenant.name,
 			timeUnitMinutes: tenant.timeUnitMinutes,
+			positionsEnabled: tenant.positionsEnabled,
 		},
 		event,
 		permissions: scopedPermissions(
@@ -98,6 +117,12 @@ export const findScopeAccess = async (
 			eventRoles,
 		),
 		timeUnitMinutes: event?.timeUnitMinutes ?? tenant.timeUnitMinutes,
+		positionsEnabled: resolvePositionsEnabled({
+			organization: tenant.organization.positionsEnabled,
+			tenant: tenant.positionsEnabled,
+			event: event?.positionsEnabled,
+		}),
+		organizationPositionsEnabled: tenant.organization.positionsEnabled,
 	};
 };
 

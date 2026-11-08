@@ -11,6 +11,7 @@ import {
 	hasPermission,
 	parsePermissions,
 } from "../lib/org/permissions";
+import { fromPositionsSetting } from "../lib/positions";
 import { prisma } from "../lib/prisma.server";
 import type { ShiftScopeParams } from "../lib/shift-scope";
 import { requireUserMiddleware } from "./auth-middleware";
@@ -416,4 +417,77 @@ export const setScopedRolesFn = createServerFn({ method: "POST" })
 			data.memberId,
 			data.roleIds,
 		);
+	});
+
+// ---- 持ち場を使うか（団体の基本・テナントとイベントの上書き） ----
+
+const positionsSettingSchema = z.enum(["inherit", "on", "off"]);
+
+/**
+ * 持ち場を使うかを決める。団体（tenantSlug なし）は org.settings で on・off、
+ * テナントは tenant.manage、イベントはその単位の event.manage で inherit（上の単位と同じ）・on・off
+ */
+export const setPositionsSettingFn = createServerFn({ method: "POST" })
+	.middleware([requireUserMiddleware])
+	.validator(
+		(data: {
+			orgSlug: unknown;
+			tenantSlug?: unknown;
+			eventSlug?: unknown;
+			setting: unknown;
+		}) => ({
+			orgSlug: slug.parse(data.orgSlug),
+			tenantSlug: slug.nullish().parse(data.tenantSlug),
+			eventSlug: slug.nullish().parse(data.eventSlug),
+			setting: positionsSettingSchema.parse(data.setting),
+		}),
+	)
+	.handler(async ({ data, context }): Promise<{ ok: true } | Errors> => {
+		const value = fromPositionsSetting(data.setting);
+		if (!data.tenantSlug) {
+			const membership = await requireOrgAccess(
+				context.user.id,
+				data.orgSlug,
+				"org.settings",
+			);
+			if (value === null) {
+				return {
+					ok: false,
+					errors: ["団体では、使うか使わないかを選んでください"],
+				};
+			}
+			await prisma.organization.update({
+				where: { id: membership.organization.id },
+				data: { positionsEnabled: value },
+			});
+			return { ok: true };
+		}
+		const scope = {
+			orgSlug: data.orgSlug,
+			tenantSlug: data.tenantSlug,
+			eventSlug: data.eventSlug,
+		};
+		if (data.eventSlug) {
+			const access = await requireScopeAccess(
+				context.user.id,
+				scope,
+				"event.manage",
+			);
+			await prisma.event.updateMany({
+				where: { id: access.event!.id, organizationId: access.organization.id },
+				data: { positionsEnabled: value },
+			});
+			return { ok: true };
+		}
+		await requireOrgAccess(context.user.id, data.orgSlug, "tenant.manage");
+		const access = await requireScopeAccess(
+			context.user.id,
+			scope,
+			"shift.view",
+		);
+		await prisma.tenant.updateMany({
+			where: { id: access.tenant.id, organizationId: access.organization.id },
+			data: { positionsEnabled: value },
+		});
+		return { ok: true };
 	});
