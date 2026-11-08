@@ -81,8 +81,8 @@ async function main() {
 			},
 			unavailableTimes: [
 				{
-					start: new Date("2024-06-01T09:00:00Z"),
-					end: new Date("2024-06-01T12:00:00Z"),
+					start: new Date("2024-06-01T09:00:00+09:00"),
+					end: new Date("2024-06-01T12:00:00+09:00"),
 				},
 			],
 		},
@@ -96,8 +96,8 @@ async function main() {
 			},
 			unavailableTimes: [
 				{
-					start: new Date("2024-06-02T13:00:00Z"),
-					end: new Date("2024-06-02T18:00:00Z"),
+					start: new Date("2024-06-02T13:00:00+09:00"),
+					end: new Date("2024-06-02T18:00:00+09:00"),
 				},
 			],
 		},
@@ -121,8 +121,8 @@ async function main() {
 			},
 			unavailableTimes: [
 				{
-					start: new Date("2024-06-03T10:00:00Z"),
-					end: new Date("2024-06-03T15:00:00Z"),
+					start: new Date("2024-06-03T10:00:00+09:00"),
+					end: new Date("2024-06-03T15:00:00+09:00"),
 				},
 			],
 		},
@@ -139,12 +139,12 @@ async function main() {
 				eventId: event.id,
 				timeTable: [
 					{
-						start: new Date("2024-06-01T09:00:00Z"),
-						end: new Date("2024-06-01T18:00:00Z"),
+						start: new Date("2024-06-01T09:00:00+09:00"),
+						end: new Date("2024-06-01T18:00:00+09:00"),
 					},
 					{
-						start: new Date("2024-06-02T09:00:00Z"),
-						end: new Date("2024-06-02T18:00:00Z"),
+						start: new Date("2024-06-02T09:00:00+09:00"),
+						end: new Date("2024-06-02T18:00:00+09:00"),
 					},
 				],
 			},
@@ -153,12 +153,12 @@ async function main() {
 				eventId: event.id,
 				timeTable: [
 					{
-						start: new Date("2024-06-01T10:00:00Z"),
-						end: new Date("2024-06-01T17:00:00Z"),
+						start: new Date("2024-06-01T10:00:00+09:00"),
+						end: new Date("2024-06-01T17:00:00+09:00"),
 					},
 					{
-						start: new Date("2024-06-02T10:00:00Z"),
-						end: new Date("2024-06-02T17:00:00Z"),
+						start: new Date("2024-06-02T10:00:00+09:00"),
+						end: new Date("2024-06-02T17:00:00+09:00"),
 					},
 				],
 			},
@@ -171,8 +171,8 @@ async function main() {
 				staffId: staff1.id,
 				roleId: receptionistRole.id,
 				timeRange: {
-					start: new Date("2024-06-01T13:00:00Z"),
-					end: new Date("2024-06-01T18:00:00Z"),
+					start: new Date("2024-06-01T13:00:00+09:00"),
+					end: new Date("2024-06-01T18:00:00+09:00"),
 				},
 				isPreferredRole: true,
 				status: ShiftStatus.confirmed,
@@ -181,8 +181,8 @@ async function main() {
 				staffId: staff2.id,
 				roleId: receptionistRole.id,
 				timeRange: {
-					start: new Date("2024-06-01T09:00:00Z"),
-					end: new Date("2024-06-01T14:00:00Z"),
+					start: new Date("2024-06-01T09:00:00+09:00"),
+					end: new Date("2024-06-01T14:00:00+09:00"),
 				},
 				isPreferredRole: true,
 				status: ShiftStatus.confirmed,
@@ -191,8 +191,8 @@ async function main() {
 				staffId: staff3.id,
 				roleId: moderatorRole.id,
 				timeRange: {
-					start: new Date("2024-06-02T09:00:00Z"),
-					end: new Date("2024-06-02T18:00:00Z"),
+					start: new Date("2024-06-02T09:00:00+09:00"),
+					end: new Date("2024-06-02T18:00:00+09:00"),
 				},
 				isPreferredRole: true,
 				status: ShiftStatus.draft,
@@ -201,8 +201,8 @@ async function main() {
 				staffId: staff4.id,
 				roleId: moderatorRole.id,
 				timeRange: {
-					start: new Date("2024-06-01T15:00:00Z"),
-					end: new Date("2024-06-01T18:00:00Z"),
+					start: new Date("2024-06-01T15:00:00+09:00"),
+					end: new Date("2024-06-01T18:00:00+09:00"),
 				},
 				isPreferredRole: true,
 				status: ShiftStatus.draft,

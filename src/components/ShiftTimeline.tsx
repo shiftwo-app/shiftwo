@@ -1,61 +1,350 @@
-import type React from "react";
-import { type Shift, type Role, type Staff, ShiftStatus } from "../types";
-import { format } from "date-fns";
+import {
+	useEffect,
+	useId,
+	useLayoutEffect,
+	useMemo,
+	useRef,
+	useState,
+} from "react";
+import type { RefObject } from "react";
+import { type Role, type Shift, ShiftStatus, type Staff } from "../types";
+import {
+	buildRows,
+	buildTicks,
+	computeDisplayRange,
+	formatDay,
+	formatTime,
+	isHourTick,
+	listShiftDays,
+	MINUTE_MS,
+	readableTextColor,
+	shiftsOnDay,
+	stepZoom,
+	type TimelineAxis,
+	type TimelineItem,
+	ZOOM_OPTIONS,
+	type ZoomMinutes,
+} from "./timeline/layout";
+import {
+	accumulateWheelZoom,
+	wheelDeltaToPx,
+	zoomedScrollOffset,
+} from "./timeline/wheelZoom";
 
 interface ShiftTimelineProps {
 	shifts: Shift[];
 	roles: Role[];
 	staffs: Staff[];
+	/** ShiftSetting.timeUnitMinutes。ズームの初期値に使う */
 	timeUnitMinutes: number;
-	startTime: Date;
-	endTime: Date;
 }
 
-const ShiftTimeline: React.FC<ShiftTimelineProps> = ({
+/** 1 目盛りの幅（px）。ズームを変えると 1 分あたりの幅が変わる */
+const TICK_WIDTH_PX = 40;
+const LANE_HEIGHT_PX = 40;
+/** 行の見出し（役割名・スタッフ名）の幅。横にスクロールしても左に残る */
+const HEADER_WIDTH_PX = 160;
+
+const AXIS_LABELS: Record<TimelineAxis, string> = {
+	role: "役割別",
+	staff: "スタッフ別",
+};
+
+const toZoom = (minutes: number): ZoomMinutes =>
+	ZOOM_OPTIONS.find((option) => option === minutes) ?? 15;
+
+/** ブラウザに表示されてから現在時刻を持つ（SSR とハイドレーションで値がずれないように） */
+const useNow = (intervalMs = 30_000): number | null => {
+	const [now, setNow] = useState<number | null>(null);
+	useEffect(() => {
+		setNow(Date.now());
+		const timer = setInterval(() => setNow(Date.now()), intervalMs);
+		return () => clearInterval(timer);
+	}, [intervalMs]);
+	return now;
+};
+
+/**
+ * ⌘/Ctrl + ホイールでズームする（FR-1-3）。ブラウザのページズームと重なるので preventDefault が要り、
+ * そのため React の onWheel ではなく passive: false で登録する（kichijitsu の WeekGrid と同じ）
+ */
+const useWheelZoom = (
+	scrollRef: RefObject<HTMLDivElement | null>,
+	zoom: ZoomMinutes,
+	setZoom: (zoom: ZoomMinutes) => void,
+	pendingScrollRef: RefObject<number | null>,
+) => {
+	const accumRef = useRef(0);
+	// 同じフレームに wheel が何度も届いても取りこぼさないよう、次に頼んだ値も書き戻す
+	const zoomRef = useRef(zoom);
+	zoomRef.current = zoom;
+
+	useEffect(() => {
+		const el = scrollRef.current;
+		if (!el) return;
+		const handleWheel = (event: WheelEvent) => {
+			if (!event.ctrlKey && !event.metaKey) return;
+			event.preventDefault();
+			const { accumPx, direction } = accumulateWheelZoom(
+				accumRef.current,
+				wheelDeltaToPx(event.deltaY, event.deltaMode),
+			);
+			accumRef.current = accumPx;
+			if (direction === 0) return;
+			const current = zoomRef.current;
+			const next = stepZoom(current, direction);
+			if (next === current) return;
+			const anchorPx = event.clientX - el.getBoundingClientRect().left;
+			// 1 分あたりの px は TICK_WIDTH_PX / zoom
+			pendingScrollRef.current = zoomedScrollOffset(
+				el.scrollLeft,
+				anchorPx,
+				HEADER_WIDTH_PX,
+				TICK_WIDTH_PX / current,
+				TICK_WIDTH_PX / next,
+			);
+			zoomRef.current = next;
+			setZoom(next);
+		};
+		el.addEventListener("wheel", handleWheel, { passive: false });
+		return () => el.removeEventListener("wheel", handleWheel);
+	}, [scrollRef, setZoom, pendingScrollRef]);
+};
+
+const ShiftTimeline = ({
 	shifts,
 	roles,
 	staffs,
 	timeUnitMinutes,
-	startTime,
-	endTime,
-}) => {
-	const timeSlots = [];
-	const currentTime = new Date(startTime);
-	while (currentTime < endTime) {
-		timeSlots.push(new Date(currentTime));
-		currentTime.setMinutes(currentTime.getMinutes() + timeUnitMinutes);
-	}
+}: ShiftTimelineProps) => {
+	const [axis, setAxis] = useState<TimelineAxis>("role");
+	const [zoom, setZoom] = useState<ZoomMinutes>(toZoom(timeUnitMinutes));
+	const zoomSelectId = useId();
+	const now = useNow();
+	const scrollRef = useRef<HTMLDivElement>(null);
+	const pendingScrollRef = useRef<number | null>(null);
+	useWheelZoom(scrollRef, zoom, setZoom, pendingScrollRef);
+
+	// ズームを当てた後、wheel のときに決めたスクロール位置に合わせる（描画と同じコミットで）
+	useLayoutEffect(() => {
+		const el = scrollRef.current;
+		if (el && pendingScrollRef.current !== null) {
+			el.scrollLeft = pendingScrollRef.current;
+			pendingScrollRef.current = null;
+		}
+	}, [zoom]);
+
+	// 複数日のイベントは 1 日ずつ表示する。最初はシフトのある最初の日
+	const days = useMemo(() => listShiftDays(shifts), [shifts]);
+	const [selectedDay, setSelectedDay] = useState<number | undefined>(days[0]);
+	const day =
+		selectedDay !== undefined && days.includes(selectedDay)
+			? selectedDay
+			: days[0];
+	const dayShifts = useMemo(
+		() => (day === undefined ? shifts : shiftsOnDay(shifts, day)),
+		[shifts, day],
+	);
+
+	const range = useMemo(
+		() => computeDisplayRange(dayShifts, undefined, day),
+		[dayShifts, day],
+	);
+	const ticks = useMemo(() => buildTicks(range, zoom), [range, zoom]);
+	const rows = useMemo(
+		() => buildRows(axis, dayShifts, roles, staffs),
+		[axis, dayShifts, roles, staffs],
+	);
+
+	const pxPerMs = TICK_WIDTH_PX / (zoom * MINUTE_MS);
+	const width = (range.end - range.start) * pxPerMs;
+	const toX = (ms: number) => (ms - range.start) * pxPerMs;
+	const showNow = now !== null && now >= range.start && now < range.end;
 
 	return (
-		<div>
-			<h2>Shift Timeline</h2>
-			{/* タイムラインの描画 */}
-			<div>
-				{timeSlots.map((time) => (
-					<span key={time.toISOString()}>{format(time, "HH:mm")}</span>
-				))}
+		<section aria-label="シフトのタイムライン" className="space-y-3">
+			<div className="flex flex-wrap items-center gap-4">
+				{days.length > 1 && (
+					<div role="group" aria-label="日付" className="flex gap-1">
+						{days.map((value) => (
+							<button
+								key={value}
+								type="button"
+								aria-pressed={value === day}
+								onClick={() => setSelectedDay(value)}
+								className={`rounded border px-3 py-1 text-sm ${value === day ? "border-blue-600 bg-blue-600 text-white" : "bg-background"}`}
+							>
+								{formatDay(value)}
+							</button>
+						))}
+					</div>
+				)}
+				<fieldset className="flex items-center gap-2">
+					<legend className="sr-only">縦軸</legend>
+					{(Object.keys(AXIS_LABELS) as TimelineAxis[]).map((value) => (
+						<label key={value} className="flex items-center gap-1">
+							<input
+								type="radio"
+								name="timeline-axis"
+								value={value}
+								checked={axis === value}
+								onChange={() => setAxis(value)}
+							/>
+							{AXIS_LABELS[value]}
+						</label>
+					))}
+				</fieldset>
+				<label htmlFor={zoomSelectId} className="flex items-center gap-2">
+					目盛り
+					<select
+						id={zoomSelectId}
+						value={zoom}
+						onChange={(event) => setZoom(toZoom(Number(event.target.value)))}
+						className="rounded border px-2 py-1"
+					>
+						{ZOOM_OPTIONS.map((option) => (
+							<option key={option} value={option}>
+								{option} 分
+							</option>
+						))}
+					</select>
+				</label>
 			</div>
-			<div>
-				{shifts.map((shift) => {
-					const role = roles.find((r) => r.id === shift.roleId);
-					const staff = staffs.find((s) => s.id === shift.staffId);
-					const shiftStyle = {
-						backgroundColor: role?.color,
-						border:
-							shift.status === ShiftStatus.draft ? "2px dashed gray" : "none", // Add this line
-					};
-					return (
-						<div key={shift.id} style={shiftStyle}>
-							{staff?.name} - {role?.name} -{" "}
-							{format(shift.timeRange.start, "HH:mm")} -{" "}
-							{format(shift.timeRange.end, "HH:mm")}
-							{shift.isPreferredRole ? "(希望)" : "(希望外)"}
-							{shift.status === ShiftStatus.draft ? "(下書き)" : ""}
+
+			<div ref={scrollRef} className="overflow-x-auto rounded border">
+				<div className="relative" style={{ width: HEADER_WIDTH_PX + width }}>
+					{/* 時刻の見出し */}
+					<div className="sticky top-0 z-20 flex border-b bg-background">
+						<div
+							className="sticky left-0 z-30 shrink-0 border-r bg-background px-2 py-1 text-sm font-semibold"
+							style={{ width: HEADER_WIDTH_PX }}
+						>
+							{AXIS_LABELS[axis]}
 						</div>
-					);
-				})}
+						<div className="relative h-8" style={{ width }}>
+							{ticks.map((tick) => (
+								<span
+									key={tick}
+									className={`absolute top-0 h-full border-l pl-1 text-xs ${isHourTick(tick) ? "border-gray-400" : "border-gray-200 text-gray-500"}`}
+									style={{ left: toX(tick) }}
+								>
+									{formatTime(tick)}
+								</span>
+							))}
+						</div>
+					</div>
+
+					{/* 行 */}
+					<ul aria-label={`${AXIS_LABELS[axis]}の行`}>
+						{rows.map((row) => (
+							<li key={row.id} className="flex border-b last:border-b-0">
+								<div
+									className="sticky left-0 z-10 flex shrink-0 items-center gap-2 border-r bg-background px-2 text-sm"
+									style={{ width: HEADER_WIDTH_PX }}
+								>
+									{row.color && (
+										<span
+											aria-hidden
+											className="inline-block h-3 w-3 shrink-0 rounded-sm"
+											style={{ backgroundColor: row.color }}
+										/>
+									)}
+									<span className="truncate">{row.label}</span>
+								</div>
+								<div
+									className="relative"
+									style={{ width, height: row.laneCount * LANE_HEIGHT_PX }}
+								>
+									{ticks.map((tick) => (
+										<span
+											key={tick}
+											aria-hidden
+											className={`absolute top-0 h-full border-l ${isHourTick(tick) ? "border-gray-300" : "border-gray-100"}`}
+											style={{ left: toX(tick) }}
+										/>
+									))}
+									<ul aria-label={`${row.label}のシフト`}>
+										{row.items.map((item) => (
+											<ShiftBlock
+												key={item.shift.id}
+												item={item}
+												axis={axis}
+												left={toX(Math.max(item.start, range.start))}
+												width={
+													(Math.min(item.end, range.end) -
+														Math.max(item.start, range.start)) *
+													pxPerMs
+												}
+											/>
+										))}
+									</ul>
+								</div>
+							</li>
+						))}
+					</ul>
+
+					{/* 現在時刻（FR-1-5） */}
+					{showNow && (
+						<div
+							aria-hidden
+							className="pointer-events-none absolute top-0 bottom-0 z-10 w-0.5 bg-red-500"
+							style={{ left: HEADER_WIDTH_PX + toX(now) }}
+						/>
+					)}
+				</div>
 			</div>
-		</div>
+
+			<p className="text-xs text-gray-500">
+				点線の枠は下書き、オレンジの枠は希望外の割り当てです。⌘ / Ctrl
+				を押しながらホイール（ピンチ）でズームできます。
+			</p>
+		</section>
+	);
+};
+
+const ShiftBlock = ({
+	item,
+	axis,
+	left,
+	width,
+}: {
+	item: TimelineItem;
+	axis: TimelineAxis;
+	left: number;
+	width: number;
+}) => {
+	const { shift, role, staff } = item;
+	const isDraft = shift.status === ShiftStatus.draft;
+	// 役割別の行ではスタッフ名、スタッフ別の行では役割名を出す
+	const title = axis === "role" ? staff?.name : role?.name;
+	const time = `${formatTime(item.start)}〜${formatTime(item.end)}`;
+	const notes = [
+		isDraft ? "下書き" : undefined,
+		shift.isPreferredRole ? undefined : "希望外の割り当て",
+	].filter(Boolean);
+	const label = [staff?.name, role?.name, time, ...notes]
+		.filter(Boolean)
+		.join("、");
+
+	return (
+		<li
+			// キーボードでたどって読み上げられるように、フォーカスできるようにする
+			tabIndex={0}
+			aria-label={label}
+			title={label}
+			className={`absolute overflow-hidden rounded px-1 text-xs leading-tight shadow-sm focus:outline-2 focus:outline-offset-1 focus:outline-blue-600 ${isDraft ? "border-2 border-dashed" : "border"} ${shift.isPreferredRole ? "border-gray-700/40" : "border-orange-500 ring-2 ring-orange-400"}`}
+			style={{
+				left,
+				width: Math.max(width - 2, 4),
+				top: item.lane * LANE_HEIGHT_PX + 4,
+				height: LANE_HEIGHT_PX - 8,
+				backgroundColor: role?.color ?? "#cccccc",
+				color: readableTextColor(role?.color),
+			}}
+		>
+			<span className="block truncate font-semibold">{title}</span>
+			<span className="block truncate">{time}</span>
+		</li>
 	);
 };
 
