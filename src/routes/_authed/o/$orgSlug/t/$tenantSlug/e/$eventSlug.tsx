@@ -4,6 +4,7 @@ import {
 	notFound,
 	Outlet,
 } from "@tanstack/react-router";
+import { hasPermission } from "../../../../../../../lib/org/permissions";
 import { getEventContext } from "../../../../../../../server/shifts.functions";
 
 // イベントの画面の土台。イベントがそのテナントにない・所属していなければ「見つかりません」
@@ -19,7 +20,11 @@ export const Route = createFileRoute(
 });
 
 function EventLayout() {
-	const { eventContext } = Route.useRouteContext();
+	const { eventContext, member } = Route.useRouteContext();
+	const canOpenSettings =
+		hasPermission(eventContext.permissions, "event.manage") ||
+		hasPermission(eventContext.permissions, "position.manage") ||
+		hasPermission(member.permissions, "member.manage");
 	const params = Route.useParams();
 	const link = "rounded px-3 py-1 text-sm hover:bg-gray-100";
 	const active = { className: `${link} bg-gray-200 font-semibold` };
@@ -49,6 +54,16 @@ function EventLayout() {
 				>
 					下書き
 				</Link>
+				{canOpenSettings && (
+					<Link
+						to="/o/$orgSlug/t/$tenantSlug/e/$eventSlug/settings"
+						params={params}
+						activeProps={active}
+						className={link}
+					>
+						イベントの設定
+					</Link>
+				)}
 				<span className="ml-auto text-xs text-gray-600">
 					{eventContext.canEditShifts
 						? "このイベントのシフトを編集できます"

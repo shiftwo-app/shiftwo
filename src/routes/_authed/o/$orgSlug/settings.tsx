@@ -1,5 +1,7 @@
 import { createFileRoute, useRouter } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
+import StaffSection from "../../../../components/manage/StaffSection";
+import TenantsSection from "../../../../components/manage/TenantsSection";
 import { useId, useState } from "react";
 import type { FormEvent } from "react";
 import {
@@ -29,12 +31,13 @@ import {
 	updateMyDisplayName,
 	updateRoleFn,
 } from "../../../../server/org.functions";
+import { listStaffFn } from "../../../../server/manage.functions";
 
 export const Route = createFileRoute("/_authed/o/$orgSlug/settings")({
 	loader: async ({ params, context }) => {
 		const perms = context.member.permissions;
 		const orgSlug = params.orgSlug;
-		const [members, roles, invites] = await Promise.all([
+		const [members, roles, invites, staff] = await Promise.all([
 			hasPermission(perms, "member.view")
 				? listMembers({ data: { orgSlug } })
 				: Promise.resolve(null),
@@ -44,8 +47,11 @@ export const Route = createFileRoute("/_authed/o/$orgSlug/settings")({
 			hasPermission(perms, "invite.manage")
 				? listInvites({ data: { orgSlug } })
 				: Promise.resolve(null),
+			hasPermission(perms, "staff.manage")
+				? listStaffFn({ data: { orgSlug } })
+				: Promise.resolve(null),
 		]);
-		return { members, roles, invites };
+		return { members, roles, invites, staff };
 	},
 	component: SettingsPage,
 });
@@ -70,8 +76,8 @@ const primary =
 	"rounded bg-blue-600 px-3 py-1 text-sm font-semibold text-white disabled:opacity-50";
 
 function SettingsPage() {
-	const { organization, member } = Route.useRouteContext();
-	const { members, roles, invites } = Route.useLoaderData();
+	const { organization, member, tenants } = Route.useRouteContext();
+	const { members, roles, invites, staff } = Route.useLoaderData();
 	const router = useRouter();
 	const [errors, setErrors] = useState<string[]>([]);
 	const perms = member.permissions;
@@ -112,6 +118,22 @@ function SettingsPage() {
 				current={member.displayName}
 				run={run}
 			/>
+			{hasPermission(perms, "tenant.manage") && (
+				<TenantsSection
+					orgSlug={organization.slug}
+					tenants={tenants}
+					run={run}
+				/>
+			)}
+			{staff && (
+				<StaffSection
+					orgSlug={organization.slug}
+					staffs={staff.staffs}
+					members={staff.members}
+					canLinkMembers={staff.canLinkMembers}
+					run={run}
+				/>
+			)}
 			{members && (
 				<MembersSection
 					orgSlug={organization.slug}

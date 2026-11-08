@@ -15,6 +15,11 @@ export const RESERVED_SLUGS = new Set([
 	"o",
 	"orgs",
 	"legacy",
+	// テナント・イベントの画面の URL と紛らわしいもの
+	"t",
+	"e",
+	"draft",
+	"events",
 ]);
 
 export const slugSchema = z

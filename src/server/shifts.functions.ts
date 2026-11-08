@@ -60,6 +60,8 @@ export const getTenantContext = createServerFn({ method: "GET" })
 			tenant: access.tenant,
 			events,
 			canEditShifts: hasPermission(access.permissions, "shift.edit"),
+			/** このテナントでの権限（設定へのリンクを出すかに使う。守りはサーバー側） */
+			permissions: access.permissions,
 			timeUnitMinutes: access.timeUnitMinutes,
 		};
 	});
@@ -77,6 +79,8 @@ export const getEventContext = createServerFn({ method: "GET" })
 		return {
 			event: access.event,
 			canEditShifts: hasPermission(access.permissions, "shift.edit"),
+			/** このイベントでの権限（設定へのリンクを出すかに使う。守りはサーバー側） */
+			permissions: access.permissions,
 			timeUnitMinutes: access.timeUnitMinutes,
 		};
 	});
