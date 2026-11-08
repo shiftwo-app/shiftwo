@@ -1,3 +1,4 @@
+import { safeAvatarUrl } from "../lib/avatar";
 import { initialsOf } from "../lib/discord";
 
 /** 名前から決まる背景色（頭文字のとき） */
@@ -18,10 +19,12 @@ const Avatar = ({
 	name: string;
 	url?: string | null;
 	size?: number;
-}) =>
-	url ? (
+}) => {
+	// サーバーでも絞っているが、画面でも Discord の CDN 以外は読み込まない
+	const src = safeAvatarUrl(url);
+	return src ? (
 		<img
-			src={url}
+			src={src}
 			alt=""
 			width={size}
 			height={size}
@@ -44,5 +47,6 @@ const Avatar = ({
 			{initialsOf(name)}
 		</span>
 	);
+};
 
 export default Avatar;
