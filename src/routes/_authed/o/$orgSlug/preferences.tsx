@@ -5,6 +5,11 @@ import type { FormEvent } from "react";
 import ErrorList from "../../../../components/manage/ErrorList";
 import { useMutationRunner } from "../../../../components/manage/useMutationRunner";
 import PreferenceForm from "../../../../components/preferences/PreferenceForm";
+import Alert from "../../../../components/ui/Alert";
+import Badge from "../../../../components/ui/Badge";
+import Button from "../../../../components/ui/Button";
+import PageHeader from "../../../../components/ui/PageHeader";
+import Section from "../../../../components/ui/Section";
 import { formatRange } from "../../../../components/preferences/time";
 import {
 	fromDateTimeInputValue,
@@ -40,7 +45,7 @@ export const Route = createFileRoute("/_authed/o/$orgSlug/preferences")({
 		if (!page) throw notFound();
 		return page;
 	},
-	head: () => ({ meta: [{ title: "希望 | shiftwo" }] }),
+	head: () => ({ meta: [{ title: "希望 | シフトヲ" }] }),
 	component: PreferencesPage,
 });
 
@@ -90,22 +95,25 @@ function PreferencesPage() {
 		run(() => remove({ data: { orgSlug: params.orgSlug, scope, staffId } }));
 
 	return (
-		<main className="mx-auto max-w-3xl space-y-8 p-4">
-			<div className="space-y-2">
-				<h1 className="text-xl font-bold">希望</h1>
-				<p className="text-sm text-gray-600">
-					休憩・参加できない時間、やりたい持ち場、メモを出せます。団体全体の希望を基本にして、テナントやイベントごとに上書きできます（イベントのシフトでは、イベント
-					→ テナント → 団体全体の順に、ある希望を使います）。
-				</p>
-				<label htmlFor={scopeSelectId} className="flex flex-col gap-1 text-sm">
-					どこの希望か
+		<main className="mx-auto max-w-5xl px-4 py-6 sm:px-6">
+			<PageHeader
+				title="希望"
+				description="休憩・参加できない時間、やりたい持ち場、メモを出せます。団体全体の希望を基本にして、テナントやイベントごとに上書きできます（イベントのシフトでは、イベント、テナント、団体全体の順に、ある希望を使います）。"
+			/>
+
+			{/* どこの希望かを選ぶ欄と、その単位の受付の様子 */}
+			<div className="mb-6 space-y-3 rounded-lg border border-line bg-surface p-4">
+				<div className="flex flex-col gap-1">
+					<label htmlFor={scopeSelectId} className="text-sm font-bold text-ink">
+						どこの希望か
+					</label>
 					<select
 						id={scopeSelectId}
 						value={scope}
 						onChange={(event) =>
 							void navigate({ search: { scope: event.target.value } })
 						}
-						className="rounded border px-2 py-1"
+						className="control w-full sm:max-w-sm"
 					>
 						<option value="org">団体全体</option>
 						{page.scopes.map((tenant) => (
@@ -124,24 +132,36 @@ function PreferencesPage() {
 							</optgroup>
 						))}
 					</select>
-				</label>
-				<p className="text-sm">
-					{page.label}
-					{period && `・期間 ${formatRange(period)}`}
-					{page.deadline
-						? `・締切 ${formatDateTime(new Date(page.deadline))}${page.pastDeadline ? "（締め切りました）" : ""}`
-						: "・締切なし"}
+				</div>
+				<p className="flex flex-wrap items-center gap-x-3 gap-y-1.5 text-sm text-ink">
+					<span className="font-bold">{page.label}</span>
+					{period && (
+						<span className="text-ink-muted">
+							期間{" "}
+							<span className="tabular text-ink">{formatRange(period)}</span>
+						</span>
+					)}
+					{page.deadline ? (
+						<span className="inline-flex flex-wrap items-center gap-2 text-ink-muted">
+							<span>
+								締切{" "}
+								<span className="tabular text-ink">
+									{formatDateTime(new Date(page.deadline))}
+								</span>
+							</span>
+							{page.pastDeadline && <Badge tone="warn">締め切りました</Badge>}
+						</span>
+					) : (
+						<span className="text-ink-muted">締切なし</span>
+					)}
 				</p>
 			</div>
 
 			<ErrorList errors={errors} />
 
-			<section aria-labelledby="mine-h" className="space-y-3">
-				<h2 id="mine-h" className="text-lg font-semibold">
-					自分の希望
-				</h2>
+			<Section id="mine-h" title="自分の希望">
 				{!page.myStaff || !page.mine ? (
-					<p className="text-sm">
+					<p className="text-sm text-ink-muted">
 						あなたはまだスタッフとして登録されていません。シフトを組む人に、スタッフへの紐づけを頼んでください。
 					</p>
 				) : (
@@ -154,26 +174,26 @@ function PreferencesPage() {
 						onRemove={() => removeFor(page.myStaff!.id)}
 					/>
 				)}
-			</section>
+			</Section>
 
 			{page.canSetDeadline && (
-				<section aria-labelledby="settings-h" className="space-y-3">
-					<h2 id="settings-h" className="text-lg font-semibold">
-						受付の設定
-					</h2>
+				<Section id="settings-h" title="受付の設定">
 					<PreferenceSettingsForm key={scope} page={page} scope={scope} />
-				</section>
+				</Section>
 			)}
 
 			{page.all && (
-				<section aria-labelledby="all-h" className="space-y-3">
-					<h2 id="all-h" className="text-lg font-semibold">
-						みんなの希望（{page.all.length} 人）
-					</h2>
-					<p className="text-sm text-gray-600">
-						シフトを組む人は、締切のあとでも直せます。
-					</p>
-					<ul className="divide-y rounded border">
+				<Section
+					id="all-h"
+					title={
+						<>
+							みんなの希望
+							<span className="tabular">（{page.all.length} 人）</span>
+						</>
+					}
+					description="シフトを組む人は、締切のあとでも直せます。"
+				>
+					<ul className="divide-y divide-line rounded-lg border border-line bg-surface">
 						{page.all.map((view) => (
 							<StaffPreferenceRow
 								key={`${view.staff.id}:${view.own?.updatedAt.toString() ?? "none"}`}
@@ -186,7 +206,7 @@ function PreferencesPage() {
 							/>
 						))}
 					</ul>
-				</section>
+				</Section>
 			)}
 		</main>
 	);
@@ -210,15 +230,16 @@ function MyPreference({
 	const mine = page.mine!;
 	const locked = page.pastDeadline && !page.canManageAll;
 	return (
-		<div className="space-y-3">
-			<p className="text-sm">{sourceText(level, mine.effective.source)}</p>
+		<div className="space-y-4">
+			<div>
+				<Badge tone={mine.effective.source === null ? "neutral" : "primary"}>
+					{sourceText(level, mine.effective.source)}
+				</Badge>
+			</div>
 			{locked && (
-				<p
-					role="status"
-					className="rounded bg-amber-50 p-2 text-sm text-amber-900"
-				>
+				<Alert tone="warn">
 					締切を過ぎたので、希望は変えられません。変えたいときはシフトを組む人に頼んでください。
-				</p>
+				</Alert>
 			)}
 			<PreferenceForm
 				positions={page.positions}
@@ -235,15 +256,13 @@ function MyPreference({
 				onSubmit={onSave}
 			/>
 			{mine.own && !locked && (
-				<button
-					type="button"
-					onClick={() => void onRemove()}
-					className="text-sm underline"
-				>
-					{level === "org"
-						? "希望を消す"
-						: `上書きをやめる（${level === "event" ? "テナントか団体全体" : "団体全体"}の希望を使う）`}
-				</button>
+				<div className="border-t border-line pt-4">
+					<Button variant="ghost" size="sm" onClick={() => void onRemove()}>
+						{level === "org"
+							? "希望を消す"
+							: `上書きをやめる（${level === "event" ? "テナントか団体全体" : "団体全体"}の希望を使う）`}
+					</Button>
+				</div>
 			)}
 		</div>
 	);
@@ -269,43 +288,46 @@ function StaffPreferenceRow({
 		.map((pid) => page.positions.find((p) => p.id === pid)?.name)
 		.filter(Boolean);
 	return (
-		<li className="space-y-2 p-3 text-sm">
-			<div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
-				<span className="font-semibold">{view.staff.name}</span>
-				<span className="text-xs text-gray-600">
+		<li className="space-y-3 px-4 py-3 text-sm">
+			<div className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
+				<span className="font-bold text-ink">{view.staff.name}</span>
+				<Badge tone={view.effective.source === null ? "neutral" : "primary"}>
 					{sourceText(level, view.effective.source)}
-				</span>
-				<button
-					type="button"
+				</Badge>
+				<Button
+					variant="ghost"
+					size="sm"
 					onClick={() => setEditing((value) => !value)}
 					aria-expanded={editing}
-					className="ml-auto underline"
+					className="ml-auto"
 				>
 					{editing ? "閉じる" : "直す"}
-				</button>
+				</Button>
 			</div>
-			<dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1">
-				<dt className="text-gray-600">休憩</dt>
-				<dd>
+			<dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 text-ink">
+				<dt className="text-ink-muted">休憩</dt>
+				<dd className="tabular">
 					{view.effective.breaks.length > 0
 						? view.effective.breaks.map(formatRange).join("、")
 						: "なし"}
 				</dd>
 				{level !== "org" && (
 					<>
-						<dt className="text-gray-600">持ち場</dt>
+						<dt className="text-ink-muted">持ち場</dt>
 						<dd>{names.length > 0 ? names.join("、") : "なし"}</dd>
 					</>
 				)}
 				{view.effective.memo && (
 					<>
-						<dt className="text-gray-600">メモ</dt>
-						<dd className="whitespace-pre-wrap">{view.effective.memo}</dd>
+						<dt className="text-ink-muted">メモ</dt>
+						<dd className="break-words whitespace-pre-wrap">
+							{view.effective.memo}
+						</dd>
 					</>
 				)}
 			</dl>
 			{editing && (
-				<div className="space-y-2 rounded bg-gray-50 p-3">
+				<div className="space-y-4 rounded-md bg-surface-sunken p-4">
 					<PreferenceForm
 						positions={page.positions}
 						timeUnitMinutes={page.timeUnitMinutes}
@@ -320,13 +342,11 @@ function StaffPreferenceRow({
 						}}
 					/>
 					{view.own && (
-						<button
-							type="button"
-							onClick={() => void onRemove()}
-							className="underline"
-						>
-							{level === "org" ? "希望を消す" : "上書きをやめる"}
-						</button>
+						<div className="border-t border-line pt-3">
+							<Button variant="ghost" size="sm" onClick={() => void onRemove()}>
+								{level === "org" ? "希望を消す" : "上書きをやめる"}
+							</Button>
+						</div>
 					)}
 				</div>
 			)}
@@ -372,12 +392,12 @@ function PreferenceSettingsForm({
 		);
 	};
 
-	const field = "flex flex-col gap-1";
-	const control = "rounded border px-2 py-1";
+	const field = "flex min-w-0 flex-col gap-1 font-bold text-ink";
+	const control = "control tabular w-full font-normal sm:w-auto";
 	return (
 		<form onSubmit={submit} className="space-y-3 text-sm">
 			<ErrorList errors={errors} />
-			<div className="flex flex-wrap items-end gap-3">
+			<div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end">
 				<label htmlFor={`${id}-deadline`} className={field}>
 					締切（空なら締切なし）
 					<input
@@ -412,15 +432,16 @@ function PreferenceSettingsForm({
 						</label>
 					</>
 				)}
-				<button
+				<Button
 					type="submit"
-					className="rounded bg-blue-600 px-3 py-1 font-semibold text-white"
+					variant="primary"
+					className="self-start sm:self-auto"
 				>
 					保存
-				</button>
+				</Button>
 			</div>
 			{isEvent && (
-				<p className="text-xs text-gray-600">
+				<p className="text-xs leading-relaxed text-ink-muted">
 					期間を決めると、期間の外の休憩は出せなくなります（両方を空にすると、期間なし）。
 				</p>
 			)}

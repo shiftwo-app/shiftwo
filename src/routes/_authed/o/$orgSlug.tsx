@@ -4,8 +4,11 @@ import {
 	notFound,
 	Outlet,
 	redirect,
+	useMatch,
 } from "@tanstack/react-router";
+import ScopeTabs, { type ScopeTab } from "../../../components/shell/ScopeTabs";
 import { memberRoleLabel } from "../../../lib/org/member-label";
+import { hasPermission } from "../../../lib/org/permissions";
 import { getOrganization } from "../../../server/org.functions";
 
 // 団体の画面の土台。ここで一度だけメンバーかを確かめ、所属していなければ「見つかりません」にする
@@ -25,7 +28,7 @@ export const Route = createFileRoute("/_authed/o/$orgSlug")({
 	},
 	head: ({ match }) => ({
 		meta: [
-			{ title: `${match.context.organization?.name ?? "団体"} | shiftwo` },
+			{ title: `${match.context.organization?.name ?? "団体"} | シフトヲ` },
 		],
 	}),
 	component: OrgLayout,
@@ -33,54 +36,212 @@ export const Route = createFileRoute("/_authed/o/$orgSlug")({
 
 function OrgLayout() {
 	const { organization, member, tenants } = Route.useRouteContext();
-	const link = "rounded px-3 py-1 text-sm hover:bg-gray-100";
-	const active = { className: `${link} bg-gray-200 font-semibold` };
+	// いま開いているテナント・イベント（その画面の土台の beforeLoad で確かめたもの）
+	const tenantMatch = useMatch({
+		from: "/_authed/o/$orgSlug/t/$tenantSlug",
+		shouldThrow: false,
+	});
+	const eventMatch = useMatch({
+		from: "/_authed/o/$orgSlug/t/$tenantSlug/e/$eventSlug",
+		shouldThrow: false,
+	});
+	const tenantContext = tenantMatch?.context.tenantContext;
+	const eventContext = eventMatch?.context.eventContext;
+	const orgSlug = organization.slug;
+	const tenantParams = tenantContext && {
+		orgSlug,
+		tenantSlug: tenantContext.tenant.slug,
+	};
+
+	// いちばん深い単位のタブ。設定のタブは、変えられるものがあるときだけ出す（守りはサーバー側）
+	let tabs: ScopeTab[];
+	let tabsLabel: string;
+	if (eventContext && tenantParams) {
+		const params = { ...tenantParams, eventSlug: eventContext.event.slug };
+		const canOpenSettings =
+			hasPermission(eventContext.permissions, "event.manage") ||
+			hasPermission(eventContext.permissions, "position.manage") ||
+			hasPermission(member.permissions, "member.manage");
+		tabsLabel = `${eventContext.event.name}のメニュー`;
+		tabs = [
+			{
+				label: "確定シフト",
+				link: { to: "/o/$orgSlug/t/$tenantSlug/e/$eventSlug", params },
+				exact: true,
+			},
+			{
+				label: "下書き",
+				link: { to: "/o/$orgSlug/t/$tenantSlug/e/$eventSlug/draft", params },
+			},
+			...(canOpenSettings
+				? [
+						{
+							label: "イベントの設定",
+							link: {
+								to: "/o/$orgSlug/t/$tenantSlug/e/$eventSlug/settings",
+								params,
+							},
+						} satisfies ScopeTab,
+					]
+				: []),
+		];
+	} else if (tenantContext && tenantParams) {
+		const canOpenSettings =
+			hasPermission(member.permissions, "tenant.manage") ||
+			hasPermission(member.permissions, "member.manage") ||
+			hasPermission(tenantContext.permissions, "position.manage");
+		tabsLabel = `${tenantContext.tenant.name}のメニュー`;
+		tabs = [
+			{
+				label: "日常シフト",
+				link: { to: "/o/$orgSlug/t/$tenantSlug", params: tenantParams },
+				exact: true,
+			},
+			{
+				label: "下書き",
+				link: { to: "/o/$orgSlug/t/$tenantSlug/draft", params: tenantParams },
+			},
+			{
+				label: `イベント（${tenantContext.events.length}）`,
+				link: { to: "/o/$orgSlug/t/$tenantSlug/events", params: tenantParams },
+			},
+			...(canOpenSettings
+				? [
+						{
+							label: "テナントの設定",
+							link: {
+								to: "/o/$orgSlug/t/$tenantSlug/settings",
+								params: tenantParams,
+							},
+						} satisfies ScopeTab,
+					]
+				: []),
+		];
+	} else {
+		tabsLabel = `${organization.name}のメニュー`;
+		tabs = [
+			{
+				label: "トップ",
+				link: { to: "/o/$orgSlug", params: { orgSlug } },
+				exact: true,
+			},
+			...tenants.map(
+				(tenant) =>
+					({
+						label: tenant.name,
+						link: {
+							to: "/o/$orgSlug/t/$tenantSlug",
+							params: { orgSlug, tenantSlug: tenant.slug },
+						},
+					}) satisfies ScopeTab,
+			),
+			{
+				label: "希望",
+				link: { to: "/o/$orgSlug/preferences", params: { orgSlug } },
+			},
+			{
+				label: "設定・メンバー",
+				link: { to: "/o/$orgSlug/settings", params: { orgSlug } },
+			},
+		];
+	}
+
+	const crumb =
+		"text-ink-muted hover:text-ink hover:underline underline-offset-4";
 	return (
 		<div>
-			<nav
-				aria-label={`${organization.name}のメニュー`}
-				className="flex flex-wrap items-center gap-2 border-b px-4 py-2"
-			>
-				<Link
-					to="/o/$orgSlug"
-					params={{ orgSlug: organization.slug }}
-					className="mr-2 font-semibold"
-				>
-					{organization.name}
-				</Link>
-				{/* テナントが 1 つなら、テナントを選ぶ手順は出さない */}
-				{tenants.length > 1 &&
-					tenants.map((tenant) => (
-						<Link
-							key={tenant.slug}
-							to="/o/$orgSlug/t/$tenantSlug"
-							params={{ orgSlug: organization.slug, tenantSlug: tenant.slug }}
-							activeProps={active}
-							className={link}
-						>
-							{tenant.name}
-						</Link>
-					))}
-				<Link
-					to="/o/$orgSlug/preferences"
-					params={{ orgSlug: organization.slug }}
-					activeProps={active}
-					className={link}
-				>
-					希望
-				</Link>
-				<Link
-					to="/o/$orgSlug/settings"
-					params={{ orgSlug: organization.slug }}
-					activeProps={active}
-					className={link}
-				>
-					設定・メンバー
-				</Link>
-				<span className="ml-auto text-xs text-gray-600">
-					{member.displayName}（{memberRoleLabel(member)}）
-				</span>
-			</nav>
+			<div className="border-b border-line bg-surface">
+				<div className="mx-auto max-w-7xl px-4 sm:px-6">
+					<div className="flex flex-wrap items-center justify-between gap-x-6 gap-y-2 pt-4">
+						{/* いまどこにいるか（団体 › テナント › イベント）。最後の 1 つがいまの単位 */}
+						<nav aria-label="いまいる場所">
+							<ol className="flex flex-wrap items-center gap-x-2 text-sm">
+								<li>
+									{tenantContext ? (
+										<Link
+											to="/o/$orgSlug"
+											params={{ orgSlug }}
+											className={crumb}
+										>
+											{organization.name}
+										</Link>
+									) : (
+										<span
+											aria-current="page"
+											className="text-lg font-bold text-ink"
+										>
+											{organization.name}
+										</span>
+									)}
+								</li>
+								{tenantContext && tenantParams && (
+									<li className="flex items-center gap-x-2">
+										<span aria-hidden="true" className="text-line-strong">
+											/
+										</span>
+										{eventContext ? (
+											<Link
+												to="/o/$orgSlug/t/$tenantSlug"
+												params={tenantParams}
+												className={crumb}
+											>
+												{tenantContext.tenant.name}
+											</Link>
+										) : (
+											<span
+												aria-current="page"
+												className="text-lg font-bold text-ink"
+											>
+												{tenantContext.tenant.name}
+											</span>
+										)}
+									</li>
+								)}
+								{eventContext && (
+									<li className="flex items-center gap-x-2">
+										<span aria-hidden="true" className="text-line-strong">
+											/
+										</span>
+										<span
+											aria-current="page"
+											className="text-lg font-bold text-ink"
+										>
+											{eventContext.event.name}
+										</span>
+									</li>
+								)}
+							</ol>
+						</nav>
+						{/* 団体全体のもの（どの画面からでも行けるように） */}
+						<div className="flex items-center gap-4 text-sm">
+							{tenantContext && (
+								<>
+									<Link
+										to="/o/$orgSlug/preferences"
+										params={{ orgSlug }}
+										className={crumb}
+									>
+										希望
+									</Link>
+									<Link
+										to="/o/$orgSlug/settings"
+										params={{ orgSlug }}
+										className={crumb}
+									>
+										設定・メンバー
+									</Link>
+								</>
+							)}
+							<span className="text-xs text-ink-muted">
+								{member.displayName}（{memberRoleLabel(member)}）
+							</span>
+						</div>
+					</div>
+					<div className="mt-2">
+						<ScopeTabs label={tabsLabel} tabs={tabs} />
+					</div>
+				</div>
+			</div>
 			<Outlet />
 		</div>
 	);

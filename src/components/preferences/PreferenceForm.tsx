@@ -7,13 +7,12 @@ import {
 	type TimeRangeMs,
 	validatePreference,
 } from "../../lib/preferences";
+import Button from "../ui/Button";
 import { joinJst, splitJst, timeOptions } from "./time";
 
 type BreakRow = { key: number; date: string; start: number; end: number };
 
-const control = "rounded border px-2 py-1";
-const primary =
-	"rounded bg-blue-600 px-3 py-1 text-sm font-semibold text-white disabled:opacity-50";
+const legend = "mb-2 text-sm font-bold text-ink";
 
 let nextKey = 0;
 const toRow = (range: TimeRangeMs): BreakRow => {
@@ -98,14 +97,18 @@ const PreferenceForm = ({
 	};
 
 	return (
-		<form onSubmit={submit} className="space-y-4 text-sm">
-			<fieldset className="space-y-2" disabled={disabled}>
-				<legend className="font-semibold">休憩・参加できない時間</legend>
+		<form onSubmit={submit} className="space-y-6 text-sm">
+			<fieldset className="min-w-0 space-y-2" disabled={disabled}>
+				<legend className={legend}>休憩・参加できない時間</legend>
 				{rows.length === 0 && (
-					<p className="text-gray-600">ありません（いつでも入れます）。</p>
+					<p className="text-ink-muted">ありません（いつでも入れます）。</p>
 				)}
 				{rows.map((row, index) => (
-					<div key={row.key} className="flex flex-wrap items-center gap-2">
+					// 狭い画面では日付を 1 段目、時刻と「消す」を 2 段目に置く
+					<div
+						key={row.key}
+						className="grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)_auto] items-center gap-2 sm:flex sm:flex-wrap"
+					>
 						<label htmlFor={`${id}-${row.key}-date`} className="sr-only">
 							休憩 {index + 1} の日付
 						</label>
@@ -119,7 +122,7 @@ const PreferenceForm = ({
 							onChange={(event) =>
 								update(row.key, { date: event.target.value })
 							}
-							className={control}
+							className="control tabular col-span-4 min-w-0 sm:w-44"
 						/>
 						<label htmlFor={`${id}-${row.key}-start`} className="sr-only">
 							休憩 {index + 1} の始まり
@@ -130,7 +133,7 @@ const PreferenceForm = ({
 							onChange={(event) =>
 								update(row.key, { start: Number(event.target.value) })
 							}
-							className={control}
+							className="control tabular min-w-0"
 						>
 							{startOptions.map((option) => (
 								<option key={option.value} value={option.value}>
@@ -138,7 +141,9 @@ const PreferenceForm = ({
 								</option>
 							))}
 						</select>
-						<span aria-hidden="true">〜</span>
+						<span aria-hidden="true" className="text-ink-muted">
+							〜
+						</span>
 						<label htmlFor={`${id}-${row.key}-end`} className="sr-only">
 							休憩 {index + 1} の終わり
 						</label>
@@ -148,7 +153,7 @@ const PreferenceForm = ({
 							onChange={(event) =>
 								update(row.key, { end: Number(event.target.value) })
 							}
-							className={control}
+							className="control tabular min-w-0"
 						>
 							{endOptions.map((option) => (
 								<option key={option.value} value={option.value}>
@@ -156,37 +161,38 @@ const PreferenceForm = ({
 								</option>
 							))}
 						</select>
-						<button
-							type="button"
+						<Button
+							variant="ghost"
+							size="sm"
 							onClick={() =>
 								setRows((list) => list.filter((r) => r.key !== row.key))
 							}
-							className="underline"
 						>
 							消す
-						</button>
+						</Button>
 					</div>
 				))}
 				{rows.length < PREFERENCE_BREAKS_MAX && (
-					<button
-						type="button"
-						onClick={addRow}
-						className="rounded border px-3 py-1"
-					>
-						休憩を足す
-					</button>
+					<div className="pt-1">
+						<Button variant="secondary" size="sm" onClick={addRow}>
+							休憩を足す
+						</Button>
+					</div>
 				)}
 			</fieldset>
 
 			{positions.length > 0 && (
-				<fieldset className="space-y-2" disabled={disabled}>
-					<legend className="font-semibold">
-						やりたい持ち場（いくつでも）
-					</legend>
-					<div className="flex flex-wrap gap-3">
+				<fieldset className="min-w-0" disabled={disabled}>
+					<legend className={legend}>やりたい持ち場（いくつでも）</legend>
+					<div className="flex flex-wrap gap-2">
 						{positions.map((position) => (
-							<label key={position.id} className="flex items-center gap-1">
+							// 札の形のチェックボックス。選ぶと札の色が変わる
+							<label
+								key={position.id}
+								className="inline-flex cursor-pointer items-center gap-2 rounded-full border border-line bg-surface px-3 py-1 text-ink transition-colors hover:border-line-strong has-[:checked]:border-primary has-[:checked]:bg-primary-soft has-[:disabled]:cursor-not-allowed has-[:disabled]:opacity-60 has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-primary"
+							>
 								<input
+									className="size-3.5 accent-primary"
 									type="checkbox"
 									checked={positionIds.includes(position.id)}
 									onChange={(event) =>
@@ -199,7 +205,7 @@ const PreferenceForm = ({
 								/>
 								<span
 									aria-hidden="true"
-									className="inline-block size-3 rounded-sm"
+									className="inline-block size-2.5 rounded-full"
 									style={{ backgroundColor: position.color }}
 								/>
 								{position.name}
@@ -210,7 +216,10 @@ const PreferenceForm = ({
 			)}
 
 			<div className="space-y-1">
-				<label htmlFor={`${id}-memo`} className="font-semibold">
+				<label
+					htmlFor={`${id}-memo`}
+					className="block text-sm font-bold text-ink"
+				>
 					メモ（任意）
 				</label>
 				<textarea
@@ -221,28 +230,34 @@ const PreferenceForm = ({
 					disabled={disabled}
 					onChange={(event) => setMemo(event.target.value)}
 					aria-describedby={`${id}-memo-count`}
-					className={`${control} block w-full`}
+					className="control block w-full"
 				/>
-				<p id={`${id}-memo-count`} className="text-xs text-gray-600">
+				<p
+					id={`${id}-memo-count`}
+					className="tabular text-right text-xs text-ink-muted"
+				>
 					{memo.length} / {PREFERENCE_MEMO_MAX} 文字
 				</p>
 			</div>
 
 			{errors.length > 0 && (
-				<ul role="alert" className="text-sm text-red-700">
+				<ul
+					role="alert"
+					className="list-disc space-y-0.5 pl-5 text-sm font-bold text-danger"
+				>
 					{errors.map((message) => (
 						<li key={message}>{message}</li>
 					))}
 				</ul>
 			)}
 
-			<button
+			<Button
 				type="submit"
+				variant="primary"
 				disabled={disabled || errors.length > 0}
-				className={primary}
 			>
 				{submitLabel}
-			</button>
+			</Button>
 		</form>
 	);
 };

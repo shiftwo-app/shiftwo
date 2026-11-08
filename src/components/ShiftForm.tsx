@@ -6,6 +6,7 @@ import {
 	toDateTimeInputValue,
 } from "./timeline/datetime";
 import { MINUTE_MS } from "./timeline/layout";
+import Button from "./ui/Button";
 
 /** 作成フォームで決めた値（status は画面の側で付ける） */
 export type ShiftFormValue = {
@@ -63,84 +64,85 @@ const ShiftForm = ({
 		});
 	};
 
-	const field = "flex flex-col gap-1 text-sm";
-	const control = "rounded border px-2 py-1";
+	// ラベルは Field と同じ見た目（太字の小さめの文字）。入力欄は .control
+	const field = "flex min-w-0 flex-col gap-1 text-sm font-bold text-ink";
+	const control = "control w-full font-normal tabular";
 
 	return (
 		<form
 			aria-label="シフトを作る"
 			onSubmit={handleSubmit}
-			className="flex flex-wrap items-end gap-3 rounded border p-3"
+			className="space-y-3 rounded-lg border border-line bg-surface p-4"
 		>
-			<label htmlFor={`${id}-staff`} className={field}>
-				スタッフ
-				<select
-					id={`${id}-staff`}
-					value={staffId}
-					onChange={(event) => setStaffId(event.target.value)}
-					className={control}
-				>
-					{staffs.map((staff) => (
-						<option key={staff.id} value={staff.id}>
-							{staff.name}
-						</option>
-					))}
-				</select>
-			</label>
-			<label htmlFor={`${id}-position`} className={field}>
-				持ち場
-				<select
-					id={`${id}-position`}
-					value={positionId}
-					onChange={(event) => setPositionId(event.target.value)}
-					className={control}
-				>
-					{positions.map((position) => (
-						<option key={position.id} value={position.id}>
-							{position.name}
-						</option>
-					))}
-				</select>
-			</label>
-			<label htmlFor={`${id}-start`} className={field}>
-				開始
-				<input
-					id={`${id}-start`}
-					type="datetime-local"
-					step={timeUnitMinutes * 60}
-					value={start}
-					onChange={(event) => setStart(event.target.value)}
-					className={control}
-				/>
-			</label>
-			<label htmlFor={`${id}-end`} className={field}>
-				終了
-				<input
-					id={`${id}-end`}
-					type="datetime-local"
-					step={timeUnitMinutes * 60}
-					value={end}
-					onChange={(event) => setEnd(event.target.value)}
-					className={control}
-				/>
-			</label>
-			<label className="flex items-center gap-1 pb-1 text-sm">
-				<input
-					type="checkbox"
-					checked={isPreferredPosition}
-					onChange={(event) => setIsPreferredPosition(event.target.checked)}
-				/>
-				希望どおりの持ち場
-			</label>
-			<button
-				type="submit"
-				disabled={busy}
-				className="rounded bg-blue-600 px-4 py-1.5 text-sm font-semibold text-white disabled:opacity-50"
-			>
-				作る
-			</button>
+			<p className="text-sm leading-snug font-bold text-ink">シフトを作る</p>
+			<div className="grid items-end gap-3 sm:grid-cols-2 lg:grid-cols-[repeat(4,minmax(0,1fr))_auto_auto]">
+				<label htmlFor={`${id}-staff`} className={field}>
+					スタッフ
+					<select
+						id={`${id}-staff`}
+						value={staffId}
+						onChange={(event) => setStaffId(event.target.value)}
+						className={control}
+					>
+						{staffs.map((staff) => (
+							<option key={staff.id} value={staff.id}>
+								{staff.name}
+							</option>
+						))}
+					</select>
+				</label>
+				<label htmlFor={`${id}-position`} className={field}>
+					持ち場
+					<select
+						id={`${id}-position`}
+						value={positionId}
+						onChange={(event) => setPositionId(event.target.value)}
+						className={control}
+					>
+						{positions.map((position) => (
+							<option key={position.id} value={position.id}>
+								{position.name}
+							</option>
+						))}
+					</select>
+				</label>
+				<label htmlFor={`${id}-start`} className={field}>
+					開始
+					<input
+						id={`${id}-start`}
+						type="datetime-local"
+						step={timeUnitMinutes * 60}
+						value={start}
+						onChange={(event) => setStart(event.target.value)}
+						className={control}
+					/>
+				</label>
+				<label htmlFor={`${id}-end`} className={field}>
+					終了
+					<input
+						id={`${id}-end`}
+						type="datetime-local"
+						step={timeUnitMinutes * 60}
+						value={end}
+						onChange={(event) => setEnd(event.target.value)}
+						className={control}
+					/>
+				</label>
+				<label className="flex h-9 items-center gap-2 text-sm text-ink">
+					<input
+						type="checkbox"
+						className="size-4 accent-primary"
+						checked={isPreferredPosition}
+						onChange={(event) => setIsPreferredPosition(event.target.checked)}
+					/>
+					希望どおりの持ち場
+				</label>
+				<Button type="submit" variant="primary" disabled={busy}>
+					作る
+				</Button>
+			</div>
 			{formError && (
-				<p role="alert" className="w-full text-sm text-red-700">
+				<p role="alert" className="text-sm font-bold text-danger">
 					{formError}
 				</p>
 			)}

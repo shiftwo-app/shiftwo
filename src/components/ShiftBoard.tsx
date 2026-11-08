@@ -12,6 +12,8 @@ import type { ShiftScopeParams } from "../lib/shift-scope";
 import type { Position, Shift, ShiftStatus, Staff } from "../types";
 import ShiftForm, { type ShiftFormValue } from "./ShiftForm";
 import ShiftTimeline from "./ShiftTimeline";
+import Alert from "./ui/Alert";
+import Button from "./ui/Button";
 import { listShiftDays, toMs } from "./timeline/layout";
 import { type LiveStatus, useShiftBoardLive } from "./useShiftBoardLive";
 
@@ -226,61 +228,66 @@ const ShiftBoard = ({
 	const firstDay = listShiftDays(shifts)[0];
 
 	return (
-		<div className="space-y-3">
-			<p
-				role="status"
-				className="flex items-center gap-2 text-xs text-gray-600"
-			>
-				<span
-					aria-hidden="true"
-					className={`inline-block size-2 rounded-full ${liveStatus === "live" ? "bg-green-500" : liveStatus === "offline" ? "bg-amber-500" : "bg-gray-400"}`}
-				/>
-				{LIVE_LABEL[liveStatus]}
-			</p>
-			{canEdit && (
-				<div className="flex flex-wrap items-center justify-end gap-3">
-					{editMode && (
-						<button
-							type="button"
-							onClick={handleUndo}
-							disabled={!lastAction || busy}
-							className="rounded border px-3 py-1 text-sm disabled:opacity-40"
-						>
-							{lastAction ? `元に戻す（${lastAction.label}）` : "元に戻す"}
-						</button>
-					)}
-					<div
-						role="group"
-						aria-label="操作モード"
-						className="flex rounded border"
-					>
-						{[
-							{ value: false, label: "閲覧" },
-							{ value: true, label: "編集" },
-						].map((option) => (
-							<button
-								key={option.label}
-								type="button"
-								aria-pressed={editMode === option.value}
-								onClick={() => setEditMode(option.value)}
-								className={`px-3 py-1 text-sm ${editMode === option.value ? "bg-gray-800 text-white" : ""}`}
+		<div className="space-y-4">
+			<div className="flex flex-wrap items-center justify-between gap-3">
+				<p
+					role="status"
+					className="flex items-center gap-2 text-xs text-ink-muted"
+				>
+					{/* つながっているときだけ、印をゆっくり脈打たせる（動きを減らす設定では止める） */}
+					<span aria-hidden="true" className="relative inline-flex size-2">
+						{liveStatus === "live" && (
+							<span className="absolute inset-0 rounded-full bg-brand opacity-60 motion-safe:animate-ping" />
+						)}
+						<span
+							className={`relative inline-block size-2 rounded-full ${liveStatus === "live" ? "bg-brand" : liveStatus === "offline" ? "bg-warn" : "bg-line-strong"}`}
+						/>
+					</span>
+					{LIVE_LABEL[liveStatus]}
+				</p>
+				{canEdit && (
+					<div className="flex flex-wrap items-center gap-2">
+						{editMode && (
+							<Button
+								size="sm"
+								onClick={handleUndo}
+								disabled={!lastAction || busy}
 							>
-								{option.label}
-							</button>
-						))}
+								{lastAction ? `元に戻す（${lastAction.label}）` : "元に戻す"}
+							</Button>
+						)}
+						<div
+							role="group"
+							aria-label="操作モード"
+							className="inline-flex rounded-md border border-line-strong bg-surface p-0.5"
+						>
+							{[
+								{ value: false, label: "閲覧" },
+								{ value: true, label: "編集" },
+							].map((option) => (
+								<button
+									key={option.label}
+									type="button"
+									aria-pressed={editMode === option.value}
+									onClick={() => setEditMode(option.value)}
+									className={`h-7 rounded px-3 text-xs transition-colors ${editMode === option.value ? "bg-ink font-bold text-paper" : "text-ink-muted hover:bg-surface-sunken hover:text-ink"}`}
+								>
+									{option.label}
+								</button>
+							))}
+						</div>
 					</div>
-				</div>
-			)}
+				)}
+			</div>
 
 			{errors.length > 0 && (
-				<ul
-					role="alert"
-					className="rounded border border-red-300 bg-red-50 p-2 text-sm text-red-800"
-				>
-					{errors.map((message) => (
-						<li key={message}>{message}</li>
-					))}
-				</ul>
+				<Alert tone="error">
+					<ul className="space-y-0.5">
+						{errors.map((message) => (
+							<li key={message}>{message}</li>
+						))}
+					</ul>
+				</Alert>
 			)}
 
 			{canEdit && editMode && (

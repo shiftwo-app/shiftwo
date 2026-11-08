@@ -248,6 +248,15 @@ pnpm dev:cloudflare         # http://localhost:3000
 - Hyperdrive の接続はリクエストをまたいで使えないので、リクエストごとに作ります（`src/server.ts` と `src/lib/request-scope.server.ts`）。呼び出す側は `prisma` をそのまま使えます
 - **D1 にはトランザクションがありません。** `prisma.$transaction` の中の処理も 1 つずつ実行され、途中で失敗すると前の分は戻りません（ロールの付け替えや招待での参加など）。確実さが要るなら Postgres（Hyperdrive）を使ってください
 
+## デザイン
+
+会場の案内サイン（駅の発車標やスタッフの名札）をもとにしています。
+
+- 色・文字は `src/styles.css` のトークン（`paper`・`surface`・`ink`・`primary`・`brand` など）で決め、Tailwind のクラス（`bg-surface`・`text-ink-muted` など）として使います。ダークモードはトークンの値だけを差し替えるので、`gray-*` や色の値を直接書かないでください
+- ボタン・入力欄・区切り・お知らせなどの部品は `src/components/ui/` にあります。入力欄には `.control` のクラスを付けます
+- `brand`（ロゴの赤）は、ロゴと、タイムラインの「いま」の線・同時編集がつながっている印にだけ使います。操作の色は `primary`（青緑）です
+- 文字は BIZ UDP ゴシック（Google Fonts）です。ロゴは `src/components/Logo.tsx` です
+
 ## ディレクトリ
 
 ```
@@ -258,7 +267,7 @@ src/
     login.tsx・signup.tsx・welcome.tsx
     api/           # /api/auth/*（ログイン）と /api/o/<団体>/*（団体の API）
   server/          # サーバーだけで動く処理（DB アクセス・server function）
-  components/      # 画面の部品
+  components/      # 画面の部品（ui/ は共通の部品、shell/ は画面の枠）
   lib/             # Prisma Client・.env の読み込みなど
   platform/        # 動かす場所（Node・Cloudflare Workers）で変わる部分（DB の接続・メール・保存先）
   server.ts        # サーバーの入口（リクエストごとの入れ物を作る）

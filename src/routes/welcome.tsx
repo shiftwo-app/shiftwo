@@ -2,6 +2,9 @@ import { createFileRoute, redirect, useRouter } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useId, useState } from "react";
 import type { FormEvent } from "react";
+import Logo from "../components/Logo";
+import Alert from "../components/ui/Alert";
+import Button from "../components/ui/Button";
 import { authClient } from "../lib/auth-client";
 import { NAME_MAX_LENGTH, suggestNameFromEmail } from "../lib/profile";
 import { safeRedirectPath } from "../lib/safe-redirect";
@@ -20,7 +23,7 @@ export const Route = createFileRoute("/welcome")({
 		if (user.onboarded) throw redirect({ href: search.redirect });
 		return { user };
 	},
-	head: () => ({ meta: [{ title: "はじめに | shiftwo" }] }),
+	head: () => ({ meta: [{ title: "はじめに | シフトヲ" }] }),
 	component: WelcomePage,
 });
 
@@ -56,53 +59,73 @@ function WelcomePage() {
 	};
 
 	return (
-		<main className="mx-auto max-w-sm space-y-6 p-6">
-			<h1 className="text-2xl font-bold">shiftwo へようこそ</h1>
-			<p className="text-sm">
-				{user.email} でアカウントを作りました。まず名前を決めてください。
-				団体の中で使う表示名は、団体ごとにあとで変えられます。
-			</p>
-			<form onSubmit={submit} className="space-y-3">
-				<label htmlFor={`${id}-name`} className="block text-sm">
-					名前
-				</label>
-				<input
-					id={`${id}-name`}
-					required
-					maxLength={NAME_MAX_LENGTH}
-					autoComplete="name"
-					value={name}
-					onChange={(event) => setName(event.target.value)}
-					className="w-full rounded border px-3 py-2"
-				/>
-				<button
-					type="submit"
-					disabled={busy}
-					className="w-full rounded bg-blue-600 px-4 py-2 font-semibold text-white disabled:opacity-50"
-				>
-					はじめる
-				</button>
-			</form>
-			{errors.length > 0 && (
-				<ul role="alert" className="text-sm text-red-700">
-					{errors.map((message) => (
-						<li key={message}>{message}</li>
-					))}
-				</ul>
-			)}
-			<p className="text-sm text-gray-600">
-				名前を決めたら、団体を作るか、招待コードで団体に参加します。
-			</p>
-			<button
-				type="button"
-				onClick={async () => {
-					await authClient.signOut();
-					router.history.push("/login");
-				}}
-				className="text-sm underline"
-			>
-				別のアカウントでログインする（ログアウト）
-			</button>
+		<main className="px-4 py-12 sm:py-20">
+			<div className="mx-auto max-w-sm space-y-8">
+				<Logo className="mx-auto h-16 w-auto text-ink" />
+				<div className="space-y-3 text-center">
+					<h1 className="text-2xl leading-tight font-bold tracking-tight text-ink">
+						シフトヲへようこそ
+					</h1>
+					<p className="text-sm leading-relaxed text-ink-muted">
+						<span className="break-all">{user.email}</span>{" "}
+						でアカウントを作りました。まず名前を決めてください。
+						団体の中で使う表示名は、団体ごとにあとで変えられます。
+					</p>
+				</div>
+				<div className="space-y-5 rounded-xl border border-line bg-surface p-6">
+					<form onSubmit={submit} className="space-y-4">
+						<div className="flex flex-col gap-1">
+							<label
+								htmlFor={`${id}-name`}
+								className="text-sm font-bold text-ink"
+							>
+								名前
+							</label>
+							<input
+								id={`${id}-name`}
+								required
+								maxLength={NAME_MAX_LENGTH}
+								autoComplete="name"
+								value={name}
+								onChange={(event) => setName(event.target.value)}
+								className="control w-full"
+							/>
+						</div>
+						<Button
+							type="submit"
+							variant="primary"
+							disabled={busy}
+							className="h-10 w-full"
+						>
+							はじめる
+						</Button>
+					</form>
+					{errors.length > 0 && (
+						<Alert tone="error">
+							<ul className="space-y-1">
+								{errors.map((message) => (
+									<li key={message}>{message}</li>
+								))}
+							</ul>
+						</Alert>
+					)}
+				</div>
+				<div className="space-y-3 text-center text-sm">
+					<p className="leading-relaxed text-ink-muted">
+						名前を決めたら、団体を作るか、招待コードで団体に参加します。
+					</p>
+					<button
+						type="button"
+						onClick={async () => {
+							await authClient.signOut();
+							router.history.push("/login");
+						}}
+						className="text-ink-muted underline underline-offset-4 hover:text-ink"
+					>
+						別のアカウントでログインする（ログアウト）
+					</button>
+				</div>
+			</div>
 		</main>
 	);
 }

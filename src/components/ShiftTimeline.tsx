@@ -1,4 +1,5 @@
 import {
+	Fragment,
 	useEffect,
 	useId,
 	useLayoutEffect,
@@ -19,7 +20,6 @@ import {
 	isHourTick,
 	listShiftDays,
 	MINUTE_MS,
-	readableTextColor,
 	shiftsOnDay,
 	stepZoom,
 	type TimelineAxis,
@@ -64,10 +64,36 @@ const EDIT_PADDING_MS = 60 * 60_000;
 const DAY_MS = 24 * 60 * 60_000;
 /** 行の見出し（持ち場名・スタッフ名）の幅。横にスクロールしても左に残る */
 const HEADER_WIDTH_PX = 160;
+/**
+ * 行の見出しの幅は CSS 変数（--header-w）で持ち、狭い画面（スマホ）では細くする。
+ * 計算に使うときは、実際の値を要素から読む
+ */
+const HEADER_WIDTH_CLASS = "[--header-w:112px] sm:[--header-w:160px]";
+const headerWidthOf = (el: HTMLElement): number =>
+	Number.parseFloat(getComputedStyle(el).getPropertyValue("--header-w")) ||
+	HEADER_WIDTH_PX;
 
 const AXIS_LABELS: Record<TimelineAxis, string> = {
 	position: "持ち場別",
 	staff: "スタッフ別",
+};
+
+/** 切り替えボタンの並び（日付・縦軸）。選ばれているものは墨の地に白抜き */
+const SEGMENT_GROUP =
+	"inline-flex flex-wrap rounded-md border border-line-strong bg-surface p-0.5";
+const segmentItem = (active: boolean) =>
+	`inline-flex h-7 cursor-pointer items-center rounded px-3 text-xs whitespace-nowrap transition-colors ${active ? "bg-ink font-bold text-paper" : "text-ink-muted hover:bg-surface-sunken hover:text-ink"}`;
+
+/**
+ * 時刻の見出しの文字。正時は「10:00」、それ以外は「:15」のように分だけにして、1 目盛り（40px）に収める。
+ * 5 分きざみでは 15 分ごとにだけ出す（線は全部引く）
+ */
+const tickLabel = (tick: number, zoom: ZoomMinutes): string | null => {
+	const text = formatTime(tick);
+	if (isHourTick(tick)) return text;
+	const minutes = text.slice(-2);
+	if (zoom < 10 && Number(minutes) % 15 !== 0) return null;
+	return `:${minutes}`;
 };
 
 const toZoom = (minutes: number): ZoomMinutes =>
@@ -119,7 +145,7 @@ const useWheelZoom = (
 			pendingScrollRef.current = zoomedScrollOffset(
 				el.scrollLeft,
 				anchorPx,
-				HEADER_WIDTH_PX,
+				headerWidthOf(el),
 				TICK_WIDTH_PX / current,
 				TICK_WIDTH_PX / next,
 			);
@@ -196,44 +222,52 @@ const ShiftTimeline = ({
 
 	return (
 		<section aria-label="シフトのタイムライン" className="space-y-3">
-			<div className="flex flex-wrap items-center gap-4">
+			<div className="flex flex-wrap items-center gap-x-4 gap-y-2">
 				{days.length > 1 && (
-					<div role="group" aria-label="日付" className="flex gap-1">
+					<div role="group" aria-label="日付" className={SEGMENT_GROUP}>
 						{days.map((value) => (
 							<button
 								key={value}
 								type="button"
 								aria-pressed={value === day}
 								onClick={() => setSelectedDay(value)}
-								className={`rounded border px-3 py-1 text-sm ${value === day ? "border-blue-600 bg-blue-600 text-white" : "bg-background"}`}
+								className={`${segmentItem(value === day)} tabular`}
 							>
 								{formatDay(value)}
 							</button>
 						))}
 					</div>
 				)}
-				<fieldset className="flex items-center gap-2">
+				<fieldset className={SEGMENT_GROUP}>
 					<legend className="sr-only">縦軸</legend>
 					{(Object.keys(AXIS_LABELS) as TimelineAxis[]).map((value) => (
-						<label key={value} className="flex items-center gap-1">
+						<label
+							key={value}
+							// ラジオボタンは見えなくしても残し、キーボードと読み上げはそのまま使えるようにする
+							className={`${segmentItem(axis === value)} has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-1 has-[:focus-visible]:outline-primary`}
+						>
 							<input
 								type="radio"
 								name="timeline-axis"
 								value={value}
 								checked={axis === value}
 								onChange={() => setAxis(value)}
+								className="sr-only"
 							/>
 							{AXIS_LABELS[value]}
 						</label>
 					))}
 				</fieldset>
-				<label htmlFor={zoomSelectId} className="flex items-center gap-2">
+				<label
+					htmlFor={zoomSelectId}
+					className="flex items-center gap-2 text-xs text-ink-muted"
+				>
 					目盛り
 					<select
 						id={zoomSelectId}
 						value={zoom}
 						onChange={(event) => setZoom(toZoom(Number(event.target.value)))}
-						className="rounded border px-2 py-1"
+						className="control h-8 py-0 text-xs tabular"
 					>
 						{ZOOM_OPTIONS.map((option) => (
 							<option key={option} value={option}>
@@ -244,48 +278,86 @@ const ShiftTimeline = ({
 				</label>
 			</div>
 
-			<div ref={scrollRef} className="overflow-x-auto rounded border">
-				<div className="relative" style={{ width: HEADER_WIDTH_PX + width }}>
-					{/* 時刻の見出し */}
-					<div className="sticky top-0 z-20 flex border-b bg-background">
+			<div
+				ref={scrollRef}
+				className={`overflow-x-auto rounded-lg border border-line bg-surface ${HEADER_WIDTH_CLASS}`}
+			>
+				<div
+					className="relative"
+					style={{ width: `calc(var(--header-w) + ${width}px)` }}
+				>
+					{/* 時刻の見出し（駅の発車標のような、濃い地の帯） */}
+					<div className="sticky top-0 z-20 flex bg-board-head text-board-head-ink">
 						<div
-							className="sticky left-0 z-30 shrink-0 border-r bg-background px-2 py-1 text-sm font-semibold"
-							style={{ width: HEADER_WIDTH_PX }}
+							className="sticky left-0 z-30 flex shrink-0 items-center border-r border-board-head-ink/20 bg-board-head px-3 text-xs font-bold"
+							style={{ width: "var(--header-w)" }}
 						>
 							{AXIS_LABELS[axis]}
 						</div>
-						<div className="relative h-8" style={{ width }}>
-							{ticks.map((tick) => (
+						<div className="relative h-9 tabular" style={{ width }}>
+							{ticks.map((tick, index) => {
+								const hour = isHourTick(tick);
+								// 左端の文字は左にそろえて置くので、そのすぐ右の細かい目盛りの文字とくっつく。そこだけ出さない
+								const besideStart = index === 1 && !hour && toX(ticks[0]) <= 0;
+								const text = besideStart ? null : tickLabel(tick, zoom);
+								// 文字は目盛りの線の真上に、中央をそろえて置く（左端の目盛りだけは、切れないよう左にそろえる）。
+								// 帯の下の端には、下の罫線につながる短い目盛りを付ける
+								const x = toX(tick);
+								const atStart = x <= 0;
+								return (
+									<Fragment key={tick}>
+										{text && (
+											<span
+												className={`absolute top-1.5 leading-none whitespace-nowrap ${atStart ? "pl-1" : "-translate-x-1/2"} ${hour ? "text-xs font-bold" : "text-[10px] opacity-60"}`}
+												style={{ left: x }}
+											>
+												{text}
+											</span>
+										)}
+										<span
+											aria-hidden="true"
+											className={`absolute bottom-0 w-px ${hour ? "h-2.5 bg-board-head-ink/60" : "h-1.5 bg-board-head-ink/30"}`}
+											style={{ left: x }}
+										/>
+									</Fragment>
+								);
+							})}
+							{showNow && (
 								<span
-									key={tick}
-									className={`absolute top-0 h-full border-l pl-1 text-xs ${isHourTick(tick) ? "border-gray-400" : "border-gray-200 text-gray-500"}`}
-									style={{ left: toX(tick) }}
+									aria-hidden
+									className="pointer-events-none absolute top-1/2 z-10 -translate-x-1/2 -translate-y-1/2 rounded-full bg-brand px-1.5 text-[10px] leading-4 font-bold text-white"
+									style={{ left: toX(now) }}
 								>
-									{formatTime(tick)}
+									いま
 								</span>
-							))}
+							)}
 						</div>
 					</div>
 
 					{/* 行 */}
 					<ul aria-label={`${AXIS_LABELS[axis]}の行`}>
 						{rows.map((row) => (
-							<li key={row.id} className="flex border-b last:border-b-0">
+							<li
+								key={row.id}
+								className="flex border-b border-line last:border-b-0"
+							>
 								<div
-									className="sticky left-0 z-10 flex shrink-0 items-center gap-2 border-r bg-background px-2 text-sm"
-									style={{ width: HEADER_WIDTH_PX }}
+									className="sticky left-0 z-[15] flex shrink-0 items-center gap-2 border-r border-line bg-surface py-1 pr-2 pl-3 text-sm"
+									style={{ width: "var(--header-w)" }}
 								>
-									{axis === "staff" && (
-										<Avatar name={row.label} url={row.avatarUrl} size={22} />
-									)}
 									{row.color && (
 										<span
 											aria-hidden
-											className="inline-block h-3 w-3 shrink-0 rounded-sm"
+											className="absolute inset-y-0 left-0 w-1"
 											style={{ backgroundColor: row.color }}
 										/>
 									)}
-									<span className="truncate">{row.label}</span>
+									{axis === "staff" && (
+										<Avatar name={row.label} url={row.avatarUrl} size={22} />
+									)}
+									<span className="truncate font-bold text-ink">
+										{row.label}
+									</span>
 								</div>
 								<div
 									className="relative"
@@ -302,7 +374,7 @@ const ShiftTimeline = ({
 										<span
 											key={tick}
 											aria-hidden
-											className={`absolute top-0 h-full border-l ${isHourTick(tick) ? "border-gray-300" : "border-gray-100"}`}
+											className={`absolute top-0 h-full border-l ${isHourTick(tick) ? "border-line-strong" : "border-line"}`}
 											style={{ left: toX(tick) }}
 										/>
 									))}
@@ -349,24 +421,52 @@ const ShiftTimeline = ({
 						))}
 					</ul>
 
-					{/* 現在時刻（FR-1-5） */}
+					{/* 現在時刻（FR-1-5）。行の見出しより下、シフトより上に引く */}
 					{showNow && (
 						<div
 							aria-hidden
-							className="pointer-events-none absolute top-0 bottom-0 z-10 w-0.5 bg-red-500"
-							style={{ left: HEADER_WIDTH_PX + toX(now) }}
+							className="pointer-events-none absolute top-0 bottom-0 z-10 w-0.5 -translate-x-1/2 bg-brand"
+							style={{ left: `calc(var(--header-w) + ${toX(now)}px)` }}
 						/>
 					)}
 				</div>
 			</div>
 
-			<p className="text-xs text-gray-500">
-				点線の枠は下書き、オレンジの枠は希望外の割り当てです。持ち場別の行の上の数字は「入っている人数
-				/ 必要な人数」で、足りない時間帯は赤くなります。⌘ / Ctrl
-				を押しながらホイール（ピンチ）でズームできます。
-				{editing &&
-					" 編集モードでは、シフトをドラッグで移動、右端のドラッグで長さを変えられます。キーボードでは ←→ で移動、Shift+←→ で長さ、Delete で削除です。"}
-			</p>
+			<div className="space-y-1 text-xs leading-relaxed text-ink-muted">
+				<ul aria-label="凡例" className="flex flex-wrap gap-x-4 gap-y-1">
+					<li className="flex items-center gap-1.5">
+						<span
+							aria-hidden
+							className="inline-block h-3 w-5 rounded-sm border border-dashed border-ink-muted"
+						/>
+						下書き
+					</li>
+					<li className="flex items-center gap-1.5">
+						<span
+							aria-hidden
+							className="inline-block h-3 w-5 rounded-sm border border-line-strong ring-2 ring-warn"
+						/>
+						希望外の割り当て
+					</li>
+					<li className="flex items-center gap-1.5">
+						<span
+							aria-hidden
+							className="inline-block h-3 w-5 rounded-sm bg-danger-soft ring-1 ring-danger/40"
+						/>
+						人が足りない時間帯
+					</li>
+					<li className="flex items-center gap-1.5">
+						<span aria-hidden className="inline-block h-3 w-0.5 bg-brand" />
+						いま
+					</li>
+				</ul>
+				<p>
+					持ち場別の行の上の数字は「入っている人数 / 必要な人数」です。⌘ / Ctrl
+					を押しながらホイール（ピンチ）でズームできます。
+					{editing &&
+						" 編集モードでは、シフトをドラッグで移動、右端のドラッグで長さを変えられます。キーボードでは ←→ で移動、Shift+←→ で長さ、Delete で削除です。"}
+				</p>
+			</div>
 		</section>
 	);
 };
@@ -396,7 +496,7 @@ const StaffingBand = ({
 					key={segment.start}
 					aria-label={`${formatTime(segment.start)}〜${formatTime(segment.end)}、${segment.count} 人 / 必要 ${requiredCount} 人${short ? "、不足" : ""}`}
 					title={`${formatTime(segment.start)}〜${formatTime(segment.end)}：${text}`}
-					className={`absolute top-0.5 flex items-center justify-center overflow-hidden rounded-sm text-[11px] font-semibold tabular-nums ${short ? "bg-red-100 text-red-700" : "bg-emerald-50 text-emerald-700"}`}
+					className={`absolute top-0.5 flex items-center justify-center overflow-hidden rounded-sm text-[11px] leading-none font-bold tabular ${short ? "bg-danger-soft text-danger ring-1 ring-danger/40 ring-inset" : "bg-primary-soft text-ink"}`}
 					style={{
 						left: toX(segment.start) + 1,
 						width: Math.max(toX(segment.end) - toX(segment.start) - 2, 2),
@@ -442,6 +542,7 @@ const ShiftBlock = ({
 
 	const shown = preview ?? { start: item.start, end: item.end };
 	const isDraft = shift.status === ShiftStatus.draft;
+	const color = position?.color ?? "var(--line-strong)";
 	// 持ち場別の行ではスタッフ名、スタッフ別の行では持ち場名を出す
 	const title = axis === "position" ? staff?.name : position?.name;
 	const time = `${formatTime(shown.start)}〜${formatTime(shown.end)}`;
@@ -542,17 +643,19 @@ const ShiftBlock = ({
 				setPreview(null);
 			}}
 			onKeyDown={handleKeyDown}
-			className={`absolute overflow-hidden rounded px-1 text-xs leading-tight shadow-sm select-none focus:outline-2 focus:outline-offset-1 focus:outline-blue-600 ${isDraft ? "border-2 border-dashed" : "border"} ${overridden ? "border-orange-500 ring-2 ring-orange-400" : "border-gray-700/40"} ${editing ? "cursor-grab touch-none active:cursor-grabbing" : ""} ${preview ? "opacity-80 shadow-lg" : ""}`}
+			// 塗りは持ち場の色を面の色に混ぜた淡い色、左端に持ち場の色の太い線。文字は墨にして、
+			// どの持ち場の色でも（ダークモードでも）読めるようにする
+			className={`absolute flex flex-col justify-center overflow-hidden rounded-sm border border-l-4 pr-1 pl-1.5 text-xs leading-tight text-ink select-none transition-shadow hover:shadow-md focus:outline-2 focus:outline-offset-2 focus:outline-primary ${isDraft ? "border-dashed border-ink-muted" : "border-transparent"} ${overridden ? "ring-2 ring-warn" : ""} ${editing ? "cursor-grab touch-none active:cursor-grabbing" : ""} ${preview ? "opacity-80 shadow-lg" : ""}`}
 			style={{
 				left,
 				width: Math.max(width - 2, 4),
 				top: item.lane * LANE_HEIGHT_PX + 4,
 				height: LANE_HEIGHT_PX - 8,
-				backgroundColor: position?.color ?? "#cccccc",
-				color: readableTextColor(position?.color),
+				backgroundColor: `color-mix(in srgb, ${color} ${isDraft ? 12 : 22}%, var(--surface))`,
+				borderLeftColor: color,
 			}}
 		>
-			<span className="flex items-center gap-1 truncate font-semibold">
+			<span className="flex items-center gap-1 truncate font-bold">
 				{axis === "position" && staff && (
 					<Avatar
 						name={staff.name}
@@ -562,12 +665,12 @@ const ShiftBlock = ({
 				)}
 				<span className="truncate">{title}</span>
 			</span>
-			<span className="block truncate">{time}</span>
+			<span className="block truncate text-ink-muted tabular">{time}</span>
 			{editing && (
 				<span
 					aria-hidden
 					onPointerDown={startDrag("resize-end")}
-					className="absolute top-0 right-0 h-full w-2 cursor-ew-resize bg-black/10 hover:bg-black/25"
+					className="absolute top-0 right-0 h-full w-2 cursor-ew-resize bg-ink/10 hover:bg-ink/25"
 				/>
 			)}
 		</li>

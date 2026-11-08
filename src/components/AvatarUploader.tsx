@@ -2,6 +2,7 @@ import { useId, useState } from "react";
 import type { ChangeEvent } from "react";
 import { AVATAR_MAX_BYTES, AVATAR_SIZE } from "../lib/avatar-image";
 import Avatar from "./Avatar";
+import { buttonClass } from "./ui/Button";
 
 /**
  * 選んだ画像を、真ん中で正方形に切り抜いて AVATAR_SIZE に縮め、描き直す。
@@ -106,40 +107,47 @@ export default function AvatarUploader({
 	};
 
 	return (
-		<div className="flex flex-wrap items-center gap-3 text-sm">
-			<Avatar name={name} url={currentUrl} size={48} />
-			<label
-				htmlFor={`${id}-file`}
-				className="cursor-pointer rounded border px-3 py-1 aria-disabled:opacity-50"
-				aria-disabled={busy}
-			>
-				画像を選ぶ
-			</label>
-			<input
-				id={`${id}-file`}
-				type="file"
-				accept="image/png,image/jpeg,image/webp"
-				className="sr-only"
-				disabled={busy}
-				onChange={choose}
-			/>
-			{hasUploaded && (
-				<button
-					type="button"
-					className="underline disabled:opacity-50"
-					disabled={busy}
-					onClick={() =>
-						send({ method: "DELETE" }, "アップロードしたアイコンをやめました")
-					}
-				>
-					{removeLabel}
-				</button>
-			)}
-			{message && (
-				<p role="status" className="w-full text-gray-700">
-					{message}
-				</p>
-			)}
+		<div className="flex items-center gap-4">
+			<Avatar name={name} url={currentUrl} size={64} />
+			<div className="min-w-0 space-y-2">
+				<div className="flex flex-wrap items-center gap-2">
+					<label
+						htmlFor={`${id}-file`}
+						className={`${buttonClass("secondary", "sm")} cursor-pointer has-[+input:focus-visible]:outline-2 has-[+input:focus-visible]:outline-primary has-[+input:focus-visible]:outline-offset-2 aria-disabled:cursor-not-allowed aria-disabled:opacity-50`}
+						aria-disabled={busy}
+					>
+						画像を選ぶ
+					</label>
+					<input
+						id={`${id}-file`}
+						type="file"
+						accept="image/png,image/jpeg,image/webp"
+						className="sr-only"
+						disabled={busy}
+						onChange={choose}
+					/>
+					{hasUploaded && (
+						<button
+							type="button"
+							className={buttonClass("ghost", "sm")}
+							disabled={busy}
+							onClick={() =>
+								send(
+									{ method: "DELETE" },
+									"アップロードしたアイコンをやめました",
+								)
+							}
+						>
+							{removeLabel}
+						</button>
+					)}
+				</div>
+				{message && (
+					<p role="status" className="text-sm text-ink-muted">
+						{message}
+					</p>
+				)}
+			</div>
 		</div>
 	);
 }

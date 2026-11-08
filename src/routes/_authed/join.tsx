@@ -1,7 +1,11 @@
 import { createFileRoute, useRouter } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
-import { useId, useState } from "react";
+import { useState } from "react";
 import type { FormEvent } from "react";
+import Alert from "../../components/ui/Alert";
+import Button from "../../components/ui/Button";
+import Field from "../../components/ui/Field";
+import PageHeader from "../../components/ui/PageHeader";
 import {
 	formatInviteCode,
 	INVITE_UNUSABLE_MESSAGES,
@@ -43,7 +47,7 @@ export const Route = createFileRoute("/_authed/join")({
 	validateSearch: (search: Record<string, unknown>) => ({
 		code: typeof search.code === "string" ? search.code : "",
 	}),
-	head: () => ({ meta: [{ title: "招待コードで参加 | shiftwo" }] }),
+	head: () => ({ meta: [{ title: "招待コードで参加 | シフトヲ" }] }),
 	component: JoinPage,
 });
 
@@ -53,7 +57,6 @@ function JoinPage() {
 	const router = useRouter();
 	const preview = useServerFn(previewInviteFn);
 	const accept = useServerFn(acceptInviteFn);
-	const id = useId();
 	const [code, setCode] = useState(initialCode);
 	const [found, setFound] = useState<Extract<
 		InvitePreview,
@@ -107,77 +110,97 @@ function JoinPage() {
 		}
 	};
 
-	const control = "w-full rounded border px-3 py-2";
-	const primary =
-		"w-full rounded bg-blue-600 px-4 py-2 font-semibold text-white disabled:opacity-50";
 	return (
-		<main className="mx-auto max-w-md space-y-6 p-6">
-			<h1 className="text-2xl font-bold">招待コードで参加</h1>
-			{!found ? (
-				<form onSubmit={check} className="space-y-3">
-					<label htmlFor={`${id}-code`} className="block text-sm">
-						招待コード（8 文字）
-					</label>
-					<input
-						id={`${id}-code`}
-						required
-						autoComplete="off"
-						value={code}
-						onChange={(event) => setCode(event.target.value)}
-						className={`${control} text-center font-mono text-xl tracking-widest uppercase`}
-					/>
-					<button type="submit" disabled={busy} className={primary}>
-						確かめる
-					</button>
-				</form>
-			) : (
-				<form onSubmit={join} className="space-y-3">
-					<p className="text-sm">
-						「<strong>{found.organizationName}</strong>」に ロール「
-						{found.roleName}」で参加します（招待コード{" "}
-						{formatInviteCode(code.toUpperCase().replace(/[\s-]/g, ""))}）。
-					</p>
-					{found.requiredDiscordGuildName && (
-						<p className="rounded border border-indigo-200 bg-indigo-50 p-2 text-sm">
-							この団体は、Discord サーバー「{found.requiredDiscordGuildName}
-							」のメンバーだけが参加できます。Discord
-							を連携し、そのサーバーに参加している必要があります（
-							<a href="/help/discord-server" className="underline">
-								くわしく
-							</a>
+		<main className="mx-auto max-w-xl px-4 py-8 sm:px-6">
+			<PageHeader title="招待コードで参加" />
+			<div className="space-y-5 rounded-xl border border-line bg-surface p-6">
+				{!found ? (
+					<form onSubmit={check} className="space-y-4">
+						<Field label="招待コード（8 文字）">
+							{(props) => (
+								<input
+									{...props}
+									required
+									autoComplete="off"
+									value={code}
+									onChange={(event) => setCode(event.target.value)}
+									className="control tabular w-full py-2 text-center font-mono text-2xl tracking-[0.3em] uppercase"
+								/>
+							)}
+						</Field>
+						<Button
+							type="submit"
+							variant="primary"
+							disabled={busy}
+							className="h-10 w-full"
+						>
+							確かめる
+						</Button>
+					</form>
+				) : (
+					<form onSubmit={join} className="space-y-4">
+						<p className="text-sm leading-relaxed text-ink">
+							「<strong className="font-bold">{found.organizationName}</strong>
+							」に ロール「
+							{found.roleName}」で参加します（招待コード{" "}
+							<span className="font-mono tabular">
+								{formatInviteCode(code.toUpperCase().replace(/[\s-]/g, ""))}
+							</span>
 							）。
 						</p>
-					)}
-					<label htmlFor={`${id}-display`} className="block text-sm">
-						この団体でのあなたの表示名
-					</label>
-					<input
-						id={`${id}-display`}
-						required
-						maxLength={NAME_MAX_LENGTH}
-						value={displayName}
-						onChange={(event) => setDisplayName(event.target.value)}
-						className={control}
-					/>
-					<button type="submit" disabled={busy} className={primary}>
-						参加する
-					</button>
-					<button
-						type="button"
-						onClick={() => setFound(null)}
-						className="text-sm underline"
-					>
-						コードを入れ直す
-					</button>
-				</form>
-			)}
-			{errors.length > 0 && (
-				<ul role="alert" className="text-sm text-red-700">
-					{errors.map((message) => (
-						<li key={message}>{message}</li>
-					))}
-				</ul>
-			)}
+						{found.requiredDiscordGuildName && (
+							<Alert tone="info">
+								この団体は、Discord サーバー「{found.requiredDiscordGuildName}
+								」のメンバーだけが参加できます。Discord
+								を連携し、そのサーバーに参加している必要があります（
+								<a
+									href="/help/discord-server"
+									className="font-bold text-primary underline underline-offset-4 hover:text-primary-strong"
+								>
+									くわしく
+								</a>
+								）。
+							</Alert>
+						)}
+						<Field label="この団体でのあなたの表示名">
+							{(props) => (
+								<input
+									{...props}
+									required
+									maxLength={NAME_MAX_LENGTH}
+									value={displayName}
+									onChange={(event) => setDisplayName(event.target.value)}
+									className="control w-full"
+								/>
+							)}
+						</Field>
+						<Button
+							type="submit"
+							variant="primary"
+							disabled={busy}
+							className="h-10 w-full"
+						>
+							参加する
+						</Button>
+						<button
+							type="button"
+							onClick={() => setFound(null)}
+							className="text-sm font-bold text-primary underline underline-offset-4 hover:text-primary-strong"
+						>
+							コードを入れ直す
+						</button>
+					</form>
+				)}
+				{errors.length > 0 && (
+					<Alert tone="error">
+						<ul className="space-y-1">
+							{errors.map((message) => (
+								<li key={message}>{message}</li>
+							))}
+						</ul>
+					</Alert>
+				)}
+			</div>
 		</main>
 	);
 }

@@ -1,4 +1,5 @@
 import { useState } from "react";
+import Button from "../ui/Button";
 
 /**
  * 消すなど、取り消せない操作のボタン。1 回目で「本当に〜」に変わり、2 回目で実行する
@@ -15,33 +16,26 @@ const ConfirmButton = ({
 }) => {
 	const [armed, setArmed] = useState(false);
 	return armed ? (
-		<span className="flex items-center gap-2 text-sm">
+		<span className="inline-flex flex-wrap items-center gap-2">
+			{/* 確かめる段階は、塗りの赤ではっきり危ない操作だと分かるようにする */}
 			<button
 				type="button"
 				onClick={() => {
 					setArmed(false);
 					onConfirm();
 				}}
-				className="rounded bg-red-600 px-2 py-0.5 font-semibold text-white"
+				className="inline-flex min-h-8 items-center justify-center rounded-md bg-danger px-3 py-1 text-left text-xs leading-snug font-bold text-white transition-opacity hover:opacity-90 dark:text-paper"
 			>
 				{confirmLabel}
 			</button>
-			<button
-				type="button"
-				onClick={() => setArmed(false)}
-				className="underline"
-			>
+			<Button variant="ghost" size="sm" onClick={() => setArmed(false)}>
 				やめる
-			</button>
+			</Button>
 		</span>
 	) : (
-		<button
-			type="button"
-			onClick={() => setArmed(true)}
-			className="text-sm text-red-700 underline"
-		>
+		<Button variant="danger" size="sm" onClick={() => setArmed(true)}>
 			{label}
-		</button>
+		</Button>
 	);
 };
 

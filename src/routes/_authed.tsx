@@ -1,9 +1,12 @@
 import {
 	createFileRoute,
+	Link,
 	Outlet,
 	redirect,
 	useNavigate,
 } from "@tanstack/react-router";
+import Logo from "../components/Logo";
+import Button from "../components/ui/Button";
 import { authClient } from "../lib/auth-client";
 import { getSession } from "../server/session.functions";
 
@@ -33,20 +36,29 @@ function AuthedLayout() {
 	};
 
 	return (
-		<div>
-			<header className="flex items-center justify-between border-b px-4 py-2">
-				<span className="font-bold">shiftwo</span>
-				<div className="flex items-center gap-3 text-sm">
-					<a href="/account" className="underline-offset-2 hover:underline">
-						{user.name || user.email}
-					</a>
-					<button
-						type="button"
-						onClick={signOut}
-						className="rounded border px-3 py-1"
+		<div className="min-h-dvh">
+			<header className="bg-paper">
+				<div className="mx-auto flex h-14 max-w-7xl items-center justify-between px-4 sm:px-6">
+					<Link
+						to="/"
+						aria-label="シフトヲ（団体の一覧へ）"
+						className="text-ink"
 					>
-						ログアウト
-					</button>
+						<Logo className="h-11 w-auto" />
+					</Link>
+					<div className="flex items-center gap-2 text-sm">
+						<Link
+							to="/account"
+							className="flex items-center gap-2 rounded-md px-2 py-1 text-ink hover:bg-surface-sunken"
+						>
+							<span className="max-w-40 truncate">
+								{user.name || user.email}
+							</span>
+						</Link>
+						<Button variant="ghost" size="sm" onClick={signOut}>
+							ログアウト
+						</Button>
+					</div>
 				</div>
 			</header>
 			<Outlet />
