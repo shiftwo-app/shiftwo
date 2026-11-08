@@ -56,4 +56,7 @@ export default {
 	loginEmailEnterCode: "■ 확인 코드 입력하기",
 	loginEmailExpires: "둘 다 {minutes}분 뒤에 사용할 수 없게 돼요.",
 	loginEmailIgnore: "요청한 적이 없다면 이 메일은 무시해 주세요.",
+	passkeySignIn: "패스키로 로그인",
+	passkeyFailed:
+		"패스키로 로그인하지 못했어요. 등록한 패스키인지 확인하거나 이메일로 로그인해 주세요.",
 } satisfies Messages<typeof ja>;

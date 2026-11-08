@@ -15,6 +15,8 @@ import { isLocale, LOCALE_NAMES, LOCALES } from "../../lib/i18n/locales";
 import { setLocaleFn } from "../../server/locale.functions";
 import { listConnectedAppsFn } from "../../server/oauth.functions";
 import ConnectedApps from "../../components/account/ConnectedApps";
+import Passkeys from "../../components/account/Passkeys";
+import { listMyPasskeysFn } from "../../server/passkey.functions";
 import {
 	getAccountSummary,
 	refreshMyDiscordStatus,
@@ -25,11 +27,12 @@ export const Route = createFileRoute("/_authed/account")({
 	validateSearch: (search: Record<string, unknown>): { linked?: boolean } =>
 		search.linked ? { linked: true } : {},
 	loader: async () => {
-		const [summary, connectedApps] = await Promise.all([
+		const [summary, connectedApps, passkeys] = await Promise.all([
 			getAccountSummary(),
 			listConnectedAppsFn(),
+			listMyPasskeysFn(),
 		]);
-		return { ...summary, connectedApps };
+		return { ...summary, connectedApps, passkeys };
 	},
 	head: ({ match }) => ({
 		meta: [
@@ -127,6 +130,7 @@ function AccountPage() {
 					<span className="text-ink-muted">{t("account.emailNote")}</span>
 				</p>
 			</Section>
+			<Passkeys passkeys={summary.passkeys} />
 			<Section
 				id="account-language"
 				title={t("account.languageTitle")}

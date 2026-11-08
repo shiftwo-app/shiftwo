@@ -33,4 +33,17 @@ export default {
 	languageTitle: "语言",
 	languageDescription: "用于界面以及发送给你的邮件（如登录邮件）。",
 	languageAuto: "跟随浏览器",
+	passkeyTitle: "通行密钥",
+	passkeyDescription:
+		"可以通过指纹、面容或设备解锁登录，无需等待电子邮件验证码。",
+	passkeyNone: "还没有通行密钥",
+	passkeyAdd: "添加通行密钥",
+	passkeyAdded: "已添加通行密钥。下次即可使用它登录",
+	passkeyAddFailed: "无法添加通行密钥，请重试",
+	passkeyRemove: "删除",
+	passkeyRemoved: "已删除通行密钥。请同时在设备或密码管理器中删除它",
+	passkeyUnnamed: "通行密钥",
+	passkeyCreatedAt: "{date} 添加",
+	passkeySynced: "已同步",
+	passkeyUnsupported: "此浏览器不支持通行密钥",
 } satisfies Messages<typeof ja>;

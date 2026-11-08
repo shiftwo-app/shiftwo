@@ -35,4 +35,18 @@ export default {
 	languageDescription:
 		"Used for the screens and for emails sent to you, such as login emails.",
 	languageAuto: "Match my browser",
+	passkeyTitle: "Passkeys",
+	passkeyDescription:
+		"Sign in with your fingerprint, face, or device unlock, without waiting for an email code.",
+	passkeyNone: "No passkeys yet",
+	passkeyAdd: "Add a passkey",
+	passkeyAdded: "Passkey added. You can sign in with it next time",
+	passkeyAddFailed: "Could not add the passkey. Please try again",
+	passkeyRemove: "Remove",
+	passkeyRemoved:
+		"Passkey removed. Also delete it from your device or password manager",
+	passkeyUnnamed: "Passkey",
+	passkeyCreatedAt: "Added {date}",
+	passkeySynced: "Synced",
+	passkeyUnsupported: "This browser does not support passkeys",
 } satisfies Messages<typeof ja>;

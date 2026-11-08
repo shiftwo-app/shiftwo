@@ -58,4 +58,7 @@ export default {
 	loginEmailEnterCode: "■ Enter the code",
 	loginEmailExpires: "Both expire in {minutes} minutes.",
 	loginEmailIgnore: "If you didn't request this, you can ignore this email.",
+	passkeySignIn: "Sign in with a passkey",
+	passkeyFailed:
+		"Could not sign in with a passkey. Check that it is a passkey you registered, or sign in with email.",
 } satisfies Messages<typeof ja>;

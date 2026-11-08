@@ -55,4 +55,7 @@ export default {
 	loginEmailEnterCode: "■ 確認コードを入力する",
 	loginEmailExpires: "どちらも {minutes} 分で使えなくなります。",
 	loginEmailIgnore: "心当たりがなければ、このメールは無視してください。",
+	passkeySignIn: "パスキーでログイン",
+	passkeyFailed:
+		"パスキーでログインできませんでした。登録したパスキーか確かめるか、メールでログインしてください。",
 } as const;
