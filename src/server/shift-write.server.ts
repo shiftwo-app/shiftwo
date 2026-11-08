@@ -3,16 +3,16 @@
 // 日常シフト（eventId なし）にはテナントの持ち場、イベントのシフトにはそのイベントの持ち場しか使えない。
 // API（server route）と server function の両方から使うので、結果は HTTP に依存しない形で返す
 import { z } from "zod";
-import { can, type MemberRole } from "../lib/org/permissions";
+import { hasPermission, type Permission } from "../lib/org/permissions";
 import { isPrismaError, PRISMA_ERROR } from "../lib/prisma-errors";
 import { prisma } from "../lib/prisma.server";
 import { type Shift, ShiftStatus } from "../types";
 import { shiftInputSchema, validateShiftTimeRange } from "./shift.schema";
 import type { ShiftScopeIds } from "./shifts.server";
 
-/** 書き込みをする単位と、その単位での役割・時間粒度（requireScopeAccess で確かめたもの） */
+/** 書き込みをする単位と、その単位での権限・時間粒度（requireScopeAccess で確かめたもの） */
 export type ShiftWriteAccess = ShiftScopeIds & {
-	role: MemberRole;
+	permissions: Permission[];
 	timeUnitMinutes: number;
 };
 
@@ -63,7 +63,7 @@ export const saveShift = async (
 	body: unknown,
 	id?: string,
 ): Promise<ShiftWriteResult> => {
-	if (!can(access.role, "shift.edit")) return forbiddenEdit();
+	if (!hasPermission(access.permissions, "shift.edit")) return forbiddenEdit();
 	const parsed = shiftInputSchema.safeParse(body);
 	if (!parsed.success) {
 		return fail(400, "Invalid shift", {
@@ -72,7 +72,7 @@ export const saveShift = async (
 		});
 	}
 	const input = parsed.data;
-	const canConfirm = can(access.role, "shift.confirm");
+	const canConfirm = hasPermission(access.permissions, "shift.confirm");
 	// 確定にするかは、サーバーが権限で決める
 	if (input.status === ShiftStatus.confirmed && !canConfirm) {
 		return forbiddenConfirm();
@@ -143,7 +143,7 @@ export const removeShift = async (
 	access: ShiftWriteAccess,
 	id: string,
 ): Promise<ShiftWriteResult> => {
-	if (!can(access.role, "shift.edit")) return forbiddenEdit();
+	if (!hasPermission(access.permissions, "shift.edit")) return forbiddenEdit();
 	const existing = await prisma.shift.findFirst({
 		where: inScope(access, id),
 		select: { status: true },
@@ -151,7 +151,7 @@ export const removeShift = async (
 	if (!existing) return notFound();
 	if (
 		existing.status === ShiftStatus.confirmed &&
-		!can(access.role, "shift.confirm")
+		!hasPermission(access.permissions, "shift.confirm")
 	) {
 		return forbiddenConfirm();
 	}

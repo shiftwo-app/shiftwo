@@ -1,23 +1,24 @@
-// 団体・テナント・イベントどうしのデータの分離、「強い方が勝つ」権限、招待コードを、実際の DB で確かめる。
-// DATABASE_URL がない環境（DB を用意していない CI など）では飛ばす
+// 団体・テナント・イベントどうしのデータの分離、ロール（権限の足し合わせ・乗っ取り防止）、招待コードを、
+// 実際の DB で確かめる。DATABASE_URL がない環境（DB を用意していない CI など）では飛ばす
 import { afterAll, beforeAll, describe, expect, it } from "vite-plus/test";
 import { loadEnvFileIfExists } from "../lib/load-env";
+import type { Permission } from "../lib/org/permissions";
 
 loadEnvFileIfExists();
 const hasDatabase = Boolean(process.env.DATABASE_URL);
 
 describe.skipIf(!hasDatabase)(
-	"団体・テナント・イベントの分離（DB）",
+	"団体・テナント・イベントの分離とロール（DB）",
 	async () => {
 		const { prisma } = await import("../lib/prisma.server");
+		const { ALL_PERMISSIONS } = await import("../lib/org/permissions");
 		const { findMembership, requireOrgAccess, OrgAccessError } =
 			await import("./org-access.server");
 		const { findScopeAccess, requireScopeAccess } =
 			await import("./scope-access.server");
 		const { findShiftBoard } = await import("./shifts.server");
 		const { saveShift, removeShift } = await import("./shift-write.server");
-		const { acceptInvite, createInvite, createOrganization, previewInvite } =
-			await import("./org.server");
+		const org = await import("./org.server");
 
 		const suffix = crypto.randomUUID().slice(0, 8);
 		const userIds: string[] = [];
@@ -34,12 +35,20 @@ describe.skipIf(!hasDatabase)(
 			return user;
 		};
 
-		const users = {} as Record<
-			"ownerA" | "ownerB" | "staffA" | "storeManager" | "eventLeader",
-			{ id: string }
-		>;
+		type Key =
+			| "ownerA"
+			| "ownerB"
+			| "leaderA"
+			| "staffA"
+			| "storeManager"
+			| "eventLeader";
+		const users = {} as Record<Key, { id: string }>;
+		const members = {} as Record<Key, { id: string }>;
 		const orgs = {} as Record<"a" | "b", { id: string; slug: string }>;
-		/** テナント a1（イベント e1 あり）・a2 は団体 a、b1 は団体 b */
+		const roleIdsA = {} as Record<
+			"manager" | "leader" | "staff" | "guest",
+			string
+		>;
 		const tenants = {} as Record<
 			"a1" | "a2" | "b1",
 			{ id: string; slug: string }
@@ -77,15 +86,30 @@ describe.skipIf(!hasDatabase)(
 			end: "2026-11-20T03:00:00.000Z",
 		};
 
-		beforeAll(async () => {
-			users.ownerA = await createUser("owner-a");
-			users.ownerB = await createUser("owner-b");
-			users.staffA = await createUser("staff-a");
-			users.storeManager = await createUser("store-manager");
-			users.eventLeader = await createUser("event-leader");
+		/** その人の団体での操作者（requireOrgAccess で得られるもの） */
+		const actorOf = async (key: Key, slug = orgs.a.slug) => {
+			const membership = await findMembership(users[key].id, slug);
+			if (!membership) throw new Error(`not a member: ${key}`);
+			return {
+				memberId: membership.member.id,
+				isOwner: membership.member.isOwner,
+				permissions: membership.member.permissions,
+			};
+		};
 
+		beforeAll(async () => {
+			for (const key of [
+				"ownerA",
+				"ownerB",
+				"leaderA",
+				"staffA",
+				"storeManager",
+				"eventLeader",
+			] as const) {
+				users[key] = await createUser(key);
+			}
 			for (const key of ["a", "b"] as const) {
-				const result = await createOrganization({
+				const result = await org.createOrganization({
 					userId: (key === "a" ? users.ownerA : users.ownerB).id,
 					name: `テスト団体 ${key}`,
 					slug: `test-${key}-${suffix}`,
@@ -96,7 +120,15 @@ describe.skipIf(!hasDatabase)(
 					where: { slug: result.slug },
 				});
 			}
-			// 団体を作ると既定のテナント（main）が 1 つできる
+			const roles = await prisma.orgRole.findMany({
+				where: { organizationId: orgs.a.id },
+			});
+			const byName = Object.fromEntries(roles.map((r) => [r.name, r.id]));
+			roleIdsA.manager = byName["マネージャー"];
+			roleIdsA.leader = byName["リーダー"];
+			roleIdsA.staff = byName["スタッフ"];
+			roleIdsA.guest = byName["ゲスト"];
+
 			tenants.a1 = await prisma.tenant.findFirstOrThrow({
 				where: { organizationId: orgs.a.id, slug: "main" },
 			});
@@ -121,37 +153,43 @@ describe.skipIf(!hasDatabase)(
 				},
 			});
 
-			// 団体 a のメンバー：スタッフ 3 人（うち 1 人は a1 の店長、1 人は e1 のリーダー）
-			for (const user of [
-				users.staffA,
-				users.storeManager,
-				users.eventLeader,
-			]) {
-				await prisma.member.create({
+			members.ownerA = await prisma.member.findFirstOrThrow({
+				where: { organizationId: orgs.a.id, userId: users.ownerA.id },
+			});
+			const addMember = (key: Key, roleId: string) =>
+				prisma.member.create({
 					data: {
 						organizationId: orgs.a.id,
-						userId: user.id,
-						role: "staff",
-						displayName: "x",
+						userId: users[key].id,
+						displayName: key,
+						roles: { create: { roleId } },
 					},
 				});
-			}
-			const memberOf = (userId: string) =>
-				prisma.member.findFirstOrThrow({
-					where: { organizationId: orgs.a.id, userId },
-				});
+			members.leaderA = await addMember("leaderA", roleIdsA.leader);
+			members.staffA = await addMember("staffA", roleIdsA.staff);
+			members.storeManager = await addMember("storeManager", roleIdsA.staff);
+			members.eventLeader = await addMember("eventLeader", roleIdsA.staff);
+			// テナント a1 で店長（リーダーのロール）、イベント e1 でリーダー
 			await prisma.tenantMember.create({
 				data: {
 					tenantId: tenants.a1.id,
-					memberId: (await memberOf(users.storeManager.id)).id,
-					role: "leader",
+					memberId: members.storeManager.id,
+					roleId: roleIdsA.leader,
 				},
 			});
 			await prisma.eventMember.create({
 				data: {
 					eventId: eventE1.id,
-					memberId: (await memberOf(users.eventLeader.id)).id,
-					role: "leader",
+					memberId: members.eventLeader.id,
+					roleId: roleIdsA.leader,
+				},
+			});
+			// テナントで割り当てたロールに団体全体の権限（メンバーの管理）が入っていても、上乗せされないことを確かめる用
+			await prisma.tenantMember.create({
+				data: {
+					tenantId: tenants.a1.id,
+					memberId: members.storeManager.id,
+					roleId: roleIdsA.manager,
 				},
 			});
 
@@ -173,7 +211,7 @@ describe.skipIf(!hasDatabase)(
 						organizationId,
 						tenantId,
 						eventId,
-						name: "r",
+						name: "p",
 						color: "#cccccc",
 						requiredStaffCount: 1,
 					},
@@ -250,17 +288,16 @@ describe.skipIf(!hasDatabase)(
 			await prisma.user.deleteMany({ where: { id: { in: userIds } } });
 		});
 
-		type Role = "owner" | "leader" | "staff" | "guest";
+		const editor: Permission[] = ["shift.view", "shift.edit", "shift.confirm"];
 		const access = (
-			role: Role,
+			permissions: Permission[],
 			tenant: { id: string } = tenants.a1,
 			event: { id: string } | null = null,
-			org: { id: string } = orgs.a,
 		) => ({
-			organizationId: org.id,
+			organizationId: orgs.a.id,
 			tenantId: tenant.id,
 			eventId: event?.id ?? null,
-			role,
+			permissions,
 			timeUnitMinutes: 15,
 		});
 
@@ -275,19 +312,32 @@ describe.skipIf(!hasDatabase)(
 				await expect(
 					requireOrgAccess(users.ownerA.id, orgs.a.slug, "shift.view"),
 				).resolves.toMatchObject({
-					member: { role: "owner" },
+					member: { isOwner: true },
 				});
 			});
 
+			it("団体を作ると、最初のロール 4 つとテナントができ、作った人はオーナー（全権限）", async () => {
+				const roles = await prisma.orgRole.findMany({
+					where: { organizationId: orgs.a.id },
+					orderBy: { sortOrder: "asc" },
+				});
+				expect(roles.slice(0, 4).map((r) => r.name)).toEqual([
+					"マネージャー",
+					"リーダー",
+					"スタッフ",
+					"ゲスト",
+				]);
+				const owner = await findMembership(users.ownerA.id, orgs.a.slug);
+				expect(owner?.member.permissions).toEqual(ALL_PERMISSIONS);
+			});
+
 			it("ほかの団体のテナント名・ほかのテナントのイベント名では開けない（404）", async () => {
-				// 団体 a のメンバーが、団体 a の URL に団体 b のテナント名を付けても見つからない
 				expect(
 					await findScopeAccess(users.ownerA.id, {
 						orgSlug: orgs.a.slug,
 						tenantSlug: "nope",
 					}),
 				).toBeNull();
-				// テナント a2 には e1 はない
 				expect(
 					await findScopeAccess(users.ownerA.id, {
 						orgSlug: orgs.a.slug,
@@ -295,7 +345,6 @@ describe.skipIf(!hasDatabase)(
 						eventSlug: eventE1.slug,
 					}),
 				).toBeNull();
-				// 団体 b のテナントは、団体 a のオーナーからは見えない
 				await expect(
 					requireScopeAccess(
 						users.ownerA.id,
@@ -308,7 +357,7 @@ describe.skipIf(!hasDatabase)(
 			it("ほかの団体のスタッフを混ぜられない・ほかの団体のシフトは触れない", async () => {
 				expect(
 					await saveShift(
-						access("owner"),
+						access(editor),
 						shiftInput(ids.staffB, ids.dailyPositionA1),
 					),
 				).toMatchObject({
@@ -316,7 +365,7 @@ describe.skipIf(!hasDatabase)(
 					status: 400,
 				});
 				expect(
-					await removeShift(access("owner"), ids.dailyShiftB1),
+					await removeShift(access(editor), ids.dailyShiftB1),
 				).toMatchObject({ ok: false, status: 404 });
 			});
 		});
@@ -329,7 +378,7 @@ describe.skipIf(!hasDatabase)(
 				);
 				expect(board.shifts.map((s) => s.id)).toEqual([ids.dailyShiftA1]);
 				expect(board.positions.map((r) => r.id)).toEqual([ids.dailyPositionA1]);
-				expect(board.staffs.map((s) => s.id)).toEqual([ids.staffA]); // スタッフは団体全体
+				expect(board.staffs.map((s) => s.id)).toEqual([ids.staffA]);
 			});
 
 			it("イベントの一覧には、そのイベントのシフトとイベントの持ち場だけが入る", async () => {
@@ -348,26 +397,24 @@ describe.skipIf(!hasDatabase)(
 			it("日常シフトにイベントの持ち場は使えず、イベントに日常の持ち場は使えない。ほかのテナントの持ち場も使えない", async () => {
 				expect(
 					await saveShift(
-						access("owner"),
+						access(editor),
 						shiftInput(ids.staffA, ids.eventPositionE1),
 					),
 				).toMatchObject({
-					ok: false,
 					status: 400,
 				});
 				expect(
 					await saveShift(
-						access("owner", tenants.a1, eventE1),
+						access(editor, tenants.a1, eventE1),
 						shiftInput(ids.staffA, ids.dailyPositionA1),
 					),
-				).toMatchObject({ ok: false, status: 400 });
+				).toMatchObject({ status: 400 });
 				expect(
 					await saveShift(
-						access("owner"),
+						access(editor),
 						shiftInput(ids.staffA, ids.dailyPositionA2),
 					),
 				).toMatchObject({
-					ok: false,
 					status: 400,
 				});
 			});
@@ -375,96 +422,105 @@ describe.skipIf(!hasDatabase)(
 			it("ほかのテナント・日常とイベントをまたいでシフトを変えたり消したりできない（404）", async () => {
 				expect(
 					await saveShift(
-						access("owner"),
+						access(editor),
 						shiftInput(ids.staffA, ids.dailyPositionA1),
 						ids.dailyShiftA2,
 					),
-				).toMatchObject({ ok: false, status: 404 });
+				).toMatchObject({ status: 404 });
 				expect(
-					await removeShift(access("owner"), ids.eventShiftE1),
-				).toMatchObject({ ok: false, status: 404 });
+					await removeShift(access(editor), ids.eventShiftE1),
+				).toMatchObject({ status: 404 });
 				expect(
 					await removeShift(
-						access("owner", tenants.a1, eventE1),
+						access(editor, tenants.a1, eventE1),
 						ids.dailyShiftA1,
 					),
 				).toMatchObject({
-					ok: false,
 					status: 404,
 				});
 			});
 
 			it("イベントで作ったシフトはイベントに、日常シフトで作ったシフトはイベントなしで保存される", async () => {
-				const daily = await saveShift(
-					access("owner"),
-					shiftInput(ids.staffA, ids.dailyPositionA1),
-				);
-				expect(daily).toMatchObject({
+				expect(
+					await saveShift(
+						access(editor),
+						shiftInput(ids.staffA, ids.dailyPositionA1),
+					),
+				).toMatchObject({
 					ok: true,
 					shift: { tenantId: tenants.a1.id, eventId: null },
 				});
-				const evented = await saveShift(
-					{ ...access("owner", tenants.a1, eventE1), timeUnitMinutes: 5 },
-					shiftInput(ids.staffA, ids.eventPositionE1),
-				);
-				expect(evented).toMatchObject({
-					ok: true,
-					shift: { tenantId: tenants.a1.id, eventId: eventE1.id },
-				});
+				expect(
+					await saveShift(
+						{ ...access(editor, tenants.a1, eventE1), timeUnitMinutes: 5 },
+						shiftInput(ids.staffA, ids.eventPositionE1),
+					),
+				).toMatchObject({ ok: true, shift: { eventId: eventE1.id } });
 			});
 
 			it("時間粒度はイベントの上書きがあればそれ、なければテナントの値", async () => {
-				const daily = await findScopeAccess(users.ownerA.id, {
-					orgSlug: orgs.a.slug,
-					tenantSlug: tenants.a1.slug,
-				});
-				const evented = await findScopeAccess(users.ownerA.id, {
-					orgSlug: orgs.a.slug,
-					tenantSlug: tenants.a1.slug,
-					eventSlug: eventE1.slug,
-				});
-				expect(daily?.timeUnitMinutes).toBe(15); // 既定のテナント
-				expect(evented?.timeUnitMinutes).toBe(5);
+				const scope = { orgSlug: orgs.a.slug, tenantSlug: tenants.a1.slug };
+				expect(
+					(await findScopeAccess(users.ownerA.id, scope))?.timeUnitMinutes,
+				).toBe(15);
+				expect(
+					(
+						await findScopeAccess(users.ownerA.id, {
+							...scope,
+							eventSlug: eventE1.slug,
+						})
+					)?.timeUnitMinutes,
+				).toBe(5);
 			});
 		});
 
-		describe("強い方が勝つ（団体・テナント・イベントの役割）", () => {
-			const roleAt = async (
-				userId: string,
+		describe("ロール（権限の足し合わせ）", () => {
+			const permsAt = async (
+				key: Key,
 				tenantSlug: string,
 				eventSlug?: string,
 			) =>
 				(
-					await findScopeAccess(userId, {
+					await findScopeAccess(users[key].id, {
 						orgSlug: orgs.a.slug,
 						tenantSlug,
 						eventSlug,
 					})
-				)?.role;
+				)?.permissions ?? [];
 
-			it("テナントの店長は、そのテナントとその下のイベントでリーダー。ほかのテナントではスタッフ", async () => {
-				expect(await roleAt(users.storeManager.id, tenants.a1.slug)).toBe(
-					"leader",
+			it("テナントで割り当てたロールの権限は、そのテナントと下のイベントで上乗せされる。ほかのテナントでは効かない", async () => {
+				expect(await permsAt("storeManager", tenants.a1.slug)).toContain(
+					"shift.edit",
 				);
 				expect(
-					await roleAt(users.storeManager.id, tenants.a1.slug, eventE1.slug),
-				).toBe("leader");
-				expect(await roleAt(users.storeManager.id, tenants.a2.slug)).toBe(
-					"staff",
+					await permsAt("storeManager", tenants.a1.slug, eventE1.slug),
+				).toContain("shift.edit");
+				expect(await permsAt("storeManager", tenants.a2.slug)).not.toContain(
+					"shift.edit",
 				);
 			});
 
-			it("イベントのリーダーは、そのイベントだけでリーダー。日常シフトではスタッフ", async () => {
+			it("テナント・イベントのロールからは、団体全体の権限（メンバーの管理など）は上乗せされない", async () => {
+				const perms = await permsAt("storeManager", tenants.a1.slug);
+				expect(perms).not.toContain("member.manage");
+				expect(perms).not.toContain("role.manage");
+				await expect(
+					requireOrgAccess(users.storeManager.id, orgs.a.slug, "member.manage"),
+				).rejects.toMatchObject({
+					status: 403,
+				});
+			});
+
+			it("イベントで割り当てたロールは、そのイベントだけで効く", async () => {
 				expect(
-					await roleAt(users.eventLeader.id, tenants.a1.slug, eventE1.slug),
-				).toBe("leader");
-				expect(await roleAt(users.eventLeader.id, tenants.a1.slug)).toBe(
-					"staff",
+					await permsAt("eventLeader", tenants.a1.slug, eventE1.slug),
+				).toContain("shift.edit");
+				expect(await permsAt("eventLeader", tenants.a1.slug)).not.toContain(
+					"shift.edit",
 				);
 			});
 
-			it("割り当てのないスタッフはどこでもスタッフで、書き込めない", async () => {
-				expect(await roleAt(users.staffA.id, tenants.a1.slug)).toBe("staff");
+			it("割り当てのないスタッフは書き込めない（403）", async () => {
 				const error = await requireScopeAccess(
 					users.staffA.id,
 					{ orgSlug: orgs.a.slug, tenantSlug: tenants.a1.slug },
@@ -474,10 +530,10 @@ describe.skipIf(!hasDatabase)(
 				expect(error.status).toBe(403);
 			});
 
-			it("スタッフ・ゲストは書き込めず、リーダーは確定にできる", async () => {
+			it("シフトの編集・確定は権限の項目で決まる", async () => {
 				expect(
 					await saveShift(
-						access("staff"),
+						access(["shift.view"]),
 						shiftInput(ids.staffA, ids.dailyPositionA1),
 					),
 				).toMatchObject({
@@ -485,57 +541,165 @@ describe.skipIf(!hasDatabase)(
 				});
 				expect(
 					await saveShift(
-						access("guest"),
-						shiftInput(ids.staffA, ids.dailyPositionA1),
+						access(["shift.view", "shift.edit"]),
+						shiftInput(ids.staffA, ids.dailyPositionA1, "confirmed"),
 					),
-				).toMatchObject({
-					status: 403,
-				});
+				).toMatchObject({ status: 403 });
 				expect(
 					await saveShift(
-						access("leader"),
+						access(editor),
 						shiftInput(ids.staffA, ids.dailyPositionA1, "confirmed"),
 					),
 				).toMatchObject({ ok: true, shift: { status: "confirmed" } });
 			});
+
+			it("1 人が複数のロールを持てて、権限は足し合わせになる", async () => {
+				const owner = await actorOf("ownerA");
+				const result = await org.setMemberRoles(
+					orgs.a.id,
+					owner,
+					members.staffA.id,
+					[roleIdsA.staff, roleIdsA.guest],
+				);
+				expect(result).toEqual({ ok: true });
+				const perms = (await findMembership(users.staffA.id, orgs.a.slug))
+					?.member.permissions;
+				expect(perms).toContain("guild.bypass"); // ゲスト
+				expect(perms).toContain("shift.view"); // スタッフ・ゲスト
+				await org.setMemberRoles(orgs.a.id, owner, members.staffA.id, [
+					roleIdsA.staff,
+				]);
+			});
+		});
+
+		describe("権限の乗っ取り防止", () => {
+			it("リーダーは、自分にない権限を含むロールを作れない・変えられない・消せない", async () => {
+				const leader = await actorOf("leaderA");
+				expect(
+					await org.createRole(orgs.a.id, leader, {
+						name: "x",
+						color: "#000000",
+						permissions: ["member.manage"],
+					}),
+				).toMatchObject({ ok: false });
+				expect(
+					await org.updateRole(orgs.a.id, leader, roleIdsA.manager, {
+						name: "乗っ取り",
+						color: "#000000",
+						permissions: ["shift.view"],
+					}),
+				).toMatchObject({ ok: false });
+				expect(
+					await org.deleteRole(orgs.a.id, leader, roleIdsA.manager),
+				).toMatchObject({ ok: false });
+				// 自分の持つ権限の範囲なら作れる
+				expect(
+					await org.createRole(orgs.a.id, leader, {
+						name: "受付係",
+						color: "#123456",
+						permissions: ["shift.view"],
+					}),
+				).toMatchObject({ ok: true });
+			});
+
+			it("自分にない権限を含むロールは、人に付けられず、外すこともできない。招待コードでも渡せない", async () => {
+				const leader = await actorOf("leaderA");
+				expect(
+					await org.setMemberRoles(orgs.a.id, leader, members.staffA.id, [
+						roleIdsA.staff,
+						roleIdsA.manager,
+					]),
+				).toMatchObject({ ok: false });
+				// 自分自身にマネージャーを付けることもできない
+				expect(
+					await org.setMemberRoles(orgs.a.id, leader, members.leaderA.id, [
+						roleIdsA.leader,
+						roleIdsA.manager,
+					]),
+				).toMatchObject({ ok: false });
+				expect(
+					await org.createInvite({
+						organizationId: orgs.a.id,
+						actor: leader,
+						createdById: users.leaderA.id,
+						roleId: roleIdsA.manager,
+						maxUses: 1,
+						expiresInDays: 7,
+					}),
+				).toMatchObject({ ok: false });
+			});
+
+			it("オーナーのロールは変えられない。ほかの団体のロールは付けられない", async () => {
+				const owner = await actorOf("ownerA");
+				expect(
+					await org.setMemberRoles(orgs.a.id, owner, members.ownerA.id, []),
+				).toMatchObject({ ok: false });
+				const roleOfB = await prisma.orgRole.findFirstOrThrow({
+					where: { organizationId: orgs.b.id },
+				});
+				expect(
+					await org.setMemberRoles(orgs.a.id, owner, members.staffA.id, [
+						roleOfB.id,
+					]),
+				).toMatchObject({
+					ok: false,
+				});
+			});
 		});
 
 		describe("招待コード", () => {
-			it("使うと、決めた役割と表示名で参加する。1 回きりのコードは 2 回目に使えない", async () => {
-				const invite = await createInvite({
-					organizationId: orgs.b.id,
-					createdById: users.ownerB.id,
-					role: "guest",
-					maxUses: 1,
-					expiresInDays: 7,
+			const inviteB = async (
+				roleName: string,
+				maxUses: number | null,
+				expiresInDays = 7,
+				now?: Date,
+			) => {
+				const role = await prisma.orgRole.findFirstOrThrow({
+					where: { organizationId: orgs.b.id, name: roleName },
 				});
+				const result = await org.createInvite({
+					organizationId: orgs.b.id,
+					actor: await actorOf("ownerB", orgs.b.slug),
+					createdById: users.ownerB.id,
+					roleId: role.id,
+					maxUses,
+					expiresInDays,
+					now,
+				});
+				if (!result.ok) throw new Error(result.errors.join());
+				return result.code;
+			};
+
+			it("使うと、そのロールと表示名で参加する。1 回きりのコードは 2 回目に使えない", async () => {
+				const code = await inviteB("ゲスト", 1);
 				expect(
-					await previewInvite(users.ownerA.id, invite.code.toLowerCase()),
+					await org.previewInvite(users.ownerA.id, code.toLowerCase()),
 				).toMatchObject({
 					ok: true,
 					organizationSlug: orgs.b.slug,
-					role: "guest",
+					roleName: "ゲスト",
 					alreadyMember: false,
 				});
 				expect(
-					await acceptInvite({
+					await org.acceptInvite({
 						userId: users.ownerA.id,
-						code: invite.code,
+						code,
 						displayName: "ゲストのA",
 					}),
 				).toEqual({
 					ok: true,
 					slug: orgs.b.slug,
 				});
-				expect(
-					await findMembership(users.ownerA.id, orgs.b.slug),
-				).toMatchObject({
-					member: { role: "guest", displayName: "ゲストのA" },
+				const joined = await findMembership(users.ownerA.id, orgs.b.slug);
+				expect(joined?.member).toMatchObject({
+					isOwner: false,
+					displayName: "ゲストのA",
 				});
+				expect(joined?.member.roles.map((r) => r.name)).toEqual(["ゲスト"]);
 				expect(
-					await acceptInvite({
+					await org.acceptInvite({
 						userId: users.staffA.id,
-						code: invite.code,
+						code,
 						displayName: "x",
 					}),
 				).toEqual({
@@ -548,46 +712,42 @@ describe.skipIf(!hasDatabase)(
 			});
 
 			it("取り消し・期限切れ・すでにメンバー・ないコードを見分ける", async () => {
-				const make = (expiresInDays: number, now?: Date) =>
-					createInvite({
-						organizationId: orgs.b.id,
-						createdById: users.ownerB.id,
-						role: "staff",
-						maxUses: null,
-						expiresInDays,
-						now,
-					});
-				const revoked = await make(7);
+				const revoked = await inviteB("スタッフ", null);
 				await prisma.invite.update({
-					where: { id: revoked.id },
+					where: { code: revoked },
 					data: { revokedAt: new Date() },
 				});
 				expect(
-					await acceptInvite({
+					await org.acceptInvite({
 						userId: users.ownerA.id,
-						code: revoked.code,
+						code: revoked,
 						displayName: "x",
 					}),
 				).toEqual({
 					ok: false,
 					reason: "revoked",
 				});
-				const expired = await make(1, new Date("2020-01-01T00:00:00Z"));
+				const expired = await inviteB(
+					"スタッフ",
+					null,
+					1,
+					new Date("2020-01-01T00:00:00Z"),
+				);
 				expect(
-					await acceptInvite({
+					await org.acceptInvite({
 						userId: users.ownerA.id,
-						code: expired.code,
+						code: expired,
 						displayName: "x",
 					}),
 				).toEqual({
 					ok: false,
 					reason: "expired",
 				});
-				const open = await make(7);
+				const open = await inviteB("スタッフ", null);
 				expect(
-					await acceptInvite({
+					await org.acceptInvite({
 						userId: users.ownerB.id,
-						code: open.code,
+						code: open,
 						displayName: "x",
 					}),
 				).toEqual({
@@ -595,7 +755,7 @@ describe.skipIf(!hasDatabase)(
 					reason: "already_member",
 				});
 				expect(
-					await acceptInvite({
+					await org.acceptInvite({
 						userId: users.ownerA.id,
 						code: "ZZZZZZZZ",
 						displayName: "x",
@@ -607,13 +767,7 @@ describe.skipIf(!hasDatabase)(
 			});
 
 			it("同時に使われても、使える回数を超えて参加させない", async () => {
-				const invite = await createInvite({
-					organizationId: orgs.a.id,
-					createdById: users.ownerA.id,
-					role: "staff",
-					maxUses: 1,
-					expiresInDays: 7,
-				});
+				const code = await inviteB("スタッフ", 1);
 				const racers = await Promise.all([
 					createUser("racer-1"),
 					createUser("racer-2"),
@@ -621,20 +775,17 @@ describe.skipIf(!hasDatabase)(
 				]);
 				const results = await Promise.all(
 					racers.map((user) =>
-						acceptInvite({
-							userId: user.id,
-							code: invite.code,
-							displayName: "racer",
-						}).catch(() => ({
-							ok: false as const,
-							reason: "error",
-						})),
+						org
+							.acceptInvite({ userId: user.id, code, displayName: "racer" })
+							.catch(() => ({
+								ok: false as const,
+								reason: "error",
+							})),
 					),
 				);
 				expect(results.filter((r) => r.ok)).toHaveLength(1);
 				expect(
-					(await prisma.invite.findUniqueOrThrow({ where: { id: invite.id } }))
-						.uses,
+					(await prisma.invite.findUniqueOrThrow({ where: { code } })).uses,
 				).toBe(1);
 			});
 		});

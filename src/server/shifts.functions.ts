@@ -1,6 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
-import { can } from "../lib/org/permissions";
+import { hasPermission } from "../lib/org/permissions";
 import { prisma } from "../lib/prisma.server";
 import { type Shift, ShiftStatus } from "../types";
 import { requireUserMiddleware } from "./auth-middleware";
@@ -59,7 +59,7 @@ export const getTenantContext = createServerFn({ method: "GET" })
 		return {
 			tenant: access.tenant,
 			events,
-			role: access.role,
+			canEditShifts: hasPermission(access.permissions, "shift.edit"),
 			timeUnitMinutes: access.timeUnitMinutes,
 		};
 	});
@@ -76,7 +76,7 @@ export const getEventContext = createServerFn({ method: "GET" })
 		if (!access?.event) return null;
 		return {
 			event: access.event,
-			role: access.role,
+			canEditShifts: hasPermission(access.permissions, "shift.edit"),
 			timeUnitMinutes: access.timeUnitMinutes,
 		};
 	});
@@ -97,7 +97,7 @@ export const getShiftBoard = createServerFn({ method: "GET" })
 		return {
 			...board,
 			timeUnitMinutes: access.timeUnitMinutes,
-			canEdit: can(access.role, "shift.edit"),
+			canEdit: hasPermission(access.permissions, "shift.edit"),
 		};
 	});
 
@@ -124,7 +124,7 @@ const writeAccess = async (
 		const access = await requireScopeAccess(userId, scope, "shift.view");
 		return {
 			...toIds(access),
-			role: access.role,
+			permissions: access.permissions,
 			timeUnitMinutes: access.timeUnitMinutes,
 		};
 	} catch (error) {

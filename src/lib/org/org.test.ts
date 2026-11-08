@@ -8,66 +8,77 @@ import {
 	normalizeInviteCode,
 } from "./invite-code";
 import {
-	assignableInviteRoles,
-	can,
-	MEMBER_ROLES,
-	strongestRole,
+	ALL_PERMISSIONS,
+	canGrant,
+	DEFAULT_ROLES,
+	hasPermission,
+	permissionsOf,
+	scopedPermissions,
 } from "./permissions";
 import { slugSchema } from "./slug";
 
-describe("権限", () => {
-	it("見ることは全員、編集と確定はリーダー以上、設定とメンバーの管理はオーナーだけ", () => {
-		const table = Object.fromEntries(
-			MEMBER_ROLES.map((role) => [
-				role,
-				[
-					can(role, "shift.view"),
-					can(role, "shift.edit"),
-					can(role, "shift.confirm"),
-					can(role, "invite.manage"),
-					can(role, "member.manage"),
-					can(role, "org.settings"),
-				],
+describe("ロールと権限", () => {
+	const role = (...permissions: string[]) => ({ permissions });
+
+	it("持っているロールの権限を足し合わせる。知らない項目は捨てる", () => {
+		expect(
+			permissionsOf(false, [
+				role("shift.view"),
+				role("shift.edit", "unknown.thing"),
 			]),
-		);
-		expect(table).toEqual({
-			owner: [true, true, true, true, true, true],
-			leader: [true, true, true, true, false, false],
-			staff: [true, false, false, false, false, false],
-			guest: [true, false, false, false, false, false],
-		});
+		).toEqual(["shift.view", "shift.edit"]);
+		expect(permissionsOf(false, [])).toEqual([]);
 	});
 
-	it("招待で渡せる役割：オーナーは渡さない。リーダーはスタッフとゲストまで", () => {
-		expect(assignableInviteRoles("owner")).toEqual([
-			"leader",
-			"staff",
-			"guest",
+	it("オーナーはロールがなくても全権限", () => {
+		expect(permissionsOf(true, [])).toEqual(ALL_PERMISSIONS);
+	});
+
+	it("テナント・イベントのロールからは、シフトに関わる権限だけを上乗せする", () => {
+		const org = permissionsOf(false, [role("shift.view", "member.view")]);
+		const tenantRoles = [role("shift.edit", "member.manage", "tenant.manage")];
+		const eventRoles = [role("shift.confirm")];
+		expect(scopedPermissions(org, tenantRoles, eventRoles)).toEqual([
+			"shift.view",
+			"shift.edit",
+			"shift.confirm",
+			"member.view",
 		]);
-		expect(assignableInviteRoles("leader")).toEqual(["staff", "guest"]);
-		expect(assignableInviteRoles("staff")).toEqual([]);
-		expect(assignableInviteRoles("guest")).toEqual([]);
-	});
-});
-
-describe("強い方が勝つ（団体・テナント・イベントの役割）", () => {
-	it("いちばん強い役割になる", () => {
-		// 団体ではスタッフでも、テナントでリーダー（店長）ならリーダー
-		expect(strongestRole("staff", "leader")).toBe("leader");
-		// イベントだけリーダー
-		expect(strongestRole("staff", null, "leader")).toBe("leader");
-		// ゲストでも、イベントでスタッフならスタッフ
-		expect(strongestRole("guest", undefined, "staff")).toBe("staff");
 	});
 
-	it("テナント・イベントの役割で、団体の役割を弱めることはできない", () => {
-		expect(strongestRole("owner", "staff", "staff")).toBe("owner");
-		expect(strongestRole("leader", "staff")).toBe("leader");
+	it("テナント・イベントのロールで、団体での権限を減らすことはできない", () => {
+		const org = permissionsOf(false, [role("shift.view", "shift.edit")]);
+		expect(scopedPermissions(org, [role("shift.view")])).toEqual([
+			"shift.view",
+			"shift.edit",
+		]);
 	});
 
-	it("割り当てがなければ団体の役割のまま", () => {
-		expect(strongestRole("staff")).toBe("staff");
-		expect(strongestRole("staff", null, undefined)).toBe("staff");
+	it("自分が持っている権限の範囲でしか渡せない（権限の乗っ取り防止）", () => {
+		const leader = ["shift.view", "shift.edit", "invite.manage"] as const;
+		expect(canGrant(leader, ["shift.view"])).toBe(true);
+		expect(canGrant(leader, ["shift.view", "member.manage"])).toBe(false);
+		expect(canGrant(ALL_PERMISSIONS, ["member.manage", "org.settings"])).toBe(
+			true,
+		);
+	});
+
+	it("最初のロール：マネージャー・リーダー・スタッフ・ゲスト。ゲストだけ Discord の条件を免除", () => {
+		expect(DEFAULT_ROLES.map((r) => r.name)).toEqual([
+			"マネージャー",
+			"リーダー",
+			"スタッフ",
+			"ゲスト",
+		]);
+		const byName = Object.fromEntries(
+			DEFAULT_ROLES.map((r) => [r.name, r.permissions]),
+		);
+		expect(hasPermission(byName["ゲスト"], "guild.bypass")).toBe(true);
+		expect(hasPermission(byName["マネージャー"], "guild.bypass")).toBe(false);
+		expect(hasPermission(byName["リーダー"], "shift.edit")).toBe(true);
+		expect(hasPermission(byName["リーダー"], "member.manage")).toBe(false);
+		expect(hasPermission(byName["スタッフ"], "shift.edit")).toBe(false);
+		expect(hasPermission(byName["マネージャー"], "member.manage")).toBe(true);
 	});
 });
 

@@ -5,6 +5,7 @@ import {
 	ShiftStatus,
 } from "../src/generated/prisma-postgresql/client.ts";
 import { loadEnvFileIfExists } from "../src/lib/load-env.ts";
+import { DEFAULT_ROLES } from "../src/lib/org/permissions.ts";
 
 loadEnvFileIfExists();
 
@@ -31,6 +32,16 @@ const upsertDemoUser = (email: string, name: string) =>
 		},
 	});
 
+/** 団体を作るときに用意する最初のロール（src/server/org.server.ts の createOrganization と同じ） */
+const defaultRoles = () => ({
+	create: DEFAULT_ROLES.map((role, index) => ({
+		name: role.name,
+		color: role.color,
+		permissions: [...role.permissions],
+		sortOrder: index,
+	})),
+});
+
 /** 日本時間の日時 */
 const jst = (dateTime: string) => new Date(`${dateTime}:00+09:00`);
 const range = (date: string, start: string, end: string) => ({
@@ -53,8 +64,9 @@ async function main() {
 		data: {
 			slug: "demo",
 			name: "デモ団体",
+			roles: defaultRoles(),
 			members: {
-				create: { userId: owner.id, role: "owner", displayName: "リーダー" },
+				create: { userId: owner.id, isOwner: true, displayName: "リーダー" },
 			},
 		},
 	});
@@ -273,10 +285,11 @@ async function main() {
 		data: {
 			slug: "other",
 			name: "別の団体",
+			roles: defaultRoles(),
 			members: {
 				create: {
 					userId: otherOwner.id,
-					role: "owner",
+					isOwner: true,
 					displayName: "別団体のオーナー",
 				},
 			},

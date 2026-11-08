@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { ROLE_LABELS } from "../../lib/org/permissions";
+import { memberRoleLabel } from "../../lib/org/member-label";
 import { listMyOrganizations } from "../../server/org.functions";
 
 // ログイン後のトップ：所属している団体の一覧
@@ -30,7 +30,7 @@ function OrgListPage() {
 							>
 								<span className="font-semibold">{org.name}</span>
 								<span className="text-xs text-gray-600">
-									{org.displayName}（{ROLE_LABELS[org.role]}）
+									{org.displayName}（{memberRoleLabel(org)}）
 								</span>
 							</Link>
 						</li>

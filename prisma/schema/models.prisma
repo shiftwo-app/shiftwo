@@ -116,31 +116,33 @@ model Tenant {
   @@unique([organizationId, slug])
 }
 
-// テナントでの役割（店長など）。団体の役割より強いときだけ効く（強い方が勝つ）
+// テナントで割り当てたロール（店長など）。そのテナントと下のイベントで、シフトに関わる権限を上乗せする
 model TenantMember {
-  id        String     @id @default(uuid())
+  id        String   @id @default(uuid())
   tenantId  String
-  tenant    Tenant     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   memberId  String
-  member    Member     @relation(fields: [memberId], references: [id], onDelete: Cascade)
-  role      MemberRole
-  createdAt DateTime   @default(now())
+  member    Member   @relation(fields: [memberId], references: [id], onDelete: Cascade)
+  roleId    String
+  role      OrgRole  @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
 
-  @@unique([tenantId, memberId])
+  @@unique([tenantId, memberId, roleId])
   @@index([memberId])
 }
 
-// イベントでの役割。団体・テナントの役割より強いときだけ効く（強い方が勝つ）
+// イベントで割り当てたロール。そのイベントで、シフトに関わる権限を上乗せする
 model EventMember {
-  id        String     @id @default(uuid())
+  id        String   @id @default(uuid())
   eventId   String
-  event     Event      @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  event     Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
   memberId  String
-  member    Member     @relation(fields: [memberId], references: [id], onDelete: Cascade)
-  role      MemberRole
-  createdAt DateTime   @default(now())
+  member    Member   @relation(fields: [memberId], references: [id], onDelete: Cascade)
+  roleId    String
+  role      OrgRole  @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
 
-  @@unique([eventId, memberId])
+  @@unique([eventId, memberId, roleId])
   @@index([memberId])
 }
 
@@ -154,6 +156,7 @@ model Organization {
   createdAt    DateTime       @default(now())
   updatedAt    DateTime       @updatedAt
   members      Member[]
+  roles        OrgRole[]
   invites      Invite[]
   staffs       Staff[]
   positions    Position[]
@@ -162,11 +165,39 @@ model Organization {
   shifts       Shift[]
 }
 
-enum MemberRole {
-  owner
-  leader
-  staff
-  guest
+// 権限のロール（Discord のロールのようなもの）。ロールごとに権限の項目を持ち、1 人が複数のロールを持てる（権限は足し合わせ）。
+// シフトの持ち場（Position）とは別のもの
+model OrgRole {
+  id             String       @id @default(uuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  name           String
+  color          String
+  // 権限の項目（文字列の配列。src/lib/org/permissions.ts の PERMISSIONS）
+  permissions    Json
+  // 並び順（小さいほど上）
+  sortOrder      Int          @default(0)
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+  members        MemberRoleAssignment[]
+  tenantMembers  TenantMember[]
+  eventMembers   EventMember[]
+  invites        Invite[]
+
+  @@index([organizationId])
+}
+
+// メンバーが団体で持つロール
+model MemberRoleAssignment {
+  id        String   @id @default(uuid())
+  memberId  String
+  member    Member   @relation(fields: [memberId], references: [id], onDelete: Cascade)
+  roleId    String
+  role      OrgRole  @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@unique([memberId, roleId])
+  @@index([roleId])
 }
 
 // 団体への所属。表示名は団体ごとに決められる
@@ -176,10 +207,12 @@ model Member {
   organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   userId         String
   user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
-  role           MemberRole
+  // オーナーは常に全権限を持ち、外せない
+  isOwner        Boolean      @default(false)
   displayName    String
   createdAt      DateTime     @default(now())
   updatedAt      DateTime     @updatedAt
+  roles          MemberRoleAssignment[]
   tenantRoles    TenantMember[]
   eventRoles     EventMember[]
 
@@ -193,8 +226,9 @@ model Invite {
   organizationId String
   organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   code           String       @unique
-  // 参加したときの役割（owner にはできない）
-  role           MemberRole
+  // 参加したときに付けるロール
+  roleId         String
+  role           OrgRole      @relation(fields: [roleId], references: [id], onDelete: Cascade)
   // 使える回数（null なら制限なし）と、使った回数
   maxUses        Int?
   uses           Int          @default(0)
