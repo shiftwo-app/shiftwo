@@ -10,6 +10,7 @@ import { authClient } from "../lib/auth-client";
 import { useT } from "../lib/i18n/react";
 import { translate } from "../lib/i18n/translate";
 import { NAME_MAX_LENGTH, suggestNameFromEmail } from "../lib/profile";
+import { goTo, isServerPath } from "../lib/oauth-resume";
 import { safeRedirectPath } from "../lib/safe-redirect";
 import { completeOnboarding, getSession } from "../server/session.functions";
 
@@ -23,7 +24,12 @@ export const Route = createFileRoute("/welcome")({
 		if (!user) {
 			throw redirect({ to: "/login", search: { redirect: "/welcome" } });
 		}
-		if (user.onboarded) throw redirect({ href: search.redirect });
+		if (user.onboarded) {
+			throw redirect({
+				href: search.redirect,
+				reloadDocument: isServerPath(search.redirect),
+			});
+		}
 		return { user };
 	},
 	head: ({ match }) => ({
@@ -61,7 +67,7 @@ function WelcomePage() {
 				return;
 			}
 			await router.invalidate();
-			router.history.push(redirectTo);
+			goTo(router, redirectTo);
 		} catch (error) {
 			console.error(error);
 			setErrors([t("errors.saveFailed")]);

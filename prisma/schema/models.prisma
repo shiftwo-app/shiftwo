@@ -1,7 +1,8 @@
 // shiftwo のモデル定義（Postgres と SQLite / D1 で共通）。
 // generator と datasource は DB ごとに scripts/prisma-schemas.ts が付けて
 // prisma/generated-schema/<provider>/schema.prisma を作る。ここには書かない。
-// 両方の DB で使える書き方だけにすること（配列型 String[] / Json[] や、@db.* の型指定は使えない）
+// 両方の DB で使える書き方だけにすること（配列型 String[] / Json[] や、@db.* の型指定は使えない）。
+// ただし Better Auth が文字列の配列で持つ項目は StringList と書く（DB ごとの型は scripts/prisma-schemas.ts が決める）
 
 model Staff {
   id              String    @id @default(uuid())
@@ -307,6 +308,10 @@ model User {
   accounts      Account[]
   members       Member[]
   invites       Invite[]
+  oauthClients       OauthClient[]
+  oauthRefreshTokens OauthRefreshToken[]
+  oauthAccessTokens  OauthAccessToken[]
+  oauthConsents      OauthConsent[]
 
   @@unique([email])
   @@map("user")
@@ -322,6 +327,8 @@ model Session {
   userAgent String?
   userId    String
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  oauthRefreshTokens OauthRefreshToken[]
+  oauthAccessTokens  OauthAccessToken[]
 
   @@unique([token])
   @@index([userId])
@@ -389,4 +396,190 @@ model StaffPreference {
   @@index([organizationId])
   @@index([tenantId])
   @@index([eventId])
+}
+
+// ---- MCP（AI のアシスタントからシフトヲを使う）のための OAuth の認可サーバー（Better Auth の jwt / mcp プラグイン）----
+// 項目は Better Auth が決めたもの。json の項目は Better Auth が JSON の文字列にして書くので String で持つ
+
+// アクセストークン（JWT）に署名する鍵
+model Jwks {
+  id         String    @id
+  publicKey  String
+  privateKey String
+  createdAt  DateTime
+  expiresAt  DateTime?
+  alg        String?
+  crv        String?
+
+  @@map("jwks")
+}
+
+// つないだ MCP のクライアント（AI のアシスタントのアプリ）
+model OauthClient {
+  id                               String     @id
+  clientId                         String     @unique
+  clientSecret                     String?
+  clientDiscoveryId                String?
+  disabled                         Boolean?   @default(false)
+  skipConsent                      Boolean?
+  enableEndSession                 Boolean?
+  subjectType                      String?
+  scopes                           StringList?
+  clientCredentialsScopes          StringList?
+  userId                           String?
+  user                             User?      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt                        DateTime?
+  updatedAt                        DateTime?
+  name                             String?
+  uri                              String?
+  icon                             String?
+  contacts                         StringList?
+  tos                              String?
+  policy                           String?
+  softwareId                       String?
+  softwareVersion                  String?
+  softwareStatement                String?
+  redirectUris                     StringList
+  postLogoutRedirectUris           StringList?
+  backchannelLogoutUri             String?
+  backchannelLogoutSessionRequired Boolean?
+  tokenEndpointAuthMethod          String?
+  applicationType                  String?
+  jwks                             String?
+  jwksUri                          String?
+  grantTypes                       StringList?
+  responseTypes                    StringList?
+  requirePKCE                      Boolean?
+  dpopBoundAccessTokens            Boolean?   @default(false)
+  referenceId                      String?
+  metadata                         String?
+  resources                        OauthClientResource[]
+  refreshTokens                    OauthRefreshToken[]
+  accessTokens                     OauthAccessToken[]
+  consents                         OauthConsent[]
+
+  @@index([userId])
+  @@map("oauthClient")
+}
+
+// トークンの宛先（シフトヲでは /api/mcp だけ）
+model OauthResource {
+  id                            String     @id
+  identifier                    String     @unique
+  name                          String
+  accessTokenTtl                Int?
+  refreshTokenTtl               Int?
+  signingAlgorithm              String?
+  signingKeyId                  String?
+  allowedScopes                 StringList?
+  customClaims                  String?
+  dpopBoundAccessTokensRequired Boolean?   @default(false)
+  disabled                      Boolean?   @default(false)
+  createdAt                     DateTime?
+  updatedAt                     DateTime?
+  policyVersion                 Int?       @default(1)
+  metadata                      String?
+  clients                       OauthClientResource[]
+
+  @@map("oauthResource")
+}
+
+model OauthClientResource {
+  id         String        @id
+  clientId   String
+  client     OauthClient   @relation(fields: [clientId], references: [clientId], onDelete: Cascade)
+  resourceId String
+  resource   OauthResource @relation(fields: [resourceId], references: [identifier], onDelete: Cascade)
+  metadata   String?
+  createdAt  DateTime?
+
+  @@index([clientId])
+  @@index([resourceId])
+  @@map("oauthClientResource")
+}
+
+model OauthRefreshToken {
+  id                      String     @id
+  token                   String     @unique
+  clientId                String
+  client                  OauthClient @relation(fields: [clientId], references: [clientId], onDelete: Cascade)
+  sessionId               String?
+  session                 Session?   @relation(fields: [sessionId], references: [id], onDelete: SetNull)
+  userId                  String
+  user                    User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  referenceId             String?
+  authorizationCodeId     String?
+  resources               StringList?
+  requestedUserInfoClaims StringList?
+  expiresAt               DateTime?
+  createdAt               DateTime?
+  revoked                 DateTime?
+  rotatedAt               DateTime?
+  rotationReplayResponse  String?
+  rotationReplayExpiresAt DateTime?
+  authTime                DateTime?
+  confirmation            String?
+  scopes                  StringList
+  accessTokens            OauthAccessToken[]
+
+  @@index([clientId])
+  @@index([sessionId])
+  @@index([userId])
+  @@index([authorizationCodeId])
+  @@map("oauthRefreshToken")
+}
+
+model OauthAccessToken {
+  id                      String     @id
+  token                   String?    @unique
+  clientId                String
+  client                  OauthClient @relation(fields: [clientId], references: [clientId], onDelete: Cascade)
+  sessionId               String?
+  session                 Session?   @relation(fields: [sessionId], references: [id], onDelete: SetNull)
+  userId                  String?
+  user                    User?      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  referenceId             String?
+  authorizationCodeId     String?
+  resources               StringList?
+  requestedUserInfoClaims StringList?
+  refreshId               String?
+  refresh                 OauthRefreshToken? @relation(fields: [refreshId], references: [id], onDelete: Cascade)
+  expiresAt               DateTime?
+  createdAt               DateTime?
+  revoked                 DateTime?
+  confirmation            String?
+  scopes                  StringList
+
+  @@index([clientId])
+  @@index([sessionId])
+  @@index([userId])
+  @@index([authorizationCodeId])
+  @@index([refreshId])
+  @@map("oauthAccessToken")
+}
+
+// 本人が、どのクライアントに何を許したか
+model OauthConsent {
+  id                      String     @id
+  clientId                String
+  client                  OauthClient @relation(fields: [clientId], references: [clientId], onDelete: Cascade)
+  userId                  String?
+  user                    User?      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  referenceId             String?
+  resources               StringList?
+  requestedUserInfoClaims StringList?
+  scopes                  StringList
+  createdAt               DateTime?
+  updatedAt               DateTime?
+
+  @@index([clientId])
+  @@index([userId])
+  @@map("oauthConsent")
+}
+
+model OauthClientAssertion {
+  id        String   @id
+  expiresAt DateTime
+
+  @@map("oauthClientAssertion")
 }

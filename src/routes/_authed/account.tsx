@@ -13,6 +13,8 @@ import { useT } from "../../lib/i18n/react";
 import { translate } from "../../lib/i18n/translate";
 import { isLocale, LOCALE_NAMES, LOCALES } from "../../lib/i18n/locales";
 import { setLocaleFn } from "../../server/locale.functions";
+import { listConnectedAppsFn } from "../../server/oauth.functions";
+import ConnectedApps from "../../components/account/ConnectedApps";
 import {
 	getAccountSummary,
 	refreshMyDiscordStatus,
@@ -22,7 +24,13 @@ import {
 export const Route = createFileRoute("/_authed/account")({
 	validateSearch: (search: Record<string, unknown>): { linked?: boolean } =>
 		search.linked ? { linked: true } : {},
-	loader: () => getAccountSummary(),
+	loader: async () => {
+		const [summary, connectedApps] = await Promise.all([
+			getAccountSummary(),
+			listConnectedAppsFn(),
+		]);
+		return { ...summary, connectedApps };
+	},
 	head: ({ match }) => ({
 		meta: [
 			{
@@ -198,6 +206,10 @@ function AccountPage() {
 					</div>
 				)}
 			</Section>
+			<ConnectedApps
+				apps={summary.connectedApps.apps}
+				mcpUrl={summary.connectedApps.mcpUrl}
+			/>
 		</main>
 	);
 }

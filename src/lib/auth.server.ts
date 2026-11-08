@@ -1,10 +1,13 @@
 // ログイン（Better Auth）。Discord とメール（確認コード＋リンク）
 import { platform } from "#platform";
+import { cimd } from "@better-auth/cimd";
+import { mcp } from "@better-auth/mcp";
 import { betterAuth } from "better-auth";
 import { prismaAdapter } from "better-auth/adapters/prisma";
-import { emailOTP } from "better-auth/plugins";
+import { emailOTP, jwt } from "better-auth/plugins";
 import { tanstackStartCookies } from "better-auth/tanstack-start";
 import { resolveDiscordConfig } from "./auth-config";
+import { authDatabase } from "./auth-database.server";
 import { parseDatabaseProvider } from "./database-provider";
 import { getRequestLocale } from "./i18n/request-locale.server";
 import { translatorFor } from "./i18n/translate";
@@ -14,17 +17,19 @@ import {
 	LOGIN_CODE_EXPIRES_MINUTES,
 } from "./mail/login-email";
 import { sendMail } from "./mail/mailer.server";
+import { MCP_SCOPES, mcpResourceUrl } from "./mcp-config";
 import { prisma } from "./prisma.server";
 
 const baseURL = process.env.BETTER_AUTH_URL;
+const databaseProvider = parseDatabaseProvider(process.env.DATABASE_PROVIDER);
 const discord = resolveDiscordConfig(process.env);
 
 export const auth = betterAuth({
 	baseURL,
 	// 本番では BETTER_AUTH_SECRET が必須（Better Auth が既定の値のままだと拒む）
 	secret: process.env.BETTER_AUTH_SECRET,
-	database: prismaAdapter(prisma, {
-		provider: parseDatabaseProvider(process.env.DATABASE_PROVIDER),
+	database: prismaAdapter(authDatabase(prisma, databaseProvider), {
+		provider: databaseProvider,
 	}),
 	user: {
 		additionalFields: {
@@ -114,6 +119,28 @@ export const auth = betterAuth({
 				);
 			},
 		}),
+		// MCP（AI のアシスタントからシフトヲを使う）。シフトヲが OAuth の認可サーバーになり、
+		// アクセストークン（JWT。jwt() の鍵で署名）を /api/mcp に向けて出す
+		jwt(),
+		mcp({
+			loginPage: "/login",
+			consentPage: "/oauth/consent",
+			resource: mcpResourceUrl(baseURL),
+			scopes: [...MCP_SCOPES],
+			// MCP のクライアントの多くは、使う前に自分で登録する（RFC 7591）。登録できるのは公開クライアントで、
+			// つなぐたびに本人の同意（/oauth/consent）を求める
+			allowDynamicClientRegistration: true,
+			allowUnauthenticatedClientRegistration: true,
+		}),
+		// URL で名乗るクライアント（Client ID Metadata Document）。安全に読める場所でだけ使う
+		...(platform.fetchClientMetadataResource
+			? [
+					cimd({
+						fetchClientMetadataResource: platform.fetchClientMetadataResource,
+						metadataProfile: "mcp-2026-07-28",
+					}),
+				]
+			: []),
 		// TanStack Start の server function からも Cookie を書けるようにする。必ず最後に置く
 		tanstackStartCookies(),
 	],

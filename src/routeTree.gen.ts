@@ -13,12 +13,15 @@ import { Route as AuthedRouteImport } from './routes/_authed'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as SignupRouteImport } from './routes/signup'
 import { Route as WelcomeRouteImport } from './routes/welcome'
+import { Route as DotwellKnownSplatRouteImport } from './routes/[.]well-known/$'
 import { Route as AuthedIndexRouteImport } from './routes/_authed/index'
 import { Route as AuthedAccountRouteImport } from './routes/_authed/account'
 import { Route as AuthedJoinRouteImport } from './routes/_authed/join'
+import { Route as ApiMcpRouteImport } from './routes/api/mcp'
 import { Route as HelpDiscordServerRouteImport } from './routes/help/discord-server'
 import { Route as LoginVerifyRouteImport } from './routes/login_.verify'
 import { Route as AuthedOOrgSlugRouteImport } from './routes/_authed/o/$orgSlug'
+import { Route as AuthedOauthConsentRouteImport } from './routes/_authed/oauth/consent'
 import { Route as AuthedOrgsNewRouteImport } from './routes/_authed/orgs/new'
 import { Route as AuthedSuspendedOrgSlugRouteImport } from './routes/_authed/suspended/$orgSlug'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
@@ -68,6 +71,11 @@ const WelcomeRoute = WelcomeRouteImport.update({
   path: '/welcome',
   getParentRoute: () => rootRouteImport,
 } as any)
+const DotwellKnownSplatRoute = DotwellKnownSplatRouteImport.update({
+  id: '/.well-known/$',
+  path: '/.well-known/$',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AuthedIndexRoute = AuthedIndexRouteImport.update({
   id: '/',
   path: '/',
@@ -83,6 +91,11 @@ const AuthedJoinRoute = AuthedJoinRouteImport.update({
   path: '/join',
   getParentRoute: () => AuthedRoute,
 } as any)
+const ApiMcpRoute = ApiMcpRouteImport.update({
+  id: '/api/mcp',
+  path: '/api/mcp',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const HelpDiscordServerRoute = HelpDiscordServerRouteImport.update({
   id: '/help/discord-server',
   path: '/help/discord-server',
@@ -96,6 +109,11 @@ const LoginVerifyRoute = LoginVerifyRouteImport.update({
 const AuthedOOrgSlugRoute = AuthedOOrgSlugRouteImport.update({
   id: '/o/$orgSlug',
   path: '/o/$orgSlug',
+  getParentRoute: () => AuthedRoute,
+} as any)
+const AuthedOauthConsentRoute = AuthedOauthConsentRouteImport.update({
+  id: '/oauth/consent',
+  path: '/oauth/consent',
   getParentRoute: () => AuthedRoute,
 } as any)
 const AuthedOrgsNewRoute = AuthedOrgsNewRouteImport.update({
@@ -269,11 +287,14 @@ export interface FileRoutesByFullPath {
   '/login': typeof LoginRoute
   '/signup': typeof SignupRoute
   '/welcome': typeof WelcomeRoute
+  '/.well-known/$': typeof DotwellKnownSplatRoute
   '/account': typeof AuthedAccountRoute
   '/join': typeof AuthedJoinRoute
+  '/api/mcp': typeof ApiMcpRoute
   '/help/discord-server': typeof HelpDiscordServerRoute
   '/login/verify': typeof LoginVerifyRoute
   '/o/$orgSlug': typeof AuthedOOrgSlugRouteWithChildren
+  '/oauth/consent': typeof AuthedOauthConsentRoute
   '/orgs/new': typeof AuthedOrgsNewRoute
   '/suspended/$orgSlug': typeof AuthedSuspendedOrgSlugRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
@@ -308,11 +329,14 @@ export interface FileRoutesByTo {
   '/login': typeof LoginRoute
   '/signup': typeof SignupRoute
   '/welcome': typeof WelcomeRoute
+  '/.well-known/$': typeof DotwellKnownSplatRoute
   '/account': typeof AuthedAccountRoute
   '/join': typeof AuthedJoinRoute
+  '/api/mcp': typeof ApiMcpRoute
   '/help/discord-server': typeof HelpDiscordServerRoute
   '/login/verify': typeof LoginVerifyRoute
   '/': typeof AuthedIndexRoute
+  '/oauth/consent': typeof AuthedOauthConsentRoute
   '/orgs/new': typeof AuthedOrgsNewRoute
   '/suspended/$orgSlug': typeof AuthedSuspendedOrgSlugRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
@@ -347,12 +371,15 @@ export interface FileRoutesById {
   '/login': typeof LoginRoute
   '/signup': typeof SignupRoute
   '/welcome': typeof WelcomeRoute
+  '/.well-known/$': typeof DotwellKnownSplatRoute
   '/_authed/account': typeof AuthedAccountRoute
   '/_authed/join': typeof AuthedJoinRoute
+  '/api/mcp': typeof ApiMcpRoute
   '/help/discord-server': typeof HelpDiscordServerRoute
   '/login_/verify': typeof LoginVerifyRoute
   '/_authed/': typeof AuthedIndexRoute
   '/_authed/o/$orgSlug': typeof AuthedOOrgSlugRouteWithChildren
+  '/_authed/oauth/consent': typeof AuthedOauthConsentRoute
   '/_authed/orgs/new': typeof AuthedOrgsNewRoute
   '/_authed/suspended/$orgSlug': typeof AuthedSuspendedOrgSlugRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
@@ -390,11 +417,14 @@ export interface FileRouteTypes {
     | '/login'
     | '/signup'
     | '/welcome'
+    | '/.well-known/$'
     | '/account'
     | '/join'
+    | '/api/mcp'
     | '/help/discord-server'
     | '/login/verify'
     | '/o/$orgSlug'
+    | '/oauth/consent'
     | '/orgs/new'
     | '/suspended/$orgSlug'
     | '/api/auth/$'
@@ -429,11 +459,14 @@ export interface FileRouteTypes {
     | '/login'
     | '/signup'
     | '/welcome'
+    | '/.well-known/$'
     | '/account'
     | '/join'
+    | '/api/mcp'
     | '/help/discord-server'
     | '/login/verify'
     | '/'
+    | '/oauth/consent'
     | '/orgs/new'
     | '/suspended/$orgSlug'
     | '/api/auth/$'
@@ -467,12 +500,15 @@ export interface FileRouteTypes {
     | '/login'
     | '/signup'
     | '/welcome'
+    | '/.well-known/$'
     | '/_authed/account'
     | '/_authed/join'
+    | '/api/mcp'
     | '/help/discord-server'
     | '/login_/verify'
     | '/_authed/'
     | '/_authed/o/$orgSlug'
+    | '/_authed/oauth/consent'
     | '/_authed/orgs/new'
     | '/_authed/suspended/$orgSlug'
     | '/api/auth/$'
@@ -509,6 +545,8 @@ export interface RootRouteChildren {
   LoginRoute: typeof LoginRoute
   SignupRoute: typeof SignupRoute
   WelcomeRoute: typeof WelcomeRoute
+  DotwellKnownSplatRoute: typeof DotwellKnownSplatRoute
+  ApiMcpRoute: typeof ApiMcpRoute
   HelpDiscordServerRoute: typeof HelpDiscordServerRoute
   LoginVerifyRoute: typeof LoginVerifyRoute
   ApiAuthSplatRoute: typeof ApiAuthSplatRoute
@@ -556,6 +594,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof WelcomeRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/.well-known/$': {
+      id: '/.well-known/$'
+      path: '/.well-known/$'
+      fullPath: '/.well-known/$'
+      preLoaderRoute: typeof DotwellKnownSplatRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/_authed/': {
       id: '/_authed/'
       path: '/'
@@ -577,6 +622,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthedJoinRouteImport
       parentRoute: typeof AuthedRoute
     }
+    '/api/mcp': {
+      id: '/api/mcp'
+      path: '/api/mcp'
+      fullPath: '/api/mcp'
+      preLoaderRoute: typeof ApiMcpRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/help/discord-server': {
       id: '/help/discord-server'
       path: '/help/discord-server'
@@ -596,6 +648,13 @@ declare module '@tanstack/react-router' {
       path: '/o/$orgSlug'
       fullPath: '/o/$orgSlug'
       preLoaderRoute: typeof AuthedOOrgSlugRouteImport
+      parentRoute: typeof AuthedRoute
+    }
+    '/_authed/oauth/consent': {
+      id: '/_authed/oauth/consent'
+      path: '/oauth/consent'
+      fullPath: '/oauth/consent'
+      preLoaderRoute: typeof AuthedOauthConsentRouteImport
       parentRoute: typeof AuthedRoute
     }
     '/_authed/orgs/new': {
@@ -877,6 +936,7 @@ interface AuthedRouteChildren {
   AuthedJoinRoute: typeof AuthedJoinRoute
   AuthedIndexRoute: typeof AuthedIndexRoute
   AuthedOOrgSlugRoute: typeof AuthedOOrgSlugRouteWithChildren
+  AuthedOauthConsentRoute: typeof AuthedOauthConsentRoute
   AuthedOrgsNewRoute: typeof AuthedOrgsNewRoute
   AuthedSuspendedOrgSlugRoute: typeof AuthedSuspendedOrgSlugRoute
 }
@@ -886,6 +946,7 @@ const AuthedRouteChildren: AuthedRouteChildren = {
   AuthedJoinRoute: AuthedJoinRoute,
   AuthedIndexRoute: AuthedIndexRoute,
   AuthedOOrgSlugRoute: AuthedOOrgSlugRouteWithChildren,
+  AuthedOauthConsentRoute: AuthedOauthConsentRoute,
   AuthedOrgsNewRoute: AuthedOrgsNewRoute,
   AuthedSuspendedOrgSlugRoute: AuthedSuspendedOrgSlugRoute,
 }
@@ -898,6 +959,8 @@ const rootRouteChildren: RootRouteChildren = {
   LoginRoute: LoginRoute,
   SignupRoute: SignupRoute,
   WelcomeRoute: WelcomeRoute,
+  DotwellKnownSplatRoute: DotwellKnownSplatRoute,
+  ApiMcpRoute: ApiMcpRoute,
   HelpDiscordServerRoute: HelpDiscordServerRoute,
   LoginVerifyRoute: LoginVerifyRoute,
   ApiAuthSplatRoute: ApiAuthSplatRoute,

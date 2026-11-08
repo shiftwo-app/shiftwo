@@ -1,6 +1,7 @@
 // 動かす場所（Node か Cloudflare Workers か）で変わる部分。
 // アプリは "#platform" から platform を読む。ふだん（Node・テスト）は ./node.server.ts、
 // Cloudflare 向けの build（CLOUDFLARE=1）では vite.config.ts の alias で ./cloudflare.server.ts に差し替わる
+import type { ClientMetadataResourceFetch } from "@better-auth/oauth-provider";
 import type { Database } from "../lib/database";
 import type { MailTransport } from "../lib/mail/mailer.server";
 import type { Realtime } from "../lib/realtime/types";
@@ -25,4 +26,10 @@ export type Platform = {
 	runInBackground(label: string, task: () => Promise<unknown>): void;
 	/** 変更を、同じものを見ている人に配る（同時編集） */
 	realtime: Realtime;
+	/**
+	 * MCP のクライアントが URL で名乗るとき（Client ID Metadata Document）に、その URL を読む手段。
+	 * 名前解決を 1 回だけにして内向きのアドレスを拒む、という守りが要るので、それができる場所でだけ用意する。
+	 * ない場所では、動的なクライアント登録（RFC 7591）だけを使う
+	 */
+	fetchClientMetadataResource?: ClientMetadataResourceFetch;
 };

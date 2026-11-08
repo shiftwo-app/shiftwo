@@ -1,4 +1,5 @@
 // Node（開発・テスト・セルフホスト）で動かすときの platform。see ./types.ts
+import { fetchClientMetadataResource } from "@better-auth/cimd/node";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { PrismaClient } from "../generated/prisma-postgresql/client";
 import { parseDatabaseProvider } from "../lib/database-provider";
@@ -18,6 +19,7 @@ const globalForRealtime = globalThis as unknown as {
 globalForRealtime.shiftwoSseHub ??= createSseHub();
 
 export const platform: Platform = {
+	fetchClientMetadataResource,
 	name: "node",
 	databaseScope: "process",
 	createDatabase() {

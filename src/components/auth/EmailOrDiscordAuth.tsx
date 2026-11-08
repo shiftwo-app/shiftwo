@@ -1,6 +1,7 @@
 import { useRouter } from "@tanstack/react-router";
 import { useId, useState } from "react";
 import type { FormEvent, ReactNode } from "react";
+import { goTo } from "../../lib/oauth-resume";
 import { authClient } from "../../lib/auth-client";
 import type { MessageKey } from "../../lib/i18n/messages";
 import { useT } from "../../lib/i18n/react";
@@ -104,7 +105,7 @@ const EmailOrDiscordAuth = ({
 			setError(t("auth.codeInvalid"));
 			return;
 		}
-		router.history.push(redirectTo);
+		goTo(router, redirectTo);
 	};
 
 	const signInWithDiscord = () =>

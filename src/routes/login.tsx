@@ -6,6 +6,7 @@ import Alert from "../components/ui/Alert";
 import type { Translate } from "../lib/i18n/translate";
 import { translate } from "../lib/i18n/translate";
 import { useT } from "../lib/i18n/react";
+import { isServerPath, oauthResumePath } from "../lib/oauth-resume";
 import { safeRedirectPath } from "../lib/safe-redirect";
 import { getLoginMethods, getSession } from "../server/session.functions";
 
@@ -13,13 +14,19 @@ export const Route = createFileRoute("/login")({
 	validateSearch: (
 		search: Record<string, unknown>,
 	): { redirect: string; error?: string } => ({
-		redirect: safeRedirectPath(search.redirect),
+		// MCP のクライアントの認可の途中なら、ログインのあとはその続きへ。そうでなければ ?redirect= の戻り先へ
+		redirect: oauthResumePath(search) ?? safeRedirectPath(search.redirect),
 		// Discord から戻ってきたときのエラー（Better Auth が付ける）
 		...(typeof search.error === "string" ? { error: search.error } : {}),
 	}),
 	beforeLoad: async ({ search }) => {
 		// ログイン済みなら、戻り先へ
-		if (await getSession()) throw redirect({ href: search.redirect });
+		if (await getSession()) {
+			throw redirect({
+				href: search.redirect,
+				reloadDocument: isServerPath(search.redirect),
+			});
+		}
 	},
 	loader: () => getLoginMethods(),
 	head: ({ match }) => ({

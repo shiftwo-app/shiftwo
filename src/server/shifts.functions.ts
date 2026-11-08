@@ -19,8 +19,7 @@ import {
 	type ShiftWriteAccess,
 	type ShiftWriteResult,
 } from "./shift-write.server";
-import { preferenceConflicts } from "../lib/preferences";
-import { loadEffectivePreferences } from "./preferences.server";
+import { conflictsOf } from "./shift-conflicts.server";
 import { findShiftBoard } from "./shifts.server";
 
 // 画面から呼ぶ。どれもログインが必要で（requireUserMiddleware）、
@@ -97,32 +96,6 @@ export const getEventContext = createServerFn({ method: "GET" })
 				access.tenant.positionsEnabled ?? access.organizationPositionsEnabled,
 		};
 	});
-
-/** シフトごとの、希望と違うところ（違うものだけ） */
-const conflictsOf = async (
-	ids: { organizationId: string; tenantId: string; eventId: string | null },
-	shifts: Shift[],
-): Promise<Record<string, string[]>> => {
-	const preferences = await loadEffectivePreferences(ids, [
-		...new Set(shifts.map((shift) => shift.staffId)),
-	]);
-	const conflicts: Record<string, string[]> = {};
-	for (const shift of shifts) {
-		const preference = preferences.get(shift.staffId);
-		if (!preference) continue;
-		const reasons = preferenceConflicts(
-			{
-				positionId: shift.positionId,
-				start: new Date(shift.timeRange.start).getTime(),
-				end: new Date(shift.timeRange.end).getTime(),
-			},
-			preference,
-			serverT,
-		);
-		if (reasons.length > 0) conflicts[shift.id] = reasons;
-	}
-	return conflicts;
-};
 
 export const getShiftBoard = createServerFn({ method: "GET" })
 	.middleware([requireUserMiddleware])
