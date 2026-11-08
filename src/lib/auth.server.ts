@@ -34,9 +34,23 @@ export const auth = betterAuth({
 				discord: {
 					clientId: discord.clientId,
 					clientSecret: discord.clientSecret,
+					// Discord でメールアドレスを確認していなければ、ログインさせない（下の databaseHooks と二重の守り）
+					requireEmailVerification: true,
 				},
 			}
 		: {},
+	databaseHooks: {
+		user: {
+			create: {
+				// メールアドレスを確認できていないアカウントは作らない（アカウントの乗っ取りの下準備を防ぐ）。
+				// 未確認の Discord で他人のアドレスを名乗って先に作っておき、あとから本人がメールで登録した
+				// アカウントに紐づいたまま残る、という手口を塞ぐ。メールの確認コードでのログインは確認済み、
+				// Discord は Discord で確認済みのときだけ通る。既存のアカウントへの自動の紐づけは、
+				// Better Auth の既定で、確認済みのアドレスのときだけ行われる
+				before: async (user) => (user.emailVerified ? undefined : false),
+			},
+		},
+	},
 	plugins: [
 		emailOTP({
 			otpLength: 6,

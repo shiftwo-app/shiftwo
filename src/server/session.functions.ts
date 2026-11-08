@@ -1,5 +1,13 @@
 import { createServerFn } from "@tanstack/react-start";
+import { getCookie, setCookie } from "@tanstack/react-start/server";
+import { z } from "zod";
 import { loginMethods } from "../lib/auth.server";
+import {
+	isLoginRequestedHere,
+	LOGIN_REQUEST_COOKIE,
+	LOGIN_REQUEST_MAX_AGE_SECONDS,
+	normalizeEmail,
+} from "../lib/login-request";
 import { prisma } from "../lib/prisma.server";
 import { nameSchema } from "../lib/profile";
 import { requireUserMiddleware } from "./auth-middleware";
@@ -33,3 +41,33 @@ export const completeOnboarding = createServerFn({ method: "POST" })
 		});
 		return { ok: true as const };
 	});
+
+const emailSchema = z.email();
+
+/**
+ * ログイン用のメールを送る直前に呼ぶ。このブラウザでそのアドレスにメールを送ったことを Cookie に残す
+ * （メールのリンクを押すだけでログインできるのは、このブラウザだけにする。ログイン CSRF 対策）
+ */
+export const markLoginRequested = createServerFn({ method: "POST" })
+	.validator((data: { email: unknown }) => ({
+		email: emailSchema.parse(data.email),
+	}))
+	.handler(({ data }) => {
+		setCookie(LOGIN_REQUEST_COOKIE, normalizeEmail(data.email), {
+			httpOnly: true,
+			sameSite: "lax",
+			secure: process.env.BETTER_AUTH_URL?.startsWith("https://") ?? false,
+			path: "/",
+			maxAge: LOGIN_REQUEST_MAX_AGE_SECONDS,
+		});
+		return { ok: true as const };
+	});
+
+/** メールのリンクの先で、このブラウザがそのアドレスにメールを送ったかを調べる */
+export const wasLoginRequestedHere = createServerFn({ method: "GET" })
+	.validator((data: { email: unknown }) => ({
+		email: typeof data.email === "string" ? data.email : "",
+	}))
+	.handler(({ data }) =>
+		isLoginRequestedHere(getCookie(LOGIN_REQUEST_COOKIE), data.email),
+	);

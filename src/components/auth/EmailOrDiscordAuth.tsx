@@ -2,6 +2,7 @@ import { useRouter } from "@tanstack/react-router";
 import { useId, useState } from "react";
 import type { FormEvent } from "react";
 import { authClient } from "../../lib/auth-client";
+import { markLoginRequested } from "../../server/session.functions";
 
 type Step = { name: "email" } | { name: "code"; email: string };
 
@@ -49,6 +50,14 @@ const EmailOrDiscordAuth = ({
 		event?.preventDefault();
 		setBusy(true);
 		setError(null);
+		try {
+			// このブラウザでメールを送ったことを残す（メールのリンクを押すだけでログインできるのは、このブラウザだけ）
+			await markLoginRequested({ data: { email } });
+		} catch {
+			setBusy(false);
+			setError("メールアドレスの形を確かめてください");
+			return;
+		}
 		const { error } = await authClient.emailOtp.sendVerificationOtp({
 			email,
 			type: "sign-in",
