@@ -83,4 +83,33 @@ export default {
 	positionNotFound: "選んだ持ち場が見つかりません",
 	noDeadlinePermission: "締切を決める権限がありません",
 	eventEndBeforeStart: "イベントの終わりは始まりより後にしてください",
+	csvColumnStaff: "スタッフ",
+	csvColumnBreaks: "休憩",
+	csvColumnPositions: "持ち場",
+	csvColumnMemo: "メモ",
+	csvTooLarge: "CSV が大きすぎます（200KB まで）",
+	csvEmpty: "CSV に登録する行がありません",
+	csvMissingStaffColumn: "1 行目に「スタッフ」の列が見つかりません",
+	csvTooManyRows: "一度に登録できるのは {max} 行までです",
+	csvStaffMissing: "スタッフの名前がありません",
+	csvStaffNotFound: "スタッフ「{name}」が見つかりません",
+	csvStaffAmbiguous:
+		"「{name}」という名前のスタッフが複数います（名前を変えて区別してください）",
+	csvStaffDuplicateRow: "「{name}」の行が 2 回以上あります",
+	csvBadBreak: "休憩「{value}」が読めません（例：2026-11-20 12:00-13:00）",
+	csvPositionsNotUsed:
+		"ここでは持ち場を使っていないので、持ち場の列は空にしてください",
+	csvPositionNotFound: "持ち場「{name}」が見つかりません",
+	csvTitle: "CSV で一括登録",
+	csvDescription:
+		"スタッフ・休憩・持ち場・メモの列を持つ CSV で、この単位の希望をまとめて登録します。休憩は「2026-11-20 12:00-13:00」の形で、複数は ; で区切ります。同じスタッフの、この単位の希望は置き換わります。",
+	csvTemplate: "ひな形をダウンロード",
+	csvChooseFile: "CSV ファイル",
+	csvCheck: "確かめる",
+	csvImport: "{count} 人分を登録する",
+	csvReady: "{count} 行を確かめました。問題はありません",
+	csvHasErrors:
+		"{count} 行に問題があります。直してから、もう一度読み込んでください",
+	csvImported: "{count} 人分の希望を登録しました",
+	csvLine: "{line} 行目",
 } as const;

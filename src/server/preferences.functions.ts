@@ -2,11 +2,13 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { serverT } from "../lib/i18n/request-locale.server";
 import { isPastDeadline, preferenceScopeSchema } from "../lib/preferences";
+import { PREFERENCE_CSV_MAX_BYTES } from "../lib/preferences-csv";
 import { requireUserMiddleware } from "./auth-middleware";
 import { OrgAccessError } from "./org-access.server";
 import {
 	findMyStaff,
 	getPreferenceOf,
+	importPreferences,
 	listPreferences,
 	listPreferenceScopes,
 	removePreference,
@@ -153,4 +155,31 @@ export const setPreferenceSettingsFn = createServerFn({ method: "POST" })
 				? { start: new Date(data.period.start), end: new Date(data.period.end) }
 				: null,
 		});
+	});
+
+/** CSV で、この単位の希望をまとめて登録する（apply が false なら確かめるだけ） */
+export const importPreferencesFn = createServerFn({ method: "POST" })
+	.middleware([requireUserMiddleware])
+	.validator(
+		(data: {
+			orgSlug: unknown;
+			scope: unknown;
+			csv: unknown;
+			apply: unknown;
+		}) => ({
+			orgSlug: orgSlug.parse(data.orgSlug),
+			scope: preferenceScopeSchema.parse(data.scope),
+			csv: z
+				.string()
+				.max(PREFERENCE_CSV_MAX_BYTES * 2)
+				.parse(data.csv),
+			apply: z.boolean().parse(data.apply),
+		}),
+	)
+	.handler(async ({ data, context }) => {
+		const preference = await orNull(() =>
+			requirePreferenceContext(context.user.id, data.orgSlug, data.scope),
+		);
+		if (!preference || !preference.canManageAll) return notFoundResult();
+		return importPreferences(preference, data.csv, data.apply);
 	});
