@@ -43,3 +43,5 @@ yarn-error.log*
 
 # pnpm
 .pnpm-store/
+# prisma client（prisma generate で作る）
+/src/generated/

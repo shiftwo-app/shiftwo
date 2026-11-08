@@ -1,11 +1,14 @@
 // prisma/schema.prisma
 generator client {
-  provider = "prisma-client-js"
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+  // prisma/seed.ts を Node でそのまま動かせるよう、生成コードの import に .ts を付ける
+  importFileExtension = "ts"
 }
 
+// 接続先は prisma.config.ts（CLI）と src/lib/prisma.server.ts（アプリ）で DATABASE_URL から渡す
 datasource db {
-  provider = "postgresql" // Or your chosen database
-  url      = env("DATABASE_URL")
+  provider = "postgresql"
 }
 
 model Staff {

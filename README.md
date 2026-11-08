@@ -30,7 +30,7 @@ devcontainer を使う場合は、VS Code で「Reopen in Container」を選ぶ�
 
 ```bash
 cd .devcontainer && docker compose up -d db && cd ..
-pnpm install
+pnpm install          # postinstall で prisma generate も走る
 pnpm exec prisma migrate dev
 pnpm prisma:seed
 ```
@@ -45,16 +45,18 @@ pnpm dev
 
 ## よく使うコマンド
 
-| コマンド           | 内容                                                         |
-| ------------------ | ------------------------------------------------------------ |
-| `pnpm dev`         | 開発サーバーを起動する（`vp dev`）                           |
-| `pnpm build`       | 本番用に build する（`vp build`。出力は `dist/`）            |
-| `pnpm start`       | build したものを Node.js で動かす（srvx）                    |
-| `pnpm check`       | 書式・lint・型チェックをまとめて行う（`vp check`）           |
-| `pnpm check:fix`   | 書式を直し、lint の自動修正をかける                          |
-| `pnpm prisma:seed` | 初期データを入れる（Node 26 で `prisma/seed.ts` を直接実行） |
+| コマンド           | 内容                                                                           |
+| ------------------ | ------------------------------------------------------------------------------ |
+| `pnpm dev`         | 開発サーバーを起動する（`vp dev`）                                             |
+| `pnpm build`       | 本番用に build する（`vp build`。出力は `dist/`）                              |
+| `pnpm start`       | build したものを Node.js で動かす（srvx）                                      |
+| `pnpm check`       | 書式・lint・型チェックをまとめて行う（`vp check`）                             |
+| `pnpm check:fix`   | 書式を直し、lint の自動修正をかける                                            |
+| `pnpm prisma:seed` | 初期データを入れる（`prisma db seed`。Node 26 で `prisma/seed.ts` を直接実行） |
 
 書式と lint の設定は `vite.config.ts` の `fmt`・`lint` にあります。
+
+Prisma Client は `prisma generate` で `src/generated/prisma` に作られます（git には入れません）。`.env` はアプリ・Prisma CLI・seed のどれからも `src/lib/load-env.ts` で読み込み、すでに設定されている環境変数は上書きしません。
 
 ## ディレクトリ
 
@@ -67,7 +69,8 @@ src/
     api/           # /api/staff・/api/shifts など外から呼べる API
   server/          # サーバーだけで動く処理（DB アクセス・server function）
   components/      # 画面の部品
-  lib/             # Prisma Client など
+  lib/             # Prisma Client・.env の読み込みなど
+  generated/       # prisma generate の出力（git 管理外）
   types/           # 型
 prisma/            # スキーマ・マイグレーション・seed
 misc/              # 要件定義などの資料

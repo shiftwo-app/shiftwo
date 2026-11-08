@@ -14,8 +14,9 @@
 		"types": ["vite/client", "node"],
 		"paths": {
 			"@/*": ["./src/*"]
-		}
+		},
+		"allowImportingTsExtensions": true
 	},
-	"include": ["src", "prisma", "vite.config.ts"],
+	"include": ["src", "prisma", "vite.config.ts", "prisma.config.ts"],
 	"exclude": ["node_modules", ".output", "dist"]
 }
