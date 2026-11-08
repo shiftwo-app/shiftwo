@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { prisma } from "../../../lib/prisma.server";
+import { writeShift } from "../../../server/shift-write.server";
 import { findShiftsWithRelations } from "../../../server/shifts.server";
 import { ShiftStatus } from "../../../types";
 
@@ -19,28 +19,7 @@ export const Route = createFileRoute("/api/shifts/")({
 					);
 				}
 			},
-			POST: async ({ request }) => {
-				try {
-					// TODO: 入力の検証がない（Next 版から引き継いだまま）
-					const body = await request.json();
-					const newShift = await prisma.shift.create({
-						data: {
-							staffId: body.staffId,
-							roleId: body.roleId,
-							timeRange: body.timeRange,
-							isPreferredRole: body.isPreferredRole,
-							status: body.status,
-						},
-					});
-					return Response.json(newShift, { status: 201 });
-				} catch (error) {
-					console.error(error);
-					return Response.json(
-						{ message: "Error creating shift" },
-						{ status: 500 },
-					);
-				}
-			},
+			POST: ({ request }) => writeShift(request),
 		},
 	},
 });
