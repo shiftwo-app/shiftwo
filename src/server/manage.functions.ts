@@ -6,7 +6,11 @@ import {
 	staffInputSchema,
 	tenantInputSchema,
 } from "../lib/manage-schemas";
-import { canGrant, parsePermissions } from "../lib/org/permissions";
+import {
+	canGrant,
+	hasPermission,
+	parsePermissions,
+} from "../lib/org/permissions";
 import { prisma } from "../lib/prisma.server";
 import type { ShiftScopeParams } from "../lib/shift-scope";
 import { requireUserMiddleware } from "./auth-middleware";
@@ -208,6 +212,27 @@ export const deletePositionFn = createServerFn({ method: "POST" })
 
 // ---- スタッフ（スタッフの管理） ----
 
+/** メンバーとの紐づけは、メンバーを見る権限もあるときだけ（見られないメンバーを選べないように） */
+const LINK_FORBIDDEN = {
+	ok: false as const,
+	errors: ["メンバーと紐づけるには、メンバーを見る権限が必要です"],
+};
+const canLink = (access: OrgMembership, memberId: string | null) =>
+	memberId === null || hasPermission(access.member.permissions, "member.view");
+/** 更新では、今の紐づけをそのまま保つだけなら、メンバーを見る権限がなくてもよい */
+const canKeepLink = async (
+	access: OrgMembership,
+	staffId: string,
+	memberId: string | null,
+) => {
+	if (canLink(access, memberId)) return true;
+	const current = await prisma.staff.findFirst({
+		where: { id: staffId, organizationId: access.organization.id },
+		select: { memberId: true },
+	});
+	return current?.memberId === memberId;
+};
+
 export const listStaffFn = createServerFn({ method: "GET" })
 	.middleware([requireUserMiddleware])
 	.validator((data: { orgSlug: unknown }) => ({
@@ -218,6 +243,11 @@ export const listStaffFn = createServerFn({ method: "GET" })
 			context.user.id,
 			data.orgSlug,
 			"staff.manage",
+		);
+		// メンバーの一覧（紐づけの選択肢）は、メンバーを見る権限もあるときだけ返す
+		const canViewMembers = hasPermission(
+			access.member.permissions,
+			"member.view",
 		);
 		const [staffs, members] = await Promise.all([
 			prisma.staff.findMany({
@@ -230,13 +260,16 @@ export const listStaffFn = createServerFn({ method: "GET" })
 				},
 				orderBy: { name: "asc" },
 			}),
-			prisma.member.findMany({
-				where: { organizationId: access.organization.id },
-				select: { id: true, displayName: true },
-				orderBy: { createdAt: "asc" },
-			}),
+			canViewMembers
+				? prisma.member.findMany({
+						where: { organizationId: access.organization.id },
+						select: { id: true, displayName: true },
+						orderBy: { createdAt: "asc" },
+					})
+				: Promise.resolve([]),
 		]);
 		return {
+			canLinkMembers: canViewMembers,
 			staffs: staffs.map((s) => ({
 				id: s.id,
 				name: s.name,
@@ -259,6 +292,7 @@ export const createStaffFn = createServerFn({ method: "POST" })
 			orgSlug,
 			"staff.manage",
 		);
+		if (!canLink(access, parsed.data.memberId)) return LINK_FORBIDDEN;
 		return createStaff(access.organization.id, parsed.data);
 	});
 
@@ -277,6 +311,9 @@ export const updateStaffFn = createServerFn({ method: "POST" })
 			orgSlug,
 			"staff.manage",
 		);
+		if (!(await canKeepLink(access, staffId, parsed.data.memberId))) {
+			return LINK_FORBIDDEN;
+		}
 		return updateStaff(access.organization.id, staffId, parsed.data);
 	});
 

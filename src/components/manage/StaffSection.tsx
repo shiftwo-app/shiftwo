@@ -27,12 +27,14 @@ function StaffForm({
 	staff,
 	members,
 	takenMemberIds,
+	canLinkMembers,
 	run,
 }: {
 	orgSlug: string;
 	staff?: StaffRow;
 	members: MemberOption[];
 	takenMemberIds: Set<string>;
+	canLinkMembers: boolean;
 	run: RunMutation;
 }) {
 	const create = useServerFn(createStaffFn);
@@ -75,28 +77,30 @@ function StaffForm({
 				onChange={(event) => setName(event.target.value)}
 				className={control}
 			/>
-			<label htmlFor={`${id}-member`} className="flex items-center gap-1">
-				紐づくメンバー
-				<select
-					id={`${id}-member`}
-					value={memberId ?? ""}
-					onChange={(event) => setMemberId(event.target.value || null)}
-					className={control}
-				>
-					<option value="">紐づけない</option>
-					{members.map((member) => (
-						<option
-							key={member.id}
-							value={member.id}
-							disabled={
-								takenMemberIds.has(member.id) && member.id !== staff?.memberId
-							}
-						>
-							{member.displayName}
-						</option>
-					))}
-				</select>
-			</label>
+			{canLinkMembers && (
+				<label htmlFor={`${id}-member`} className="flex items-center gap-1">
+					紐づくメンバー
+					<select
+						id={`${id}-member`}
+						value={memberId ?? ""}
+						onChange={(event) => setMemberId(event.target.value || null)}
+						className={control}
+					>
+						<option value="">紐づけない</option>
+						{members.map((member) => (
+							<option
+								key={member.id}
+								value={member.id}
+								disabled={
+									takenMemberIds.has(member.id) && member.id !== staff?.memberId
+								}
+							>
+								{member.displayName}
+							</option>
+						))}
+					</select>
+				</label>
+			)}
 			<button type="submit" className={primary}>
 				{staff ? "保存" : "スタッフを足す"}
 			</button>
@@ -121,11 +125,14 @@ const StaffSection = ({
 	orgSlug,
 	staffs,
 	members,
+	canLinkMembers,
 	run,
 }: {
 	orgSlug: string;
 	staffs: StaffRow[];
 	members: MemberOption[];
+	/** メンバーを見る権限があるときだけ、紐づけの欄を出す */
+	canLinkMembers: boolean;
 	run: RunMutation;
 }) => {
 	const taken = new Set(
@@ -145,6 +152,7 @@ const StaffSection = ({
 						staff={staff}
 						members={members}
 						takenMemberIds={taken}
+						canLinkMembers={canLinkMembers}
 						run={run}
 					/>
 				))}
@@ -153,6 +161,7 @@ const StaffSection = ({
 						orgSlug={orgSlug}
 						members={members}
 						takenMemberIds={taken}
+						canLinkMembers={canLinkMembers}
 						run={run}
 					/>
 				</div>

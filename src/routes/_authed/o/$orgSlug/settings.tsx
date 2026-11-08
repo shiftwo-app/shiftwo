@@ -130,6 +130,7 @@ function SettingsPage() {
 					orgSlug={organization.slug}
 					staffs={staff.staffs}
 					members={staff.members}
+					canLinkMembers={staff.canLinkMembers}
 					run={run}
 				/>
 			)}
