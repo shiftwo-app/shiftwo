@@ -9,7 +9,12 @@ import {
 	updatePositionFn,
 } from "../../server/manage.functions";
 import type { Position } from "../../types";
+import {
+	nextPositionColor,
+	POSITION_COLOR_SWATCHES,
+} from "../../lib/position-colors";
 import Button from "../ui/Button";
+import PositionColorField from "./PositionColorField";
 import ConfirmButton from "./ConfirmButton";
 import type { RunMutation } from "./useMutationRunner";
 import { useT } from "../../lib/i18n/react";
@@ -22,10 +27,13 @@ const labelClass = (visible: boolean) =>
 function PositionForm({
 	scope,
 	position,
+	defaultColor,
 	run,
 }: {
 	scope: ShiftScopeParams;
 	position?: Position;
+	/** 新しく作るときの色（まだ使われていない見本） */
+	defaultColor?: string;
 	run: RunMutation;
 }) {
 	const create = useServerFn(createPositionFn);
@@ -34,7 +42,9 @@ function PositionForm({
 	const t = useT();
 	const id = useId();
 	const [name, setName] = useState(position?.name ?? "");
-	const [color, setColor] = useState(position?.color ?? "#3B82F6");
+	const [color, setColor] = useState(
+		position?.color ?? defaultColor ?? POSITION_COLOR_SWATCHES[0].color,
+	);
 	const [required, setRequired] = useState(position?.requiredStaffCount ?? 1);
 	const [isBreak, setIsBreak] = useState(position?.isBreak ?? false);
 
@@ -64,21 +74,13 @@ function PositionForm({
 			onSubmit={submit}
 			className="flex flex-wrap items-end gap-x-3 gap-y-2 text-sm"
 		>
-			<div className="flex flex-col gap-1">
-				<label htmlFor={`${id}-color`} className={labelClass(isNew)}>
-					{t("settings.color")}
-				</label>
-				{/* ブラウザの色の入力欄はそのまま使い、まわりの枠だけ入力欄にそろえる */}
-				<span className="inline-flex h-[2.125rem] w-11 items-center justify-center rounded-md border border-line-strong bg-surface hover:border-ink-muted focus-within:border-primary">
-					<input
-						id={`${id}-color`}
-						type="color"
-						value={color}
-						onChange={(event) => setColor(event.target.value)}
-						className="h-6 w-8 cursor-pointer rounded-sm border-0 bg-transparent p-0"
-					/>
-				</span>
-			</div>
+			<PositionColorField
+				id={`${id}-color`}
+				color={color}
+				onChange={setColor}
+				label={t("settings.color")}
+				labelClassName={labelClass(isNew)}
+			/>
 			<div className="flex min-w-40 flex-1 flex-col gap-1">
 				<label htmlFor={`${id}-name`} className={labelClass(isNew)}>
 					{t("settings.positionName")}
@@ -156,6 +158,9 @@ const PositionsEditor = ({
 	run: RunMutation;
 }) => {
 	const t = useT();
+	const nextColor = nextPositionColor(
+		positions.map((position) => position.color),
+	);
 	return (
 		<div className="space-y-4">
 			{positions.length === 0 ? (
@@ -173,7 +178,13 @@ const PositionsEditor = ({
 				</ul>
 			)}
 			<div className="rounded-lg border border-dashed border-line-strong p-4">
-				<PositionForm scope={scope} run={run} />
+				{/* 持ち場が増えたら、次の色で作り直す（名前などの入力も空に戻る） */}
+				<PositionForm
+					key={nextColor}
+					scope={scope}
+					defaultColor={nextColor}
+					run={run}
+				/>
 			</div>
 		</div>
 	);

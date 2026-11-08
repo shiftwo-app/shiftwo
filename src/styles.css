@@ -13,46 +13,47 @@
  * 色は CSS 変数で持ち、ダークモードでは変数だけを差し替える
  */
 :root {
-	--paper: #f5f7f8;
-	--surface: #ffffff;
-	--surface-sunken: #eef2f4;
-	--ink: #18212b;
-	--ink-muted: #5a6675;
-	--line: #dce2e7;
-	--line-strong: #b9c3cc;
-	--primary: #0e7c7b;
-	--primary-strong: #0a5f5e;
-	--primary-soft: #e3f3f2;
+	/* 少しペールトーンに寄せている（文字は真っ黒にせず、地と罫線はやわらかく。文字の読みやすさは WCAG AA を保つ） */
+	--paper: #f5f8f7;
+	--surface: #fcfdfd;
+	--surface-sunken: #eef3f2;
+	--ink: #2a3541;
+	--ink-muted: #5f6b78;
+	--line: #e1e8e8;
+	--line-strong: #c4ced2;
+	--primary: #1f7c79;
+	--primary-strong: #17625f;
+	--primary-soft: #edf6f5;
 	--on-primary: #ffffff;
-	--brand: #f35454;
-	--warn: #e8590c;
-	--warn-soft: #fff1e8;
-	--danger: #b42318;
-	--danger-soft: #fdecea;
-	--board-head: #1f2a36;
-	--board-head-ink: #e8eef3;
+	--brand: #f05f5f;
+	--warn: #d9682e;
+	--warn-soft: #fdf3ec;
+	--danger: #b23a33;
+	--danger-soft: #fbefed;
+	--board-head: #33414f;
+	--board-head-ink: #eef3f6;
 	color-scheme: light;
 }
 
 @media (prefers-color-scheme: dark) {
 	:root {
-		--paper: #0f1720;
-		--surface: #16212c;
-		--surface-sunken: #111b25;
-		--ink: #e6edf2;
-		--ink-muted: #9aa8b5;
-		--line: #263342;
-		--line-strong: #3a4a5c;
-		--primary: #2bb3b1;
-		--primary-strong: #5cc9c7;
-		--primary-soft: #12302f;
+		--paper: #141c25;
+		--surface: #1a2530;
+		--surface-sunken: #16202a;
+		--ink: #dde5eb;
+		--ink-muted: #9eabb6;
+		--line: #2b3846;
+		--line-strong: #405062;
+		--primary: #5cbfbc;
+		--primary-strong: #82d0cd;
+		--primary-soft: #1a3534;
 		--on-primary: #062625;
-		--brand: #ff6b6b;
-		--warn: #ff8a4c;
-		--warn-soft: #3a2012;
-		--danger: #ff8577;
-		--danger-soft: #3a1714;
-		--board-head: #0b121a;
+		--brand: #f47a7a;
+		--warn: #f39a68;
+		--warn-soft: #3a2416;
+		--danger: #f0918a;
+		--danger-soft: #3a1f1d;
+		--board-head: #111922;
 		--board-head-ink: #dbe4ec;
 		color-scheme: dark;
 	}

@@ -89,7 +89,7 @@ const TimetableImport = ({
 				"Hall A",
 				`${date} 10:00`,
 				`${date} 10:40`,
-				"#0E7C7B",
+				"#6FB3AE",
 				"keynote",
 			],
 		]);

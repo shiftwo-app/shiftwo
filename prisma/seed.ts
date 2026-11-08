@@ -116,12 +116,12 @@ async function main() {
 		prisma.position.create({
 			data: { organizationId, tenantId, name, color, requiredStaffCount },
 		});
-	const register = await dailyPosition(shibuya.id, "レジ", "#F59E0B", 2);
-	const stocking = await dailyPosition(shibuya.id, "品出し", "#10B981", 1);
+	const register = await dailyPosition(shibuya.id, "レジ", "#EDB27A", 2);
+	const stocking = await dailyPosition(shibuya.id, "品出し", "#93C49A", 1);
 	const shinjukuRegister = await dailyPosition(
 		shinjuku.id,
 		"レジ",
-		"#F59E0B",
+		"#EDB27A",
 		1,
 	);
 
@@ -219,11 +219,11 @@ async function main() {
 				requiredStaffCount,
 			},
 		});
-	const admin = await eventPosition("管理者", "#FF5733", 1);
-	const moderator = await eventPosition("司会進行", "#33FFF6", 2);
-	await eventPosition("タイムキーパー", "#33FF57", 3);
-	await eventPosition("チェッカー", "#3357FF", 4);
-	const reception = await eventPosition("受付", "#3357FF", 4);
+	const admin = await eventPosition("管理者", "#EE9A8A", 1);
+	const moderator = await eventPosition("司会進行", "#6FB3AE", 2);
+	await eventPosition("タイムキーパー", "#93C49A", 3);
+	await eventPosition("チェッカー", "#7FA7DE", 4);
+	const reception = await eventPosition("受付", "#A99BE0", 4);
 	await prisma.staff.update({
 		where: { id: yamada.id },
 		data: {
@@ -314,7 +314,7 @@ async function main() {
 				"山田 太郎",
 				"メインホール",
 				range("2024-06-01", "10:30", "11:30"),
-				"#0E7C7B",
+				"#6FB3AE",
 				["keynote"],
 			),
 			session(
@@ -322,7 +322,7 @@ async function main() {
 				"佐藤 花子",
 				"サブホール",
 				range("2024-06-01", "11:00", "11:45"),
-				"#4F46E5",
+				"#7FA7DE",
 				["beginner"],
 			),
 			session(
@@ -330,7 +330,7 @@ async function main() {
 				"—",
 				"メインホール",
 				range("2024-06-01", "12:00", "13:00"),
-				"#475569",
+				"#A3ADB8",
 				[],
 			),
 			session(
@@ -346,7 +346,7 @@ async function main() {
 				"高橋 美咲",
 				"サブホール",
 				range("2024-06-01", "13:30", "14:15"),
-				"#B45309",
+				"#EDB27A",
 				["community"],
 			),
 			session(
@@ -362,7 +362,7 @@ async function main() {
 				"実行委員会",
 				"メインホール",
 				range("2024-06-02", "10:00", "16:00"),
-				"#15803D",
+				"#93C49A",
 				["contributor"],
 			),
 		],
@@ -393,7 +393,7 @@ async function main() {
 			organizationId: otherOrg.id,
 			tenantId: otherOrg.tenants[0].id,
 			name: "別団体の持ち場",
-			color: "#999999",
+			color: "#7FA7DE",
 			requiredStaffCount: 1,
 		},
 	});

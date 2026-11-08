@@ -21,12 +21,12 @@ export const Route = createRootRoute({
 			// スマホのブラウザの上の帯の色（地の色にそろえる）
 			{
 				name: "theme-color",
-				content: "#f5f7f8",
+				content: "#f5f8f7",
 				media: "(prefers-color-scheme: light)",
 			},
 			{
 				name: "theme-color",
-				content: "#0f1720",
+				content: "#141c25",
 				media: "(prefers-color-scheme: dark)",
 			},
 		],
