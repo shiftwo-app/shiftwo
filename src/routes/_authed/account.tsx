@@ -1,6 +1,7 @@
 import { createFileRoute, useRouter } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useEffect, useState } from "react";
+import AvatarUploader from "../../components/AvatarUploader";
 import { authClient } from "../../lib/auth-client";
 import {
 	getAccountSummary,
@@ -53,6 +54,24 @@ function AccountPage() {
 	return (
 		<main className="mx-auto max-w-lg space-y-6 p-6">
 			<h1 className="text-2xl font-bold">アカウント</h1>
+			<section className="space-y-2">
+				<h2 className="font-semibold">アイコン</h2>
+				<AvatarUploader
+					endpoint="/api/me/avatar"
+					name={summary.name}
+					currentUrl={summary.avatarUrl}
+					hasUploaded={summary.hasUploadedAvatar}
+					removeLabel={
+						summary.discordAccountId
+							? "Discord のアイコンに戻す"
+							: "アイコンをやめる"
+					}
+					onChanged={() => router.invalidate()}
+				/>
+				<p className="text-xs text-gray-500">
+					一覧やシフト表に出ます。団体ごとに別のアイコンにもできます（団体の「設定・メンバー」から）。
+				</p>
+			</section>
 			<section className="space-y-2">
 				<h2 className="font-semibold">メールアドレス</h2>
 				<p className="text-sm">
