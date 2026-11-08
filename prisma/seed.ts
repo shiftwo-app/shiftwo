@@ -1,5 +1,8 @@
 import { PrismaPg } from "@prisma/adapter-pg";
-import { PrismaClient, ShiftStatus } from "../src/generated/prisma/client.ts";
+import {
+	PrismaClient,
+	ShiftStatus,
+} from "../src/generated/prisma-postgresql/client.ts";
 import { loadEnvFileIfExists } from "../src/lib/load-env.ts";
 
 loadEnvFileIfExists();

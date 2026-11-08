@@ -13,7 +13,9 @@
 		"lint": "vp lint",
 		"fmt": "vp fmt",
 		"prisma:seed": "prisma db seed",
-		"postinstall": "prisma generate"
+		"postinstall": "pnpm prisma:generate",
+		"prisma:generate": "node scripts/prisma-schemas.ts && DATABASE_PROVIDER=postgresql prisma generate && DATABASE_PROVIDER=sqlite prisma generate",
+		"prisma:migrate": "node scripts/prisma-migrate.ts"
 	},
 	"dependencies": {
 		"@prisma/adapter-pg": "^7.10.1",
