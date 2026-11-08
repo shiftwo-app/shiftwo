@@ -34,6 +34,7 @@ import {
 	type ShiftWriteResult,
 } from "./shift-write.server";
 import { findShiftBoard } from "./shifts.server";
+import { listSessions, requireTimetableAccess } from "./timetable.server";
 
 const JST_OFFSET_MS = 9 * 60 * 60 * 1000;
 
@@ -368,6 +369,35 @@ export const createShiftwoMcpServer = (principal: McpPrincipal) => {
 						memo: view.effective.memo,
 						source: view.effective.source,
 					},
+				});
+			}),
+	);
+
+	server.registerTool(
+		"get_timetable",
+		{
+			title: "Get an event timetable",
+			description:
+				"Get the sessions (talks and more) of an event: title, speaker, room, start and end (Japan time), track color, and tags.",
+			inputSchema: z.object({
+				orgSlug: shiftScopeInput.orgSlug,
+				tenantSlug: shiftScopeInput.tenantSlug,
+				eventSlug: slug.describe("Event slug (from list_scopes)"),
+			}),
+			annotations: readOnly,
+		},
+		async (input) =>
+			guard(async () => {
+				const access = await requireTimetableAccess(userId, input);
+				const sessions = await listSessions(access.event.id);
+				return ok({
+					event: { slug: access.event.slug, name: access.event.name },
+					timeZone: "Asia/Tokyo",
+					sessions: sessions.map((session) => ({
+						...session,
+						start: toJstIso(session.start),
+						end: toJstIso(session.end),
+					})),
 				});
 			}),
 	);

@@ -3,6 +3,7 @@ import { z } from "zod";
 import { serverT } from "../lib/i18n/request-locale.server";
 import { isPastDeadline, preferenceScopeSchema } from "../lib/preferences";
 import { PREFERENCE_CSV_MAX_BYTES } from "../lib/preferences-csv";
+import { hasPermission } from "../lib/org/permissions";
 import { requireUserMiddleware } from "./auth-middleware";
 import { OrgAccessError } from "./org-access.server";
 import {
@@ -17,6 +18,7 @@ import {
 	selectablePositions,
 	setPreferenceSettings,
 } from "./preferences.server";
+import { listSessions } from "./timetable.server";
 
 // 希望（FR-5）の画面から呼ぶ server function。どれもログインが必要で、単位と権限は preferences.server.ts で毎回確かめる
 
@@ -76,6 +78,15 @@ export const getPreferencePage = createServerFn({ method: "GET" })
 				mine: myStaff ? await getPreferenceOf(preference, myStaff) : null,
 				all,
 				scopes,
+				/**
+				 * イベントのタイムテーブル（FR-6-F：希望を出すときの参考）。
+				 * タイムテーブルの画面と同じく、シフトを見られる人にだけ返す
+				 */
+				sessions:
+					preference.ids.eventId &&
+					hasPermission(preference.permissions, "shift.view")
+						? await listSessions(preference.ids.eventId)
+						: [],
 			};
 		}),
 	);

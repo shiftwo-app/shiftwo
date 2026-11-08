@@ -6,6 +6,7 @@ import ErrorList from "../../../../components/manage/ErrorList";
 import { useMutationRunner } from "../../../../components/manage/useMutationRunner";
 import PreferenceCsvImport from "../../../../components/preferences/PreferenceCsvImport";
 import PreferenceForm from "../../../../components/preferences/PreferenceForm";
+import SessionReference from "../../../../components/timetable/SessionReference";
 import Alert from "../../../../components/ui/Alert";
 import Badge from "../../../../components/ui/Badge";
 import Button from "../../../../components/ui/Button";
@@ -194,6 +195,10 @@ function PreferencesPage() {
 			</div>
 
 			<ErrorList errors={errors} />
+
+			{page.sessions.length > 0 && (
+				<SessionReference sessions={page.sessions} />
+			)}
 
 			<Section id="mine-h" title={t("preferences.mineTitle")}>
 				{!page.myStaff || !page.mine ? (

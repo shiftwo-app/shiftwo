@@ -14,6 +14,7 @@ import type { ShiftScopeParams } from "../lib/shift-scope";
 import type { Position, Shift, ShiftStatus, Staff } from "../types";
 import ShiftForm, { type ShiftFormValue } from "./ShiftForm";
 import ShiftTimeline from "./ShiftTimeline";
+import type { Session } from "./timetable/session";
 import Alert from "./ui/Alert";
 import Button from "./ui/Button";
 import { listShiftDays, toMs } from "./timeline/layout";
@@ -76,6 +77,7 @@ const ShiftBoard = ({
 	liveTransport,
 	preferenceConflicts,
 	positionsEnabled,
+	sessions,
 }: {
 	shifts: Shift[];
 	positions: Position[];
@@ -93,6 +95,8 @@ const ShiftBoard = ({
 	preferenceConflicts: Record<string, string[]>;
 	/** 持ち場を使うか */
 	positionsEnabled: boolean;
+	/** イベントのタイムテーブル（FR-6-C）。タイムラインに重ねて出す */
+	sessions?: Session[];
 }) => {
 	const t = useT();
 	const router = useRouter();
@@ -321,6 +325,7 @@ const ShiftBoard = ({
 				timeUnitMinutes={timeUnitMinutes}
 				preferenceConflicts={preferenceConflicts}
 				positionsEnabled={positionsEnabled}
+				sessions={sessions}
 				editing={
 					canEdit && editMode
 						? { onChangeTime: handleChangeTime, onDelete: handleDelete }

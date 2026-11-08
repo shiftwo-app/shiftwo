@@ -12,6 +12,7 @@ import oauth from "./oauth";
 import report from "./report";
 import settings from "./settings";
 import shell from "./shell";
+import timetable from "./timetable";
 
 const namespaces = {
 	common,
@@ -24,6 +25,7 @@ const namespaces = {
 	preferences,
 	report,
 	oauth,
+	timetable,
 	errors,
 } as const;
 
