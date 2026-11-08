@@ -7,6 +7,11 @@ import {
 	useMatch,
 } from "@tanstack/react-router";
 import ScopeTabs, { type ScopeTab } from "../../../components/shell/ScopeTabs";
+import {
+	type NavSection,
+	useRegisterShellNav,
+} from "../../../components/shell/shell-nav";
+import SideNav from "../../../components/shell/SideNav";
 import { useT } from "../../../lib/i18n/react";
 import { translate } from "../../../lib/i18n/translate";
 import { memberRoleLabel } from "../../../lib/org/member-label";
@@ -75,19 +80,23 @@ function OrgLayout() {
 		tabs = [
 			{
 				label: t("shell.tabPublished"),
+				icon: "published",
 				link: { to: "/o/$orgSlug/t/$tenantSlug/e/$eventSlug", params },
 				exact: true,
 			},
 			{
 				label: t("shell.tabDraft"),
+				icon: "draft",
 				link: { to: "/o/$orgSlug/t/$tenantSlug/e/$eventSlug/draft", params },
 			},
 			{
 				label: t("report.tab"),
+				icon: "report",
 				link: { to: "/o/$orgSlug/t/$tenantSlug/e/$eventSlug/report", params },
 			},
 			{
 				label: t("timetable.tab"),
+				icon: "timetable",
 				link: {
 					to: "/o/$orgSlug/t/$tenantSlug/e/$eventSlug/timetable",
 					params,
@@ -97,6 +106,7 @@ function OrgLayout() {
 				? [
 						{
 							label: t("shell.tabEventSettings"),
+							icon: "settings",
 							link: {
 								to: "/o/$orgSlug/t/$tenantSlug/e/$eventSlug/settings",
 								params,
@@ -114,25 +124,30 @@ function OrgLayout() {
 		tabs = [
 			{
 				label: t("shell.tabRegular"),
+				icon: "published",
 				link: { to: "/o/$orgSlug/t/$tenantSlug", params: tenantParams },
 				exact: true,
 			},
 			{
 				label: t("shell.tabDraft"),
+				icon: "draft",
 				link: { to: "/o/$orgSlug/t/$tenantSlug/draft", params: tenantParams },
 			},
 			{
 				label: t("report.tab"),
+				icon: "report",
 				link: { to: "/o/$orgSlug/t/$tenantSlug/report", params: tenantParams },
 			},
 			{
 				label: t("shell.tabEvents", { count: tenantContext.events.length }),
+				icon: "events",
 				link: { to: "/o/$orgSlug/t/$tenantSlug/events", params: tenantParams },
 			},
 			...(canOpenSettings
 				? [
 						{
 							label: t("shell.tabTenantSettings"),
+							icon: "settings",
 							link: {
 								to: "/o/$orgSlug/t/$tenantSlug/settings",
 								params: tenantParams,
@@ -146,6 +161,7 @@ function OrgLayout() {
 		tabs = [
 			{
 				label: t("shell.tabTop"),
+				icon: "home",
 				link: { to: "/o/$orgSlug", params: { orgSlug } },
 				exact: true,
 			},
@@ -153,6 +169,7 @@ function OrgLayout() {
 				(tenant) =>
 					({
 						label: tenant.name,
+						icon: "tenant",
 						link: {
 							to: "/o/$orgSlug/t/$tenantSlug",
 							params: { orgSlug, tenantSlug: tenant.slug },
@@ -161,19 +178,73 @@ function OrgLayout() {
 			),
 			{
 				label: t("shell.tabPreferences"),
+				icon: "preferences",
 				link: { to: "/o/$orgSlug/preferences", params: { orgSlug } },
 			},
 			{
 				label: t("shell.tabSettingsMembers"),
+				icon: "members",
 				link: { to: "/o/$orgSlug/settings", params: { orgSlug } },
 			},
 		];
 	}
 
+	// サイドバー（デスクトップ）とドロワー（スマートフォン）のナビゲーション：いまの単位の画面と、団体全体の画面
+	const sections: NavSection[] = [
+		{
+			label:
+				eventContext?.event.name ??
+				tenantContext?.tenant.name ??
+				organization.name,
+			items: tabs,
+		},
+		...(tenantContext && tenantParams
+			? [
+					{
+						label: organization.name,
+						items: [
+							{
+								label: t("shell.tabTop"),
+								icon: "home",
+								link: { to: "/o/$orgSlug", params: { orgSlug } },
+								exact: true,
+							},
+							...(eventContext
+								? [
+										{
+											label: tenantContext.tenant.name,
+											icon: "tenant",
+											link: {
+												to: "/o/$orgSlug/t/$tenantSlug",
+												params: tenantParams,
+											},
+											exact: true,
+										} satisfies ScopeTab,
+									]
+								: []),
+							{
+								label: t("shell.tabPreferences"),
+								icon: "preferences",
+								link: { to: "/o/$orgSlug/preferences", params: { orgSlug } },
+							},
+							{
+								label: t("shell.tabSettingsMembers"),
+								icon: "members",
+								link: { to: "/o/$orgSlug/settings", params: { orgSlug } },
+							},
+						] satisfies ScopeTab[],
+					},
+				]
+			: []),
+	];
+	useRegisterShellNav(sections);
+
 	const crumb =
 		"text-ink-muted hover:text-ink hover:underline underline-offset-4";
 	return (
-		<div>
+		// デスクトップでは、左のサイドバーの幅だけ中身を右へ寄せる
+		<div className="lg:pl-16">
+			<SideNav label={tabsLabel} sections={sections} />
 			<div className="border-b border-line bg-surface">
 				<div className="mx-auto max-w-7xl px-4 sm:px-6">
 					<div className="flex flex-wrap items-center justify-between gap-x-6 gap-y-2 pt-4">
@@ -236,21 +307,21 @@ function OrgLayout() {
 								)}
 							</ol>
 						</nav>
-						{/* 団体全体のもの（どの画面からでも行けるように） */}
+						{/* 団体全体のもの（どの画面からでも行けるように。デスクトップではサイドバーにある） */}
 						<div className="flex items-center gap-4 text-sm">
 							{tenantContext && (
 								<>
 									<Link
 										to="/o/$orgSlug/preferences"
 										params={{ orgSlug }}
-										className={crumb}
+										className={`${crumb} lg:hidden`}
 									>
 										{t("shell.tabPreferences")}
 									</Link>
 									<Link
 										to="/o/$orgSlug/settings"
 										params={{ orgSlug }}
-										className={crumb}
+										className={`${crumb} lg:hidden`}
 									>
 										{t("shell.tabSettingsMembers")}
 									</Link>
@@ -264,9 +335,11 @@ function OrgLayout() {
 							</span>
 						</div>
 					</div>
-					<div className="mt-2">
+					{/* タブはタブレット・スマートフォンで使う（デスクトップはサイドバー） */}
+					<div className="mt-2 lg:hidden">
 						<ScopeTabs label={tabsLabel} tabs={tabs} />
 					</div>
+					<div className="h-3 max-lg:hidden" />
 				</div>
 			</div>
 			<Outlet />

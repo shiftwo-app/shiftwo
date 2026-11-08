@@ -3,6 +3,8 @@ import { useRef } from "react";
 import { useT } from "../../lib/i18n/react";
 import Button from "../ui/Button";
 import LanguageSwitcher from "./LanguageSwitcher";
+import NavIcon from "./NavIcon";
+import { useShellNavSections } from "./shell-nav";
 
 /**
  * スマートフォンの見出しのメニュー（FR-3-4：ハンバーガーのドロワー）。狭い画面でだけ出す。
@@ -16,6 +18,7 @@ const MobileMenu = ({
 	onSignOut: () => void;
 }) => {
 	const t = useT();
+	const sections = useShellNavSections();
 	const dialogRef = useRef<HTMLDialogElement>(null);
 	const close = () => dialogRef.current?.close();
 
@@ -49,7 +52,7 @@ const MobileMenu = ({
 				}}
 				className="m-0 ml-auto h-dvh max-h-none w-72 max-w-[85vw] border-l border-line bg-surface p-0 text-ink backdrop:bg-black/50"
 			>
-				<div className="flex h-full flex-col gap-6 p-5">
+				<div className="flex h-full flex-col gap-5 overflow-y-auto p-5">
 					<div className="flex items-center justify-between">
 						<p className="text-sm font-bold">{t("shell.menuTitle")}</p>
 						<button
@@ -71,7 +74,37 @@ const MobileMenu = ({
 							</svg>
 						</button>
 					</div>
-					<nav className="flex flex-col gap-1 text-sm">
+					{sections.map((section) => (
+						<nav
+							key={section.label}
+							aria-label={section.label}
+							className="flex flex-col gap-0.5 text-sm"
+						>
+							<p className="px-3 pb-1 text-xs font-bold text-ink-muted">
+								{section.label}
+							</p>
+							{section.items.map((item) => (
+								<Link
+									key={`${section.label}-${item.label}`}
+									{...item.link}
+									onClick={close}
+									activeOptions={{
+										exact: item.exact ?? false,
+										includeSearch: false,
+									}}
+									className="flex items-center gap-3 rounded-md px-3 py-2 text-ink-muted hover:bg-surface-sunken hover:text-ink"
+									activeProps={{
+										className: "bg-primary-soft! font-bold text-ink!",
+										"aria-current": "page",
+									}}
+								>
+									<NavIcon name={item.icon} className="size-5 shrink-0" />
+									<span className="truncate">{item.label}</span>
+								</Link>
+							))}
+						</nav>
+					))}
+					<nav className="flex flex-col gap-1 border-t border-line pt-4 text-sm">
 						<Link
 							to="/account"
 							onClick={close}
