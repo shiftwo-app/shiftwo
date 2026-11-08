@@ -17,6 +17,8 @@ model Staff {
   // @default("[]") は付けない（SQLite では Prisma が既定値を空文字列で出力してしまう）。作る側で [] を渡す
   unavailableTimes Json
   shifts          Shift[]
+  // スタッフが出した希望（団体全体と、テナント・イベントごとの上書き）
+  preferences     StaffPreference[]
 
   @@index([organizationId])
 }
@@ -36,6 +38,8 @@ model Position {
   requiredStaffCount Int
   preferredBy     Staff[]   @relation("StaffPreferredRoles")
   shifts          Shift[]
+  // この持ち場を希望に入れている希望（テナント・イベントごとの希望だけが持ち場を持つ）
+  preferences     StaffPreference[] @relation("StaffPreferencePositions")
 
   @@index([organizationId])
   @@index([tenantId, eventId])
@@ -53,6 +57,12 @@ model Event {
   name            String
   // 時間粒度の上書き（null ならテナントの値を使う）
   timeUnitMinutes Int?
+  // 開催期間（任意）。決めておくと、希望の休憩が期間の外にあるとき断る
+  startsAt        DateTime?
+  endsAt          DateTime?
+  // このイベントの希望の締切（null なら締切なし）。過ぎると本人は変えられない（シフトを編集できる人は変えられる）
+  preferenceDeadline DateTime?
+  preferences     StaffPreference[]
   rooms           Room[]
   positions       Position[]
   shifts          Shift[]
@@ -111,6 +121,9 @@ model Tenant {
   name            String
   // 時間粒度（分）。イベントで上書きできる
   timeUnitMinutes Int
+  // このテナントの希望の締切（null なら締切なし）
+  preferenceDeadline DateTime?
+  preferences     StaffPreference[]
   createdAt       DateTime     @default(now())
   updatedAt       DateTime     @updatedAt
   events          Event[]
@@ -162,6 +175,9 @@ model Organization {
   discordGuildId   String?
   discordGuildName String?
   discordGuildIcon String?
+  // 団体全体の希望の締切（null なら締切なし）
+  preferenceDeadline DateTime?
+  preferences  StaffPreference[]
   createdAt    DateTime       @default(now())
   updatedAt    DateTime       @updatedAt
   members      Member[]
@@ -328,4 +344,35 @@ model Verification {
 
   @@index([identifier])
   @@map("verification")
+}
+
+// スタッフの希望（FR-5）。団体全体の希望を基本にして、テナント・イベントごとに上書きできる。
+// あるイベントのシフトでは、イベントの希望 → テナントの希望 → 団体の希望 の順に、あるものを使う
+// （持ち場はテナント・イベントごとのものなので、持ち場の希望はその単位の希望にしかない）
+model StaffPreference {
+  id              String       @id @default(uuid())
+  organizationId  String
+  organization    Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  // 両方 null なら団体全体、tenantId だけならテナント、両方あればイベントの希望
+  tenantId        String?
+  tenant          Tenant?      @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  eventId         String?
+  event           Event?       @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  // 単位の名前（org・t:<テナントの ID>・e:<イベントの ID>）。null を含む一意の制約は DB で扱いが違うので、これで一意にする
+  scopeKey        String
+  staffId         String
+  staff           Staff        @relation(fields: [staffId], references: [id], onDelete: Cascade)
+  // 希望する休憩・参加できない時間。TimeRange（start, end）の配列（unavailableTimes と同じ理由で Json）
+  breaks          Json
+  // 希望する持ち場（優先順位なし）
+  positions       Position[]   @relation("StaffPreferencePositions")
+  // メモ（200 文字まで）
+  memo            String       @default("")
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+
+  @@unique([staffId, scopeKey])
+  @@index([organizationId])
+  @@index([tenantId])
+  @@index([eventId])
 }

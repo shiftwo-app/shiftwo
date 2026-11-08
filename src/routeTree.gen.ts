@@ -25,6 +25,7 @@ import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
 import { Route as ApiAvatarsFileRouteImport } from './routes/api/avatars/$file'
 import { Route as ApiMeAvatarRouteImport } from './routes/api/me/avatar'
 import { Route as AuthedOOrgSlugIndexRouteImport } from './routes/_authed/o/$orgSlug/index'
+import { Route as AuthedOOrgSlugPreferencesRouteImport } from './routes/_authed/o/$orgSlug/preferences'
 import { Route as AuthedOOrgSlugSettingsRouteImport } from './routes/_authed/o/$orgSlug/settings'
 import { Route as ApiOOrgSlugStaffRouteImport } from './routes/api/o/$orgSlug/staff'
 import { Route as AuthedOOrgSlugTTenantSlugRouteImport } from './routes/_authed/o/$orgSlug/t/$tenantSlug'
@@ -125,6 +126,12 @@ const AuthedOOrgSlugIndexRoute = AuthedOOrgSlugIndexRouteImport.update({
   path: '/',
   getParentRoute: () => AuthedOOrgSlugRoute,
 } as any)
+const AuthedOOrgSlugPreferencesRoute =
+  AuthedOOrgSlugPreferencesRouteImport.update({
+    id: '/preferences',
+    path: '/preferences',
+    getParentRoute: () => AuthedOOrgSlugRoute,
+  } as any)
 const AuthedOOrgSlugSettingsRoute = AuthedOOrgSlugSettingsRouteImport.update({
   id: '/settings',
   path: '/settings',
@@ -258,6 +265,7 @@ export interface FileRoutesByFullPath {
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/avatars/$file': typeof ApiAvatarsFileRoute
   '/api/me/avatar': typeof ApiMeAvatarRoute
+  '/o/$orgSlug/preferences': typeof AuthedOOrgSlugPreferencesRoute
   '/o/$orgSlug/settings': typeof AuthedOOrgSlugSettingsRoute
   '/api/o/$orgSlug/staff': typeof ApiOOrgSlugStaffRoute
   '/o/$orgSlug/': typeof AuthedOOrgSlugIndexRoute
@@ -294,6 +302,7 @@ export interface FileRoutesByTo {
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/avatars/$file': typeof ApiAvatarsFileRoute
   '/api/me/avatar': typeof ApiMeAvatarRoute
+  '/o/$orgSlug/preferences': typeof AuthedOOrgSlugPreferencesRoute
   '/o/$orgSlug/settings': typeof AuthedOOrgSlugSettingsRoute
   '/api/o/$orgSlug/staff': typeof ApiOOrgSlugStaffRoute
   '/o/$orgSlug': typeof AuthedOOrgSlugIndexRoute
@@ -331,6 +340,7 @@ export interface FileRoutesById {
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/avatars/$file': typeof ApiAvatarsFileRoute
   '/api/me/avatar': typeof ApiMeAvatarRoute
+  '/_authed/o/$orgSlug/preferences': typeof AuthedOOrgSlugPreferencesRoute
   '/_authed/o/$orgSlug/settings': typeof AuthedOOrgSlugSettingsRoute
   '/api/o/$orgSlug/staff': typeof ApiOOrgSlugStaffRoute
   '/_authed/o/$orgSlug/': typeof AuthedOOrgSlugIndexRoute
@@ -370,6 +380,7 @@ export interface FileRouteTypes {
     | '/api/auth/$'
     | '/api/avatars/$file'
     | '/api/me/avatar'
+    | '/o/$orgSlug/preferences'
     | '/o/$orgSlug/settings'
     | '/api/o/$orgSlug/staff'
     | '/o/$orgSlug/'
@@ -406,6 +417,7 @@ export interface FileRouteTypes {
     | '/api/auth/$'
     | '/api/avatars/$file'
     | '/api/me/avatar'
+    | '/o/$orgSlug/preferences'
     | '/o/$orgSlug/settings'
     | '/api/o/$orgSlug/staff'
     | '/o/$orgSlug'
@@ -442,6 +454,7 @@ export interface FileRouteTypes {
     | '/api/auth/$'
     | '/api/avatars/$file'
     | '/api/me/avatar'
+    | '/_authed/o/$orgSlug/preferences'
     | '/_authed/o/$orgSlug/settings'
     | '/api/o/$orgSlug/staff'
     | '/_authed/o/$orgSlug/'
@@ -599,6 +612,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/o/$orgSlug/'
       preLoaderRoute: typeof AuthedOOrgSlugIndexRouteImport
+      parentRoute: typeof AuthedOOrgSlugRoute
+    }
+    '/_authed/o/$orgSlug/preferences': {
+      id: '/_authed/o/$orgSlug/preferences'
+      path: '/preferences'
+      fullPath: '/o/$orgSlug/preferences'
+      preLoaderRoute: typeof AuthedOOrgSlugPreferencesRouteImport
       parentRoute: typeof AuthedOOrgSlugRoute
     }
     '/_authed/o/$orgSlug/settings': {
@@ -790,12 +810,14 @@ const AuthedOOrgSlugTTenantSlugRouteWithChildren =
   )
 
 interface AuthedOOrgSlugRouteChildren {
+  AuthedOOrgSlugPreferencesRoute: typeof AuthedOOrgSlugPreferencesRoute
   AuthedOOrgSlugSettingsRoute: typeof AuthedOOrgSlugSettingsRoute
   AuthedOOrgSlugIndexRoute: typeof AuthedOOrgSlugIndexRoute
   AuthedOOrgSlugTTenantSlugRoute: typeof AuthedOOrgSlugTTenantSlugRouteWithChildren
 }
 
 const AuthedOOrgSlugRouteChildren: AuthedOOrgSlugRouteChildren = {
+  AuthedOOrgSlugPreferencesRoute: AuthedOOrgSlugPreferencesRoute,
   AuthedOOrgSlugSettingsRoute: AuthedOOrgSlugSettingsRoute,
   AuthedOOrgSlugIndexRoute: AuthedOOrgSlugIndexRoute,
   AuthedOOrgSlugTTenantSlugRoute: AuthedOOrgSlugTTenantSlugRouteWithChildren,
