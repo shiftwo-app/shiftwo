@@ -41,7 +41,12 @@ export type TimelineRow = {
 	items: TimelineItem[];
 	/** 行の段数。シフトがなくても 1 */
 	laneCount: number;
+	/** 役割別の行だけ：必要な人数（Role.requiredStaffCount） */
+	requiredCount?: number;
 };
+
+/** ある時間帯に、何人のシフトが重なっているか */
+export type CoverageSegment = Interval & { count: number };
 
 export const toMs = (value: Date | string): number => new Date(value).getTime();
 
@@ -148,12 +153,47 @@ export const assignLanes = (intervals: Interval[]): number[] => {
 	});
 };
 
+/**
+ * 表示期間を「重なっている人数が変わらない区間」に分ける（FR-4-D の充足バッジ用）。
+ * 人数が 0 の区間も含め、range を隙間なく覆う。隣り合う区間の人数は必ず違う。
+ * key（スタッフの id）が同じものは 1 人と数える（同じ人の重複した割り当てで、足りているように見せない）
+ */
+export const coverageSegments = (
+	intervals: (Interval & { key?: string })[],
+	range: Interval,
+): CoverageSegment[] => {
+	// 区間の境目になりうる時刻（range の中だけ）
+	const points = new Set([range.start, range.end]);
+	for (const { start, end } of intervals) {
+		if (start > range.start && start < range.end) points.add(start);
+		if (end > range.start && end < range.end) points.add(end);
+	}
+	const sorted = [...points].sort((a, b) => a - b);
+
+	const segments: CoverageSegment[] = [];
+	for (let i = 0; i < sorted.length - 1; i++) {
+		const start = sorted[i];
+		const end = sorted[i + 1];
+		const covering = intervals.filter(
+			(interval) => interval.start <= start && interval.end >= end,
+		);
+		const count = new Set(
+			covering.map((interval, index) => interval.key ?? `#${index}`),
+		).size;
+		const last = segments.at(-1);
+		if (last && last.count === count) last.end = end;
+		else segments.push({ start, end, count });
+	}
+	return segments;
+};
+
 const toRow = (
 	id: string,
 	label: string,
 	shifts: Shift[],
 	lookup: { roles: Map<string, Role>; staffs: Map<string, Staff> },
 	color?: string,
+	requiredCount?: number,
 ): TimelineRow => {
 	const sorted = shifts
 		.map((shift) => ({
@@ -170,7 +210,7 @@ const toRow = (
 		lane: lanes[index] ?? 0,
 	}));
 	const laneCount = Math.max(1, ...items.map((item) => item.lane + 1));
-	return { id, label, color, items, laneCount };
+	return { id, label, color, items, laneCount, requiredCount };
 };
 
 /**
@@ -195,6 +235,7 @@ export const buildRows = (
 				shifts.filter((shift) => shift.roleId === role.id),
 				lookup,
 				role.color,
+				role.requiredStaffCount,
 			),
 		);
 	}

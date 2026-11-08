@@ -5,6 +5,7 @@ import {
 	buildRows,
 	buildTicks,
 	computeDisplayRange,
+	coverageSegments,
 	formatDay,
 	formatTime,
 	isHourTick,
@@ -117,6 +118,7 @@ describe("buildRows", () => {
 
 	it("役割別は役割ごとに 1 行で、重なるシフトは段を分ける", () => {
 		const rows = buildRows("role", shifts, roles, staffs);
+		expect(rows.map((row) => row.requiredCount)).toEqual([2, 1]);
 		expect(rows.map((row) => row.label)).toEqual(["受付", "司会"]);
 		expect(rows[0].laneCount).toBe(2);
 		expect(rows[0].items.map((item) => item.staff?.name)).toEqual([
@@ -179,5 +181,69 @@ describe("日ごとの表示", () => {
 			start: nextDay,
 			end: new Date("2026-11-21T02:00:00+09:00").getTime(),
 		});
+	});
+});
+
+describe("coverageSegments（FR-4-D）", () => {
+	const range = { start: ms("09:00"), end: ms("18:00") };
+	const segment = (start: string, end: string, count: number) => ({
+		start: ms(start),
+		end: ms(end),
+		count,
+	});
+
+	it("人数が変わるところで区切り、0 人の区間も含めて表示期間を隙間なく覆う", () => {
+		expect(
+			coverageSegments(
+				[
+					{ start: ms("10:00"), end: ms("14:00"), key: "s1" },
+					{ start: ms("13:00"), end: ms("16:00"), key: "s2" },
+				],
+				range,
+			),
+		).toEqual([
+			segment("09:00", "10:00", 0),
+			segment("10:00", "13:00", 1),
+			segment("13:00", "14:00", 2),
+			segment("14:00", "16:00", 1),
+			segment("16:00", "18:00", 0),
+		]);
+	});
+
+	it("人数が同じまま交代するところは、1 つの区間にまとめる", () => {
+		expect(
+			coverageSegments(
+				[
+					{ start: ms("09:00"), end: ms("13:00"), key: "s1" },
+					{ start: ms("13:00"), end: ms("18:00"), key: "s2" },
+				],
+				range,
+			),
+		).toEqual([segment("09:00", "18:00", 1)]);
+	});
+
+	it("同じスタッフの重複した割り当ては 1 人と数える", () => {
+		expect(
+			coverageSegments(
+				[
+					{ start: ms("09:00"), end: ms("18:00"), key: "s1" },
+					{ start: ms("12:00"), end: ms("13:00"), key: "s1" },
+				],
+				range,
+			),
+		).toEqual([segment("09:00", "18:00", 1)]);
+	});
+
+	it("表示期間の外にはみ出した部分は数えない", () => {
+		expect(
+			coverageSegments(
+				[{ start: ms("07:00"), end: ms("10:00"), key: "s1" }],
+				range,
+			),
+		).toEqual([segment("09:00", "10:00", 1), segment("10:00", "18:00", 0)]);
+	});
+
+	it("シフトがなければ、全体で 0 人の区間が 1 つ", () => {
+		expect(coverageSegments([], range)).toEqual([segment("09:00", "18:00", 0)]);
 	});
 });
