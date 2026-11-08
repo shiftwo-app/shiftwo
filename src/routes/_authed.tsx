@@ -8,6 +8,7 @@ import {
 import Logo from "../components/Logo";
 import LanguageSwitcher from "../components/shell/LanguageSwitcher";
 import MobileMenu from "../components/shell/MobileMenu";
+import { ShellNavProvider } from "../components/shell/shell-nav";
 import Button from "../components/ui/Button";
 import { authClient } from "../lib/auth-client";
 import { useT } from "../lib/i18n/react";
@@ -53,37 +54,39 @@ function AuthedLayout() {
 	};
 
 	return (
-		<div className="min-h-dvh">
-			<header className="bg-paper">
-				<div className="mx-auto flex h-14 max-w-7xl items-center justify-between px-4 sm:px-6">
-					<Link
-						to="/"
-						aria-label={t("shell.homeLinkLabel")}
-						className="text-ink"
-					>
-						<Logo className="h-11 w-auto" />
-					</Link>
-					<MobileMenu
-						userLabel={user.name || user.email}
-						onSignOut={() => void signOut()}
-					/>
-					<div className="hidden items-center gap-2 text-sm sm:flex">
-						<LanguageSwitcher />
+		<ShellNavProvider>
+			<div className="min-h-dvh">
+				<header className="bg-paper">
+					<div className="mx-auto flex h-14 max-w-7xl items-center justify-between px-4 sm:px-6">
 						<Link
-							to="/account"
-							className="flex items-center gap-2 rounded-md px-2 py-1 text-ink hover:bg-surface-sunken"
+							to="/"
+							aria-label={t("shell.homeLinkLabel")}
+							className="text-ink"
 						>
-							<span className="max-w-40 truncate">
-								{user.name || user.email}
-							</span>
+							<Logo className="h-11 w-auto" />
 						</Link>
-						<Button variant="ghost" size="sm" onClick={signOut}>
-							{t("shell.signOut")}
-						</Button>
+						<MobileMenu
+							userLabel={user.name || user.email}
+							onSignOut={() => void signOut()}
+						/>
+						<div className="hidden items-center gap-2 text-sm sm:flex">
+							<LanguageSwitcher />
+							<Link
+								to="/account"
+								className="flex items-center gap-2 rounded-md px-2 py-1 text-ink hover:bg-surface-sunken"
+							>
+								<span className="max-w-40 truncate">
+									{user.name || user.email}
+								</span>
+							</Link>
+							<Button variant="ghost" size="sm" onClick={signOut}>
+								{t("shell.signOut")}
+							</Button>
+						</div>
 					</div>
-				</div>
-			</header>
-			<Outlet />
-		</div>
+				</header>
+				<Outlet />
+			</div>
+		</ShellNavProvider>
 	);
 }

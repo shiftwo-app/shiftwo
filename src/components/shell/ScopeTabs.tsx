@@ -1,4 +1,5 @@
 import { Link, type LinkProps } from "@tanstack/react-router";
+import type { NavIconName } from "./NavIcon";
 
 // 団体・テナント・イベントの画面の上に出すタブ（いちばん深い単位の画面の切り替え）。
 // いま開いている画面は、下線と太字で示す
@@ -6,6 +7,8 @@ import { Link, type LinkProps } from "@tanstack/react-router";
 export type ScopeTab = {
 	label: string;
 	link: LinkProps;
+	/** デスクトップのサイドバーで見せるアイコン */
+	icon: NavIconName;
 	/** 下の階層の画面でも「開いている」にしない（トップのタブ） */
 	exact?: boolean;
 };
