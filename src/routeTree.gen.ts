@@ -33,6 +33,7 @@ import { Route as ApiOOrgSlugMeAvatarRouteImport } from './routes/api/o/$orgSlug
 import { Route as AuthedOOrgSlugTTenantSlugIndexRouteImport } from './routes/_authed/o/$orgSlug/t/$tenantSlug/index'
 import { Route as AuthedOOrgSlugTTenantSlugDraftRouteImport } from './routes/_authed/o/$orgSlug/t/$tenantSlug/draft'
 import { Route as AuthedOOrgSlugTTenantSlugEventsRouteImport } from './routes/_authed/o/$orgSlug/t/$tenantSlug/events'
+import { Route as AuthedOOrgSlugTTenantSlugReportRouteImport } from './routes/_authed/o/$orgSlug/t/$tenantSlug/report'
 import { Route as AuthedOOrgSlugTTenantSlugSettingsRouteImport } from './routes/_authed/o/$orgSlug/t/$tenantSlug/settings'
 import { Route as ApiOOrgSlugTTenantSlugLiveRouteImport } from './routes/api/o/$orgSlug/t/$tenantSlug/live'
 import { Route as AuthedOOrgSlugTTenantSlugEEventSlugRouteImport } from './routes/_authed/o/$orgSlug/t/$tenantSlug/e/$eventSlug'
@@ -41,6 +42,7 @@ import { Route as ApiOOrgSlugTTenantSlugShiftsIdRouteImport } from './routes/api
 import { Route as ApiOOrgSlugTTenantSlugShiftsDraftRouteImport } from './routes/api/o/$orgSlug/t/$tenantSlug/shifts/draft'
 import { Route as AuthedOOrgSlugTTenantSlugEEventSlugIndexRouteImport } from './routes/_authed/o/$orgSlug/t/$tenantSlug/e/$eventSlug/index'
 import { Route as AuthedOOrgSlugTTenantSlugEEventSlugDraftRouteImport } from './routes/_authed/o/$orgSlug/t/$tenantSlug/e/$eventSlug/draft'
+import { Route as AuthedOOrgSlugTTenantSlugEEventSlugReportRouteImport } from './routes/_authed/o/$orgSlug/t/$tenantSlug/e/$eventSlug/report'
 import { Route as AuthedOOrgSlugTTenantSlugEEventSlugSettingsRouteImport } from './routes/_authed/o/$orgSlug/t/$tenantSlug/e/$eventSlug/settings'
 import { Route as ApiOOrgSlugTTenantSlugEEventSlugLiveRouteImport } from './routes/api/o/$orgSlug/t/$tenantSlug/e/$eventSlug/live'
 import { Route as ApiOOrgSlugTTenantSlugEEventSlugShiftsIndexRouteImport } from './routes/api/o/$orgSlug/t/$tenantSlug/e/$eventSlug/shifts/index'
@@ -171,6 +173,12 @@ const AuthedOOrgSlugTTenantSlugEventsRoute =
     path: '/events',
     getParentRoute: () => AuthedOOrgSlugTTenantSlugRoute,
   } as any)
+const AuthedOOrgSlugTTenantSlugReportRoute =
+  AuthedOOrgSlugTTenantSlugReportRouteImport.update({
+    id: '/report',
+    path: '/report',
+    getParentRoute: () => AuthedOOrgSlugTTenantSlugRoute,
+  } as any)
 const AuthedOOrgSlugTTenantSlugSettingsRoute =
   AuthedOOrgSlugTTenantSlugSettingsRouteImport.update({
     id: '/settings',
@@ -217,6 +225,12 @@ const AuthedOOrgSlugTTenantSlugEEventSlugDraftRoute =
   AuthedOOrgSlugTTenantSlugEEventSlugDraftRouteImport.update({
     id: '/draft',
     path: '/draft',
+    getParentRoute: () => AuthedOOrgSlugTTenantSlugEEventSlugRoute,
+  } as any)
+const AuthedOOrgSlugTTenantSlugEEventSlugReportRoute =
+  AuthedOOrgSlugTTenantSlugEEventSlugReportRouteImport.update({
+    id: '/report',
+    path: '/report',
     getParentRoute: () => AuthedOOrgSlugTTenantSlugEEventSlugRoute,
   } as any)
 const AuthedOOrgSlugTTenantSlugEEventSlugSettingsRoute =
@@ -273,6 +287,7 @@ export interface FileRoutesByFullPath {
   '/api/o/$orgSlug/me/avatar': typeof ApiOOrgSlugMeAvatarRoute
   '/o/$orgSlug/t/$tenantSlug/draft': typeof AuthedOOrgSlugTTenantSlugDraftRoute
   '/o/$orgSlug/t/$tenantSlug/events': typeof AuthedOOrgSlugTTenantSlugEventsRoute
+  '/o/$orgSlug/t/$tenantSlug/report': typeof AuthedOOrgSlugTTenantSlugReportRoute
   '/o/$orgSlug/t/$tenantSlug/settings': typeof AuthedOOrgSlugTTenantSlugSettingsRoute
   '/api/o/$orgSlug/t/$tenantSlug/live': typeof ApiOOrgSlugTTenantSlugLiveRoute
   '/o/$orgSlug/t/$tenantSlug/': typeof AuthedOOrgSlugTTenantSlugIndexRoute
@@ -281,6 +296,7 @@ export interface FileRoutesByFullPath {
   '/api/o/$orgSlug/t/$tenantSlug/shifts/draft': typeof ApiOOrgSlugTTenantSlugShiftsDraftRoute
   '/api/o/$orgSlug/t/$tenantSlug/shifts/': typeof ApiOOrgSlugTTenantSlugShiftsIndexRoute
   '/o/$orgSlug/t/$tenantSlug/e/$eventSlug/draft': typeof AuthedOOrgSlugTTenantSlugEEventSlugDraftRoute
+  '/o/$orgSlug/t/$tenantSlug/e/$eventSlug/report': typeof AuthedOOrgSlugTTenantSlugEEventSlugReportRoute
   '/o/$orgSlug/t/$tenantSlug/e/$eventSlug/settings': typeof AuthedOOrgSlugTTenantSlugEEventSlugSettingsRoute
   '/api/o/$orgSlug/t/$tenantSlug/e/$eventSlug/live': typeof ApiOOrgSlugTTenantSlugEEventSlugLiveRoute
   '/o/$orgSlug/t/$tenantSlug/e/$eventSlug/': typeof AuthedOOrgSlugTTenantSlugEEventSlugIndexRoute
@@ -309,6 +325,7 @@ export interface FileRoutesByTo {
   '/api/o/$orgSlug/me/avatar': typeof ApiOOrgSlugMeAvatarRoute
   '/o/$orgSlug/t/$tenantSlug/draft': typeof AuthedOOrgSlugTTenantSlugDraftRoute
   '/o/$orgSlug/t/$tenantSlug/events': typeof AuthedOOrgSlugTTenantSlugEventsRoute
+  '/o/$orgSlug/t/$tenantSlug/report': typeof AuthedOOrgSlugTTenantSlugReportRoute
   '/o/$orgSlug/t/$tenantSlug/settings': typeof AuthedOOrgSlugTTenantSlugSettingsRoute
   '/api/o/$orgSlug/t/$tenantSlug/live': typeof ApiOOrgSlugTTenantSlugLiveRoute
   '/o/$orgSlug/t/$tenantSlug': typeof AuthedOOrgSlugTTenantSlugIndexRoute
@@ -316,6 +333,7 @@ export interface FileRoutesByTo {
   '/api/o/$orgSlug/t/$tenantSlug/shifts/draft': typeof ApiOOrgSlugTTenantSlugShiftsDraftRoute
   '/api/o/$orgSlug/t/$tenantSlug/shifts': typeof ApiOOrgSlugTTenantSlugShiftsIndexRoute
   '/o/$orgSlug/t/$tenantSlug/e/$eventSlug/draft': typeof AuthedOOrgSlugTTenantSlugEEventSlugDraftRoute
+  '/o/$orgSlug/t/$tenantSlug/e/$eventSlug/report': typeof AuthedOOrgSlugTTenantSlugEEventSlugReportRoute
   '/o/$orgSlug/t/$tenantSlug/e/$eventSlug/settings': typeof AuthedOOrgSlugTTenantSlugEEventSlugSettingsRoute
   '/api/o/$orgSlug/t/$tenantSlug/e/$eventSlug/live': typeof ApiOOrgSlugTTenantSlugEEventSlugLiveRoute
   '/o/$orgSlug/t/$tenantSlug/e/$eventSlug': typeof AuthedOOrgSlugTTenantSlugEEventSlugIndexRoute
@@ -348,6 +366,7 @@ export interface FileRoutesById {
   '/api/o/$orgSlug/me/avatar': typeof ApiOOrgSlugMeAvatarRoute
   '/_authed/o/$orgSlug/t/$tenantSlug/draft': typeof AuthedOOrgSlugTTenantSlugDraftRoute
   '/_authed/o/$orgSlug/t/$tenantSlug/events': typeof AuthedOOrgSlugTTenantSlugEventsRoute
+  '/_authed/o/$orgSlug/t/$tenantSlug/report': typeof AuthedOOrgSlugTTenantSlugReportRoute
   '/_authed/o/$orgSlug/t/$tenantSlug/settings': typeof AuthedOOrgSlugTTenantSlugSettingsRoute
   '/api/o/$orgSlug/t/$tenantSlug/live': typeof ApiOOrgSlugTTenantSlugLiveRoute
   '/_authed/o/$orgSlug/t/$tenantSlug/': typeof AuthedOOrgSlugTTenantSlugIndexRoute
@@ -356,6 +375,7 @@ export interface FileRoutesById {
   '/api/o/$orgSlug/t/$tenantSlug/shifts/draft': typeof ApiOOrgSlugTTenantSlugShiftsDraftRoute
   '/api/o/$orgSlug/t/$tenantSlug/shifts/': typeof ApiOOrgSlugTTenantSlugShiftsIndexRoute
   '/_authed/o/$orgSlug/t/$tenantSlug/e/$eventSlug/draft': typeof AuthedOOrgSlugTTenantSlugEEventSlugDraftRoute
+  '/_authed/o/$orgSlug/t/$tenantSlug/e/$eventSlug/report': typeof AuthedOOrgSlugTTenantSlugEEventSlugReportRoute
   '/_authed/o/$orgSlug/t/$tenantSlug/e/$eventSlug/settings': typeof AuthedOOrgSlugTTenantSlugEEventSlugSettingsRoute
   '/api/o/$orgSlug/t/$tenantSlug/e/$eventSlug/live': typeof ApiOOrgSlugTTenantSlugEEventSlugLiveRoute
   '/_authed/o/$orgSlug/t/$tenantSlug/e/$eventSlug/': typeof AuthedOOrgSlugTTenantSlugEEventSlugIndexRoute
@@ -388,6 +408,7 @@ export interface FileRouteTypes {
     | '/api/o/$orgSlug/me/avatar'
     | '/o/$orgSlug/t/$tenantSlug/draft'
     | '/o/$orgSlug/t/$tenantSlug/events'
+    | '/o/$orgSlug/t/$tenantSlug/report'
     | '/o/$orgSlug/t/$tenantSlug/settings'
     | '/api/o/$orgSlug/t/$tenantSlug/live'
     | '/o/$orgSlug/t/$tenantSlug/'
@@ -396,6 +417,7 @@ export interface FileRouteTypes {
     | '/api/o/$orgSlug/t/$tenantSlug/shifts/draft'
     | '/api/o/$orgSlug/t/$tenantSlug/shifts/'
     | '/o/$orgSlug/t/$tenantSlug/e/$eventSlug/draft'
+    | '/o/$orgSlug/t/$tenantSlug/e/$eventSlug/report'
     | '/o/$orgSlug/t/$tenantSlug/e/$eventSlug/settings'
     | '/api/o/$orgSlug/t/$tenantSlug/e/$eventSlug/live'
     | '/o/$orgSlug/t/$tenantSlug/e/$eventSlug/'
@@ -424,6 +446,7 @@ export interface FileRouteTypes {
     | '/api/o/$orgSlug/me/avatar'
     | '/o/$orgSlug/t/$tenantSlug/draft'
     | '/o/$orgSlug/t/$tenantSlug/events'
+    | '/o/$orgSlug/t/$tenantSlug/report'
     | '/o/$orgSlug/t/$tenantSlug/settings'
     | '/api/o/$orgSlug/t/$tenantSlug/live'
     | '/o/$orgSlug/t/$tenantSlug'
@@ -431,6 +454,7 @@ export interface FileRouteTypes {
     | '/api/o/$orgSlug/t/$tenantSlug/shifts/draft'
     | '/api/o/$orgSlug/t/$tenantSlug/shifts'
     | '/o/$orgSlug/t/$tenantSlug/e/$eventSlug/draft'
+    | '/o/$orgSlug/t/$tenantSlug/e/$eventSlug/report'
     | '/o/$orgSlug/t/$tenantSlug/e/$eventSlug/settings'
     | '/api/o/$orgSlug/t/$tenantSlug/e/$eventSlug/live'
     | '/o/$orgSlug/t/$tenantSlug/e/$eventSlug'
@@ -462,6 +486,7 @@ export interface FileRouteTypes {
     | '/api/o/$orgSlug/me/avatar'
     | '/_authed/o/$orgSlug/t/$tenantSlug/draft'
     | '/_authed/o/$orgSlug/t/$tenantSlug/events'
+    | '/_authed/o/$orgSlug/t/$tenantSlug/report'
     | '/_authed/o/$orgSlug/t/$tenantSlug/settings'
     | '/api/o/$orgSlug/t/$tenantSlug/live'
     | '/_authed/o/$orgSlug/t/$tenantSlug/'
@@ -470,6 +495,7 @@ export interface FileRouteTypes {
     | '/api/o/$orgSlug/t/$tenantSlug/shifts/draft'
     | '/api/o/$orgSlug/t/$tenantSlug/shifts/'
     | '/_authed/o/$orgSlug/t/$tenantSlug/e/$eventSlug/draft'
+    | '/_authed/o/$orgSlug/t/$tenantSlug/e/$eventSlug/report'
     | '/_authed/o/$orgSlug/t/$tenantSlug/e/$eventSlug/settings'
     | '/api/o/$orgSlug/t/$tenantSlug/e/$eventSlug/live'
     | '/_authed/o/$orgSlug/t/$tenantSlug/e/$eventSlug/'
@@ -670,6 +696,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthedOOrgSlugTTenantSlugEventsRouteImport
       parentRoute: typeof AuthedOOrgSlugTTenantSlugRoute
     }
+    '/_authed/o/$orgSlug/t/$tenantSlug/report': {
+      id: '/_authed/o/$orgSlug/t/$tenantSlug/report'
+      path: '/report'
+      fullPath: '/o/$orgSlug/t/$tenantSlug/report'
+      preLoaderRoute: typeof AuthedOOrgSlugTTenantSlugReportRouteImport
+      parentRoute: typeof AuthedOOrgSlugTTenantSlugRoute
+    }
     '/_authed/o/$orgSlug/t/$tenantSlug/settings': {
       id: '/_authed/o/$orgSlug/t/$tenantSlug/settings'
       path: '/settings'
@@ -726,6 +759,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthedOOrgSlugTTenantSlugEEventSlugDraftRouteImport
       parentRoute: typeof AuthedOOrgSlugTTenantSlugEEventSlugRoute
     }
+    '/_authed/o/$orgSlug/t/$tenantSlug/e/$eventSlug/report': {
+      id: '/_authed/o/$orgSlug/t/$tenantSlug/e/$eventSlug/report'
+      path: '/report'
+      fullPath: '/o/$orgSlug/t/$tenantSlug/e/$eventSlug/report'
+      preLoaderRoute: typeof AuthedOOrgSlugTTenantSlugEEventSlugReportRouteImport
+      parentRoute: typeof AuthedOOrgSlugTTenantSlugEEventSlugRoute
+    }
     '/_authed/o/$orgSlug/t/$tenantSlug/e/$eventSlug/settings': {
       id: '/_authed/o/$orgSlug/t/$tenantSlug/e/$eventSlug/settings'
       path: '/settings'
@@ -766,6 +806,7 @@ declare module '@tanstack/react-router' {
 
 interface AuthedOOrgSlugTTenantSlugEEventSlugRouteChildren {
   AuthedOOrgSlugTTenantSlugEEventSlugDraftRoute: typeof AuthedOOrgSlugTTenantSlugEEventSlugDraftRoute
+  AuthedOOrgSlugTTenantSlugEEventSlugReportRoute: typeof AuthedOOrgSlugTTenantSlugEEventSlugReportRoute
   AuthedOOrgSlugTTenantSlugEEventSlugSettingsRoute: typeof AuthedOOrgSlugTTenantSlugEEventSlugSettingsRoute
   AuthedOOrgSlugTTenantSlugEEventSlugIndexRoute: typeof AuthedOOrgSlugTTenantSlugEEventSlugIndexRoute
 }
@@ -774,6 +815,8 @@ const AuthedOOrgSlugTTenantSlugEEventSlugRouteChildren: AuthedOOrgSlugTTenantSlu
   {
     AuthedOOrgSlugTTenantSlugEEventSlugDraftRoute:
       AuthedOOrgSlugTTenantSlugEEventSlugDraftRoute,
+    AuthedOOrgSlugTTenantSlugEEventSlugReportRoute:
+      AuthedOOrgSlugTTenantSlugEEventSlugReportRoute,
     AuthedOOrgSlugTTenantSlugEEventSlugSettingsRoute:
       AuthedOOrgSlugTTenantSlugEEventSlugSettingsRoute,
     AuthedOOrgSlugTTenantSlugEEventSlugIndexRoute:
@@ -788,6 +831,7 @@ const AuthedOOrgSlugTTenantSlugEEventSlugRouteWithChildren =
 interface AuthedOOrgSlugTTenantSlugRouteChildren {
   AuthedOOrgSlugTTenantSlugDraftRoute: typeof AuthedOOrgSlugTTenantSlugDraftRoute
   AuthedOOrgSlugTTenantSlugEventsRoute: typeof AuthedOOrgSlugTTenantSlugEventsRoute
+  AuthedOOrgSlugTTenantSlugReportRoute: typeof AuthedOOrgSlugTTenantSlugReportRoute
   AuthedOOrgSlugTTenantSlugSettingsRoute: typeof AuthedOOrgSlugTTenantSlugSettingsRoute
   AuthedOOrgSlugTTenantSlugIndexRoute: typeof AuthedOOrgSlugTTenantSlugIndexRoute
   AuthedOOrgSlugTTenantSlugEEventSlugRoute: typeof AuthedOOrgSlugTTenantSlugEEventSlugRouteWithChildren
@@ -797,6 +841,7 @@ const AuthedOOrgSlugTTenantSlugRouteChildren: AuthedOOrgSlugTTenantSlugRouteChil
   {
     AuthedOOrgSlugTTenantSlugDraftRoute: AuthedOOrgSlugTTenantSlugDraftRoute,
     AuthedOOrgSlugTTenantSlugEventsRoute: AuthedOOrgSlugTTenantSlugEventsRoute,
+    AuthedOOrgSlugTTenantSlugReportRoute: AuthedOOrgSlugTTenantSlugReportRoute,
     AuthedOOrgSlugTTenantSlugSettingsRoute:
       AuthedOOrgSlugTTenantSlugSettingsRoute,
     AuthedOOrgSlugTTenantSlugIndexRoute: AuthedOOrgSlugTTenantSlugIndexRoute,

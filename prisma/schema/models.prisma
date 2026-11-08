@@ -36,6 +36,8 @@ model Position {
   name            String
   color           String
   requiredStaffCount Int
+  // 休憩の持ち場か（レポートで、このシフトを休憩として数える。充足率には入れない）
+  isBreak         Boolean   @default(false)
   preferredBy     Staff[]   @relation("StaffPreferredRoles")
   shifts          Shift[]
   // この持ち場を希望に入れている希望（テナント・イベントごとの希望だけが持ち場を持つ）
@@ -126,6 +128,8 @@ model Tenant {
   timeUnitMinutes Int
   // 持ち場を使うか（null なら団体の設定のまま）。イベントで上書きできる
   positionsEnabled Boolean?
+  // レポートで、シフトとシフトのあいだの空きを休憩とみなす長さ（分）
+  breakGapMinutes Int        @default(15)
   // このテナントの希望の締切（null なら締切なし）
   preferenceDeadline DateTime?
   preferences     StaffPreference[]

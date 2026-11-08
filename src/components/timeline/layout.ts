@@ -3,7 +3,7 @@ import type { Position, Shift, Staff } from "../../types";
 
 export const MINUTE_MS = 60_000;
 const HOUR_MS = 60 * MINUTE_MS;
-const DAY_MS = 24 * HOUR_MS;
+export const DAY_MS = 24 * HOUR_MS;
 
 /** 表示に使うタイムゾーン。SSR とブラウザで表示がずれないよう、閲覧者の環境ではなく固定にする */
 export const DISPLAY_TIME_ZONE = "Asia/Tokyo";

@@ -1,0 +1,42 @@
+import type { Messages } from "../define";
+import type ja from "./ja";
+
+export default {
+	tab: "리포트",
+	titleTenant: "일상 근무 리포트",
+	titleEvent: "이벤트 리포트",
+	status: "대상",
+	statusConfirmed: "확정 근무",
+	statusDraft: "초안",
+	day: "날짜",
+	noShifts: "이 날에는 근무가 없어요",
+	fillTitle: "포지션별 충족률",
+	fillDescription:
+		"{start}~{end} 시간대에 필요한 인원 대비 배정된 총 시간의 비율이에요. 90% 미만은 주황, 70% 미만은 빨강으로 표시해요.",
+	fillNone: "필요 인원을 정한 포지션이 없어요",
+	fillRate: "{rate}%",
+	fillDetail: "{filled} / 필요 {needed}",
+	fillPositionsOff: "여기서는 포지션을 쓰지 않아 충족률을 표시하지 않아요",
+	staffTitle: "스태프별",
+	staffDescription:
+		"근무 시간과 휴식 합계예요. 휴식은 휴식 포지션의 근무와 근무 사이 {minutes}분 이상의 빈 시간을 합해요.",
+	staffSearch: "스태프 찾기",
+	staffSearchPlaceholder: "이름을 입력하면 걸러져요",
+	staffNone: "해당하는 스태프가 없어요",
+	colStaff: "스태프",
+	colWork: "근무 시간",
+	colBreak: "휴식",
+	colOverridden: "희망 외",
+	colShifts: "근무",
+	shiftN: "근무 {number}",
+	noPosition: "포지션 없음",
+	breakBadge: "휴식",
+	overriddenBadge: "희망 외",
+	exportTitle: "CSV 내보내기",
+	exportPositions: "포지션별",
+	exportStaff: "스태프별",
+	exportMine: "내 근무",
+	breakGapLabel: "휴식으로 보는 빈 시간(분)",
+	breakGapSave: "바꾸기",
+	nameSeparator: " / ",
+} satisfies Messages<typeof ja>;

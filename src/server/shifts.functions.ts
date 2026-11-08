@@ -136,7 +136,16 @@ export const getShiftBoard = createServerFn({ method: "GET" })
 			data.scope,
 			"shift.view",
 		);
-		const board = await findShiftBoard(toIds(access), data.status);
+		const [board, myStaff] = await Promise.all([
+			findShiftBoard(toIds(access), data.status),
+			prisma.staff.findFirst({
+				where: {
+					organizationId: access.organization.id,
+					memberId: access.member.id,
+				},
+				select: { id: true },
+			}),
+		]);
 		const canEdit = hasPermission(access.permissions, "shift.edit");
 		return {
 			...board,
@@ -144,6 +153,10 @@ export const getShiftBoard = createServerFn({ method: "GET" })
 			canEdit,
 			/** この単位で持ち場を使うか（使わないなら、シフトは人と時間だけ） */
 			positionsEnabled: access.positionsEnabled,
+			/** レポートで、シフトのあいだの空きを休憩とみなす長さ（分。テナントの設定） */
+			breakGapMinutes: access.tenant.breakGapMinutes,
+			/** 自分に紐づくスタッフ（レポートで、自分の分を書き出すため。いなければ null） */
+			myStaffId: myStaff?.id ?? null,
 			/**
 			 * 希望と違う割り当て（FR-4-E）：シフトの ID → 理由。希望の中身（休憩・持ち場）は本人とシフトを組む人のものなので、
 			 * シフトを編集できる人にだけ返す

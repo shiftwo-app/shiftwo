@@ -1,0 +1,42 @@
+import type { Messages } from "../define";
+import type ja from "./ja";
+
+export default {
+	tab: "报告",
+	titleTenant: "日常班次报告",
+	titleEvent: "活动报告",
+	status: "对象",
+	statusConfirmed: "已确定班次",
+	statusDraft: "草稿",
+	day: "日期",
+	noShifts: "这一天没有班次",
+	fillTitle: "各岗位的充足率",
+	fillDescription:
+		"{start}–{end} 时间段内，已安排的工时占所需工时的比例。低于 90% 显示为橙色，低于 70% 显示为红色。",
+	fillNone: "没有设置所需人数的岗位",
+	fillRate: "{rate}%",
+	fillDetail: "{filled} / 需要 {needed}",
+	fillPositionsOff: "此处未使用岗位，因此不显示充足率",
+	staffTitle: "按工作人员",
+	staffDescription:
+		"工作时间与休息合计。休息包括休息岗位的班次，以及班次之间 {minutes} 分钟以上的空档。",
+	staffSearch: "查找工作人员",
+	staffSearchPlaceholder: "输入姓名进行筛选",
+	staffNone: "没有符合条件的工作人员",
+	colStaff: "工作人员",
+	colWork: "工作时间",
+	colBreak: "休息",
+	colOverridden: "不符合意愿",
+	colShifts: "班次",
+	shiftN: "班次 {number}",
+	noPosition: "无岗位",
+	breakBadge: "休息",
+	overriddenBadge: "不符合意愿",
+	exportTitle: "导出 CSV",
+	exportPositions: "按岗位",
+	exportStaff: "按工作人员",
+	exportMine: "我的班次",
+	breakGapLabel: "视为休息的空档（分钟）",
+	breakGapSave: "修改",
+	nameSeparator: "、",
+} satisfies Messages<typeof ja>;

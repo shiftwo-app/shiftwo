@@ -185,4 +185,5 @@ export default {
 		"내가 갖지 않은 권한이 포함된 역할은 붙이거나 뗄 수 없어요",
 	errorLinkForbidden: "멤버와 연결하려면 멤버 보기 권한이 필요해요",
 	errorOrgPositionsInherit: "단체에서는 사용 여부를 선택하세요",
+	positionIsBreak: "휴식으로 계산",
 } satisfies Messages<typeof ja>;
