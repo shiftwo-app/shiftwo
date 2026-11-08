@@ -8,7 +8,8 @@
 
 - [TanStack Start](https://tanstack.com/start)（React 19・TanStack Router）
 - [Vite+](https://viteplus.dev/)（`vp`。Vite・Oxlint・Oxfmt・Vitest をまとめたツールチェーン）
-- [Prisma](https://www.prisma.io/) + PostgreSQL
+- [Prisma](https://www.prisma.io/) + PostgreSQL（Cloudflare では D1 か Hyperdrive 経由の Postgres）
+- Node.js でも Cloudflare Workers でも動きます（[Cloudflare で動かす](#cloudflare-で動かす)）
 - Tailwind CSS v4
 - Node.js 26 系 LTS・pnpm 12
 
@@ -58,6 +59,8 @@ pnpm dev
 | `pnpm prisma:migrate new <名前>` | Postgres と SQLite の両方にマイグレーションを作る                              |
 | `pnpm prisma:migrate check`      | 両方のマイグレーションがモデルと合っているかを見る                             |
 | `pnpm prisma:seed`               | 初期データを入れる（`prisma db seed`。Node 26 で `prisma/seed.ts` を直接実行） |
+| `pnpm dev:cloudflare`            | Workers のランタイム（workerd）で開発サーバーを起動する                        |
+| `pnpm deploy:cloudflare`         | Cloudflare 向けに build して deploy する                                       |
 
 書式と lint の設定は `vite.config.ts` の `fmt`・`lint` にあります。
 
@@ -134,7 +137,7 @@ pnpm dev
 - ブラウザで真ん中を正方形に切り抜き、256px に縮めて描き直してから送ります（写真に埋め込まれた撮影場所などの情報は送りません）
 - サーバーは、512KB までの PNG・JPEG・WebP だけを受け付けます。種類は中身の先頭のバイトで確かめ、SVG は受け付けません
 - 画像は `/api/avatars/<uuid>.<拡張子>` で、ログインしている人にだけ返します。外のサイトの画像 URL は出しません（`user.image` は本人が書き換えられるので、Discord の CDN 以外は使いません）
-- 保存先は `STORAGE_DRIVER` で選びます。今は `local`（`STORAGE_DIR`、既定は `data/uploads`）だけで、Cloudflare の R2 は Cloudflare 向けの対応で足します
+- 保存先は `STORAGE_DRIVER` で選びます。Node では `local`（`STORAGE_DIR`、既定は `data/uploads`）、Cloudflare では `r2` です
 
 #### データの分離
 
@@ -155,6 +158,50 @@ DB は Postgres（自前・Docker・Cloudflare Hyperdrive）と SQLite（Cloudfl
 - モデルを変えてクライアントを作り直したら、dev サーバーを再起動してください（動いている dev サーバーは古いクライアントを持ったままになります）
 - `.env` はアプリ・Prisma CLI・seed のどれからも `src/lib/load-env.ts` で読み込み、すでに設定されている環境変数は上書きしません
 
+## Cloudflare で動かす
+
+Cloudflare Workers に deploy できます。自分の Cloudflare アカウントで動かすときも、同じ手順です。設定は `wrangler.jsonc` にあります。
+
+| 役割             | 使うもの                                                                                 | 設定                                     |
+| ---------------- | ---------------------------------------------------------------------------------------- | ---------------------------------------- |
+| DB               | D1（既定）か、Hyperdrive 経由の Postgres                                                 | `DATABASE_PROVIDER`                      |
+| アイコンの保存先 | R2                                                                                       | `STORAGE_DRIVER=r2`                      |
+| ログインのメール | [Email Service](https://developers.cloudflare.com/email-service/)（Workers Paid が要る） | `MAIL_TRANSPORT=cloudflare`・`MAIL_FROM` |
+
+### はじめての deploy（D1 のとき）
+
+1. `wrangler.jsonc` の `name` と `vars`（`BETTER_AUTH_URL`・`MAIL_FROM` など）を自分のものに直す
+2. `pnpm wrangler login`
+3. 秘密の値を入れる：`pnpm wrangler secret put BETTER_AUTH_SECRET`（Discord を使うなら `DISCORD_CLIENT_ID`・`DISCORD_CLIENT_SECRET` も）
+4. `pnpm deploy:cloudflare`。D1 と R2 は ID を書いていなければ、このときに wrangler が作ります
+5. `pnpm d1:migrate:remote` で、D1 にマイグレーションを当てる（モデルを変えたあとも、deploy の前に毎回）
+6. Email Service で送り主のドメインを登録する（`MAIL_FROM` はそのドメインのアドレス）
+
+### Postgres（Hyperdrive）を使うとき
+
+1. `pnpm wrangler hyperdrive create shiftwo --connection-string="postgres://..."` で作る
+2. `wrangler.jsonc` の `hyperdrive` を有効にして ID を書き、`vars` の `DATABASE_PROVIDER` を `postgresql` にする
+3. `CLOUDFLARE_DATABASE=postgresql pnpm deploy:cloudflare` で deploy する（build に入れる DB を選ぶため。`DATABASE_PROVIDER` と食い違うと起動時に止まります）
+4. マイグレーションは Node から `DATABASE_URL` に直接つないで、`pnpm exec prisma migrate deploy` で当てる
+
+### ローカルで Workers のランタイムを試す
+
+```bash
+pnpm d1:migrate:local       # ローカルの D1（.wrangler/ の中）にマイグレーションを当てる
+pnpm dev:cloudflare         # http://localhost:3000
+```
+
+- ローカルの秘密の値と `BETTER_AUTH_URL` は `.dev.vars` に書きます（`.dev.vars` があると `.env` は読まれません）
+- D1・R2 はローカルに作られ、メールは送らずにターミナルへ出ます
+- Hyperdrive を試すときは、`hyperdrive` に `"localConnectionString": "postgres://..."` を足し、`CLOUDFLARE_DATABASE=postgresql pnpm dev:cloudflare` で起動します
+
+### しくみ
+
+- `CLOUDFLARE=1` のときだけ `vite.config.ts` が `@cloudflare/vite-plugin` を足し、`#platform`（`src/platform/`）を Workers 用に差し替えます。Node 用の build とテストは今までどおりです
+- Workers では、Prisma Client を Workers 用（`runtime = "workerd"`）に別に作ったものを使います（`src/generated/prisma-*-workerd`）。クエリエンジンの wasm は DB ごとに約 1MB あるので、使う DB の分だけを build に入れます
+- Hyperdrive の接続はリクエストをまたいで使えないので、リクエストごとに作ります（`src/server.ts` と `src/lib/request-scope.server.ts`）。呼び出す側は `prisma` をそのまま使えます
+- **D1 にはトランザクションがありません。** `prisma.$transaction` の中の処理も 1 つずつ実行され、途中で失敗すると前の分は戻りません（ロールの付け替えや招待での参加など）。確実さが要るなら Postgres（Hyperdrive）を使ってください
+
 ## ディレクトリ
 
 ```
@@ -167,6 +214,8 @@ src/
   server/          # サーバーだけで動く処理（DB アクセス・server function）
   components/      # 画面の部品
   lib/             # Prisma Client・.env の読み込みなど
+  platform/        # 動かす場所（Node・Cloudflare Workers）で変わる部分（DB の接続・メール・保存先）
+  server.ts        # サーバーの入口（リクエストごとの入れ物を作る）
   generated/       # prisma generate の出力（git 管理外）
   types/           # 型
 prisma/            # モデル定義（schema/）・DB ごとのマイグレーション（migrations/）・seed

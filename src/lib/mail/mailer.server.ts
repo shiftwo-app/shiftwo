@@ -1,5 +1,7 @@
 // メールの送り方。送り先（transport）は MAIL_TRANSPORT で選ぶ。
-// 今は開発用の console だけ。Cloudflare Email Service と SMTP は、それぞれのデプロイ先の PR で足す
+// console（開発用）はどこでも使える。cloudflare（Cloudflare Email Service）は Workers でだけ使える
+// （中身は #platform にある）。SMTP はセルフホストの PR で足す
+import { platform } from "#platform";
 
 export type Mail = {
 	to: string;
@@ -21,7 +23,7 @@ const consoleTransport: MailTransport = {
 	},
 };
 
-export const MAIL_TRANSPORTS = ["console"] as const;
+export const MAIL_TRANSPORTS = ["console", "cloudflare"] as const;
 export type MailTransportName = (typeof MAIL_TRANSPORTS)[number];
 
 /** MAIL_TRANSPORT を読む。未設定なら、開発中は console、本番ではエラー（送れないまま動かさない） */
@@ -45,11 +47,18 @@ export const resolveMailTransport = (
 	);
 };
 
-const transports: Record<MailTransportName, MailTransport> = {
-	console: consoleTransport,
+const transportFor = (name: MailTransportName): MailTransport => {
+	if (name === "console") return consoleTransport;
+	const transport = platform.mailTransports[name];
+	if (!transport) {
+		throw new Error(
+			`MAIL_TRANSPORT=${name} は、この動かし方（${platform.name}）では使えません`,
+		);
+	}
+	return transport;
 };
 
 export const sendMail = (mail: Mail): Promise<void> =>
-	transports[
-		resolveMailTransport(process.env.MAIL_TRANSPORT, process.env.NODE_ENV)
-	].send(mail);
+	transportFor(
+		resolveMailTransport(process.env.MAIL_TRANSPORT, process.env.NODE_ENV),
+	).send(mail);

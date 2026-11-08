@@ -1,4 +1,5 @@
 // ログイン（Better Auth）。Discord とメール（確認コード＋リンク）
+import { platform } from "#platform";
 import { betterAuth } from "better-auth";
 import { prismaAdapter } from "better-auth/adapters/prisma";
 import { emailOTP } from "better-auth/plugins";
@@ -93,9 +94,9 @@ export const auth = betterAuth({
 					otp,
 				);
 				// 送るのを待つと、届く宛先かどうかが応答時間でわかってしまうので待たない
-				// （Workers では waitUntil に載せる。Cloudflare 向けの build で対応する）
-				void sendMail(buildLoginEmail({ email, otp, link })).catch((error) =>
-					console.error("ログインのメールを送れませんでした", error),
+				// （Workers では waitUntil に載せて、応答を返したあとも送り終えるまで続けさせる）
+				platform.runInBackground("ログインのメールを送れませんでした", () =>
+					sendMail(buildLoginEmail({ email, otp, link })),
 				);
 			},
 		}),

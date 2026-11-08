@@ -3,10 +3,20 @@
 	"version": "0.1.0",
 	"private": true,
 	"type": "module",
+	"imports": {
+		"#platform": "./src/platform/node.server.ts",
+		"#cloudflare-database": "./src/platform/cloudflare-d1.server.ts"
+	},
 	"scripts": {
 		"dev": "vp dev",
 		"build": "vp build",
 		"start": "srvx --prod -s ../client dist/server/server.js",
+		"dev:cloudflare": "CLOUDFLARE=1 vp dev",
+		"build:cloudflare": "CLOUDFLARE=1 vp build",
+		"preview:cloudflare": "CLOUDFLARE=1 vp preview",
+		"deploy:cloudflare": "pnpm build:cloudflare && wrangler deploy",
+		"d1:migrate:local": "wrangler d1 migrations apply DB --local",
+		"d1:migrate:remote": "wrangler d1 migrations apply DB --remote",
 		"check": "vp check",
 		"check:fix": "vp check --fix",
 		"test": "vp test",
@@ -14,10 +24,11 @@
 		"fmt": "vp fmt",
 		"prisma:seed": "prisma db seed",
 		"postinstall": "pnpm prisma:generate",
-		"prisma:generate": "node scripts/prisma-schemas.ts && DATABASE_PROVIDER=postgresql prisma generate && DATABASE_PROVIDER=sqlite prisma generate",
+		"prisma:generate": "node scripts/prisma-schemas.ts && DATABASE_PROVIDER=postgresql prisma generate && DATABASE_PROVIDER=sqlite prisma generate && prisma generate --schema prisma/generated-schema/postgresql-workerd/schema.prisma && prisma generate --schema prisma/generated-schema/sqlite-workerd/schema.prisma",
 		"prisma:migrate": "node scripts/prisma-migrate.ts"
 	},
 	"dependencies": {
+		"@prisma/adapter-d1": "^7.10.1",
 		"@prisma/adapter-pg": "^7.10.1",
 		"@prisma/client": "^7.10.1",
 		"@tanstack/react-router": "^1.170.46",
@@ -30,6 +41,7 @@
 		"zod": "^4.6.7"
 	},
 	"devDependencies": {
+		"@cloudflare/vite-plugin": "^1.67.0",
 		"@tailwindcss/vite": "^4.3.5",
 		"@types/node": "^26",
 		"@types/react": "^19.0.12",
@@ -39,7 +51,8 @@
 		"tailwindcss": "^4.3.5",
 		"typescript": "^5",
 		"vite": "catalog:",
-		"vite-plus": "catalog:"
+		"vite-plus": "catalog:",
+		"wrangler": "^4.158.0"
 	},
 	"engines": {
 		"node": ">=26"

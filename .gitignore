@@ -52,3 +52,7 @@ yarn-error.log*
 
 # アップロードしたファイル（STORAGE_DRIVER=local の既定の置き場所）
 /data/
+
+# Cloudflare（wrangler のローカルの状態と、ローカルの秘密の値）
+/.wrangler/
+.dev.vars*

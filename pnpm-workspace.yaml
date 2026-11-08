@@ -4,6 +4,8 @@ allowBuilds:
   esbuild: true
   prisma: true
   sharp: false
+  # wrangler と @cloudflare/vite-plugin が使う Workers のランタイム（バイナリの確認）
+  workerd: true
 
 overrides:
   # Vite+ の推奨どおり、ほかの部品が要求する vite も Vite+ の vite（vite-plus-core）にそろえる
