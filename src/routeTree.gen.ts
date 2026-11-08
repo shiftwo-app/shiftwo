@@ -22,10 +22,13 @@ import { Route as AuthedOOrgSlugRouteImport } from './routes/_authed/o/$orgSlug'
 import { Route as AuthedOrgsNewRouteImport } from './routes/_authed/orgs/new'
 import { Route as AuthedSuspendedOrgSlugRouteImport } from './routes/_authed/suspended/$orgSlug'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
+import { Route as ApiAvatarsFileRouteImport } from './routes/api/avatars/$file'
+import { Route as ApiMeAvatarRouteImport } from './routes/api/me/avatar'
 import { Route as AuthedOOrgSlugIndexRouteImport } from './routes/_authed/o/$orgSlug/index'
 import { Route as AuthedOOrgSlugSettingsRouteImport } from './routes/_authed/o/$orgSlug/settings'
 import { Route as ApiOOrgSlugStaffRouteImport } from './routes/api/o/$orgSlug/staff'
 import { Route as AuthedOOrgSlugTTenantSlugRouteImport } from './routes/_authed/o/$orgSlug/t/$tenantSlug'
+import { Route as ApiOOrgSlugMeAvatarRouteImport } from './routes/api/o/$orgSlug/me/avatar'
 import { Route as AuthedOOrgSlugTTenantSlugIndexRouteImport } from './routes/_authed/o/$orgSlug/t/$tenantSlug/index'
 import { Route as AuthedOOrgSlugTTenantSlugDraftRouteImport } from './routes/_authed/o/$orgSlug/t/$tenantSlug/draft'
 import { Route as AuthedOOrgSlugTTenantSlugEventsRouteImport } from './routes/_authed/o/$orgSlug/t/$tenantSlug/events'
@@ -105,6 +108,16 @@ const ApiAuthSplatRoute = ApiAuthSplatRouteImport.update({
   path: '/api/auth/$',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiAvatarsFileRoute = ApiAvatarsFileRouteImport.update({
+  id: '/api/avatars/$file',
+  path: '/api/avatars/$file',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiMeAvatarRoute = ApiMeAvatarRouteImport.update({
+  id: '/api/me/avatar',
+  path: '/api/me/avatar',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AuthedOOrgSlugIndexRoute = AuthedOOrgSlugIndexRouteImport.update({
   id: '/',
   path: '/',
@@ -126,6 +139,11 @@ const AuthedOOrgSlugTTenantSlugRoute =
     path: '/t/$tenantSlug',
     getParentRoute: () => AuthedOOrgSlugRoute,
   } as any)
+const ApiOOrgSlugMeAvatarRoute = ApiOOrgSlugMeAvatarRouteImport.update({
+  id: '/api/o/$orgSlug/me/avatar',
+  path: '/api/o/$orgSlug/me/avatar',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AuthedOOrgSlugTTenantSlugIndexRoute =
   AuthedOOrgSlugTTenantSlugIndexRouteImport.update({
     id: '/',
@@ -224,10 +242,13 @@ export interface FileRoutesByFullPath {
   '/orgs/new': typeof AuthedOrgsNewRoute
   '/suspended/$orgSlug': typeof AuthedSuspendedOrgSlugRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
+  '/api/avatars/$file': typeof ApiAvatarsFileRoute
+  '/api/me/avatar': typeof ApiMeAvatarRoute
   '/o/$orgSlug/settings': typeof AuthedOOrgSlugSettingsRoute
   '/api/o/$orgSlug/staff': typeof ApiOOrgSlugStaffRoute
   '/o/$orgSlug/': typeof AuthedOOrgSlugIndexRoute
   '/o/$orgSlug/t/$tenantSlug': typeof AuthedOOrgSlugTTenantSlugRouteWithChildren
+  '/api/o/$orgSlug/me/avatar': typeof ApiOOrgSlugMeAvatarRoute
   '/o/$orgSlug/t/$tenantSlug/draft': typeof AuthedOOrgSlugTTenantSlugDraftRoute
   '/o/$orgSlug/t/$tenantSlug/events': typeof AuthedOOrgSlugTTenantSlugEventsRoute
   '/o/$orgSlug/t/$tenantSlug/settings': typeof AuthedOOrgSlugTTenantSlugSettingsRoute
@@ -255,9 +276,12 @@ export interface FileRoutesByTo {
   '/orgs/new': typeof AuthedOrgsNewRoute
   '/suspended/$orgSlug': typeof AuthedSuspendedOrgSlugRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
+  '/api/avatars/$file': typeof ApiAvatarsFileRoute
+  '/api/me/avatar': typeof ApiMeAvatarRoute
   '/o/$orgSlug/settings': typeof AuthedOOrgSlugSettingsRoute
   '/api/o/$orgSlug/staff': typeof ApiOOrgSlugStaffRoute
   '/o/$orgSlug': typeof AuthedOOrgSlugIndexRoute
+  '/api/o/$orgSlug/me/avatar': typeof ApiOOrgSlugMeAvatarRoute
   '/o/$orgSlug/t/$tenantSlug/draft': typeof AuthedOOrgSlugTTenantSlugDraftRoute
   '/o/$orgSlug/t/$tenantSlug/events': typeof AuthedOOrgSlugTTenantSlugEventsRoute
   '/o/$orgSlug/t/$tenantSlug/settings': typeof AuthedOOrgSlugTTenantSlugSettingsRoute
@@ -287,10 +311,13 @@ export interface FileRoutesById {
   '/_authed/orgs/new': typeof AuthedOrgsNewRoute
   '/_authed/suspended/$orgSlug': typeof AuthedSuspendedOrgSlugRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
+  '/api/avatars/$file': typeof ApiAvatarsFileRoute
+  '/api/me/avatar': typeof ApiMeAvatarRoute
   '/_authed/o/$orgSlug/settings': typeof AuthedOOrgSlugSettingsRoute
   '/api/o/$orgSlug/staff': typeof ApiOOrgSlugStaffRoute
   '/_authed/o/$orgSlug/': typeof AuthedOOrgSlugIndexRoute
   '/_authed/o/$orgSlug/t/$tenantSlug': typeof AuthedOOrgSlugTTenantSlugRouteWithChildren
+  '/api/o/$orgSlug/me/avatar': typeof ApiOOrgSlugMeAvatarRoute
   '/_authed/o/$orgSlug/t/$tenantSlug/draft': typeof AuthedOOrgSlugTTenantSlugDraftRoute
   '/_authed/o/$orgSlug/t/$tenantSlug/events': typeof AuthedOOrgSlugTTenantSlugEventsRoute
   '/_authed/o/$orgSlug/t/$tenantSlug/settings': typeof AuthedOOrgSlugTTenantSlugSettingsRoute
@@ -321,10 +348,13 @@ export interface FileRouteTypes {
     | '/orgs/new'
     | '/suspended/$orgSlug'
     | '/api/auth/$'
+    | '/api/avatars/$file'
+    | '/api/me/avatar'
     | '/o/$orgSlug/settings'
     | '/api/o/$orgSlug/staff'
     | '/o/$orgSlug/'
     | '/o/$orgSlug/t/$tenantSlug'
+    | '/api/o/$orgSlug/me/avatar'
     | '/o/$orgSlug/t/$tenantSlug/draft'
     | '/o/$orgSlug/t/$tenantSlug/events'
     | '/o/$orgSlug/t/$tenantSlug/settings'
@@ -352,9 +382,12 @@ export interface FileRouteTypes {
     | '/orgs/new'
     | '/suspended/$orgSlug'
     | '/api/auth/$'
+    | '/api/avatars/$file'
+    | '/api/me/avatar'
     | '/o/$orgSlug/settings'
     | '/api/o/$orgSlug/staff'
     | '/o/$orgSlug'
+    | '/api/o/$orgSlug/me/avatar'
     | '/o/$orgSlug/t/$tenantSlug/draft'
     | '/o/$orgSlug/t/$tenantSlug/events'
     | '/o/$orgSlug/t/$tenantSlug/settings'
@@ -383,10 +416,13 @@ export interface FileRouteTypes {
     | '/_authed/orgs/new'
     | '/_authed/suspended/$orgSlug'
     | '/api/auth/$'
+    | '/api/avatars/$file'
+    | '/api/me/avatar'
     | '/_authed/o/$orgSlug/settings'
     | '/api/o/$orgSlug/staff'
     | '/_authed/o/$orgSlug/'
     | '/_authed/o/$orgSlug/t/$tenantSlug'
+    | '/api/o/$orgSlug/me/avatar'
     | '/_authed/o/$orgSlug/t/$tenantSlug/draft'
     | '/_authed/o/$orgSlug/t/$tenantSlug/events'
     | '/_authed/o/$orgSlug/t/$tenantSlug/settings'
@@ -411,7 +447,10 @@ export interface RootRouteChildren {
   HelpDiscordServerRoute: typeof HelpDiscordServerRoute
   LoginVerifyRoute: typeof LoginVerifyRoute
   ApiAuthSplatRoute: typeof ApiAuthSplatRoute
+  ApiAvatarsFileRoute: typeof ApiAvatarsFileRoute
+  ApiMeAvatarRoute: typeof ApiMeAvatarRoute
   ApiOOrgSlugStaffRoute: typeof ApiOOrgSlugStaffRoute
+  ApiOOrgSlugMeAvatarRoute: typeof ApiOOrgSlugMeAvatarRoute
   ApiOOrgSlugTTenantSlugShiftsIdRoute: typeof ApiOOrgSlugTTenantSlugShiftsIdRoute
   ApiOOrgSlugTTenantSlugShiftsDraftRoute: typeof ApiOOrgSlugTTenantSlugShiftsDraftRoute
   ApiOOrgSlugTTenantSlugShiftsIndexRoute: typeof ApiOOrgSlugTTenantSlugShiftsIndexRoute
@@ -513,6 +552,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiAuthSplatRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/avatars/$file': {
+      id: '/api/avatars/$file'
+      path: '/api/avatars/$file'
+      fullPath: '/api/avatars/$file'
+      preLoaderRoute: typeof ApiAvatarsFileRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/me/avatar': {
+      id: '/api/me/avatar'
+      path: '/api/me/avatar'
+      fullPath: '/api/me/avatar'
+      preLoaderRoute: typeof ApiMeAvatarRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/_authed/o/$orgSlug/': {
       id: '/_authed/o/$orgSlug/'
       path: '/'
@@ -540,6 +593,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/o/$orgSlug/t/$tenantSlug'
       preLoaderRoute: typeof AuthedOOrgSlugTTenantSlugRouteImport
       parentRoute: typeof AuthedOOrgSlugRoute
+    }
+    '/api/o/$orgSlug/me/avatar': {
+      id: '/api/o/$orgSlug/me/avatar'
+      path: '/api/o/$orgSlug/me/avatar'
+      fullPath: '/api/o/$orgSlug/me/avatar'
+      preLoaderRoute: typeof ApiOOrgSlugMeAvatarRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/_authed/o/$orgSlug/t/$tenantSlug/': {
       id: '/_authed/o/$orgSlug/t/$tenantSlug/'
@@ -732,7 +792,10 @@ const rootRouteChildren: RootRouteChildren = {
   HelpDiscordServerRoute: HelpDiscordServerRoute,
   LoginVerifyRoute: LoginVerifyRoute,
   ApiAuthSplatRoute: ApiAuthSplatRoute,
+  ApiAvatarsFileRoute: ApiAvatarsFileRoute,
+  ApiMeAvatarRoute: ApiMeAvatarRoute,
   ApiOOrgSlugStaffRoute: ApiOOrgSlugStaffRoute,
+  ApiOOrgSlugMeAvatarRoute: ApiOOrgSlugMeAvatarRoute,
   ApiOOrgSlugTTenantSlugShiftsIdRoute: ApiOOrgSlugTTenantSlugShiftsIdRoute,
   ApiOOrgSlugTTenantSlugShiftsDraftRoute:
     ApiOOrgSlugTTenantSlugShiftsDraftRoute,

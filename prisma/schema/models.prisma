@@ -221,6 +221,8 @@ model Member {
   guildSuspendedAt DateTime?
   // 表示に使うアイコン（団体が Discord サーバーを指定していればそのサーバーでのアイコン、なければ Discord のアイコン）
   avatarUrl      String?
+  // この団体でだけ使う、本人がアップロードしたアイコン（保存先のキー）。あれば何よりも優先する
+  uploadedAvatarKey String?
   createdAt      DateTime     @default(now())
   updatedAt      DateTime     @updatedAt
   roles          MemberRoleAssignment[]
@@ -263,6 +265,8 @@ model User {
   email         String
   emailVerified Boolean   @default(false)
   image         String?
+  // 本人がアップロードしたアイコン（保存先のキー）。image は本人が好きな URL に書き換えられるので、アップロードはこちらに持つ
+  uploadedAvatarKey String?
   // はじめての設定（/welcome）を済ませた日時。Better Auth の additionalFields（auth.server.ts）と合わせる
   onboardedAt   DateTime?
   createdAt     DateTime  @default(now())

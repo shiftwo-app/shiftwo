@@ -1,6 +1,7 @@
 import { createFileRoute, useRouter } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import Avatar from "../../../../components/Avatar";
+import AvatarUploader from "../../../../components/AvatarUploader";
 import DiscordGuildSection from "../../../../components/manage/DiscordGuildSection";
 import StaffSection from "../../../../components/manage/StaffSection";
 import TenantsSection from "../../../../components/manage/TenantsSection";
@@ -24,6 +25,7 @@ import {
 	createInviteFn,
 	createRoleFn,
 	deleteRoleFn,
+	getMyOrgAvatar,
 	listInvites,
 	listMembers,
 	listRoles,
@@ -39,7 +41,8 @@ export const Route = createFileRoute("/_authed/o/$orgSlug/settings")({
 	loader: async ({ params, context }) => {
 		const perms = context.member.permissions;
 		const orgSlug = params.orgSlug;
-		const [members, roles, invites, staff] = await Promise.all([
+		const [myAvatar, members, roles, invites, staff] = await Promise.all([
+			getMyOrgAvatar({ data: { orgSlug } }),
 			hasPermission(perms, "member.view")
 				? listMembers({ data: { orgSlug } })
 				: Promise.resolve(null),
@@ -53,7 +56,7 @@ export const Route = createFileRoute("/_authed/o/$orgSlug/settings")({
 				? listStaffFn({ data: { orgSlug } })
 				: Promise.resolve(null),
 		]);
-		return { members, roles, invites, staff };
+		return { myAvatar, members, roles, invites, staff };
 	},
 	component: SettingsPage,
 });
@@ -79,7 +82,7 @@ const primary =
 
 function SettingsPage() {
 	const { organization, member, tenants } = Route.useRouteContext();
-	const { members, roles, invites, staff } = Route.useLoaderData();
+	const { myAvatar, members, roles, invites, staff } = Route.useLoaderData();
 	const router = useRouter();
 	const [errors, setErrors] = useState<string[]>([]);
 	const perms = member.permissions;
@@ -120,6 +123,24 @@ function SettingsPage() {
 				current={member.displayName}
 				run={run}
 			/>
+			{myAvatar && (
+				<section className={section} aria-labelledby="org-avatar-h">
+					<h2 id="org-avatar-h" className={heading}>
+						この団体でのあなたのアイコン
+					</h2>
+					<AvatarUploader
+						endpoint={`/api/o/${encodeURIComponent(organization.slug)}/me/avatar`}
+						name={member.displayName}
+						currentUrl={myAvatar.avatarUrl}
+						hasUploaded={myAvatar.hasOrgAvatar}
+						removeLabel="アカウントのアイコンに戻す"
+						onChanged={() => router.invalidate()}
+					/>
+					<p className="text-xs text-gray-500">
+						選ぶと、この団体でだけこのアイコンを使います（ほかの団体やアカウントのアイコンは変わりません）。
+					</p>
+				</section>
+			)}
 			{hasPermission(perms, "org.settings") && (
 				<DiscordGuildSection orgSlug={organization.slug} run={run} />
 			)}

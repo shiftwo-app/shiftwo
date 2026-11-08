@@ -1,6 +1,6 @@
 // サーバーだけで使う DB アクセス。どの関数も団体（とテナント・イベント）の ID を受け取り、その中のデータだけを扱う
 import { prisma } from "../lib/prisma.server";
-import { resolveAvatarUrl } from "../lib/avatar";
+import { memberAvatarSelect, resolveAvatarUrl } from "../lib/avatar";
 import type { Position, Shift, ShiftStatus, Staff } from "../types";
 
 /** シフトの単位（ID）。eventId が null なら日常シフト */
@@ -41,9 +41,7 @@ export const findShiftBoard = async (
 		prisma.staff.findMany({
 			where: { organizationId: scope.organizationId },
 			include: {
-				member: {
-					select: { avatarUrl: true, user: { select: { image: true } } },
-				},
+				member: { select: memberAvatarSelect },
 			},
 		}),
 	]);

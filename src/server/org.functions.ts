@@ -14,7 +14,7 @@ import {
 	parsePermissions,
 	permissionsOf,
 } from "../lib/org/permissions";
-import { resolveAvatarUrl } from "../lib/avatar";
+import { memberAvatarSelect, resolveAvatarUrl } from "../lib/avatar";
 import { orgNameSchema, slugSchema } from "../lib/org/slug";
 import { prisma } from "../lib/prisma.server";
 import { nameSchema } from "../lib/profile";
@@ -168,6 +168,26 @@ export const updateMyDisplayName = createServerFn({ method: "POST" })
 		return { ok: true as const };
 	});
 
+/** この団体での自分のアイコン（設定の画面に出す）。所属していなければ null */
+export const getMyOrgAvatar = createServerFn({ method: "GET" })
+	.middleware([requireUserMiddleware])
+	.validator((data: { orgSlug: unknown }) => ({
+		orgSlug: slugParam.parse(data.orgSlug),
+	}))
+	.handler(async ({ data, context }) => {
+		const membership = await findMembership(context.user.id, data.orgSlug);
+		if (!membership) return null;
+		const member = await prisma.member.findUnique({
+			where: { id: membership.member.id },
+			select: memberAvatarSelect,
+		});
+		return {
+			avatarUrl: resolveAvatarUrl(member),
+			/** この団体でだけ使うアイコンを設定しているか */
+			hasOrgAvatar: Boolean(member?.uploadedAvatarKey),
+		};
+	});
+
 /** メンバーの一覧（member.view） */
 export const listMembers = createServerFn({ method: "GET" })
 	.middleware([requireUserMiddleware])
@@ -187,8 +207,7 @@ export const listMembers = createServerFn({ method: "GET" })
 				isOwner: true,
 				displayName: true,
 				createdAt: true,
-				avatarUrl: true,
-				user: { select: { image: true } },
+				...memberAvatarSelect,
 				roles: { select: { roleId: true } },
 			},
 			orderBy: { createdAt: "asc" },

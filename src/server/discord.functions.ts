@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { loginMethods } from "../lib/auth.server";
+import { resolveAvatarUrl } from "../lib/avatar";
 import { prisma } from "../lib/prisma.server";
 import { requireUserMiddleware } from "./auth-middleware";
 import { refreshDiscordMemberships } from "./discord-membership.server";
@@ -18,12 +19,22 @@ const slug = z.string().min(1);
 export const getAccountSummary = createServerFn({ method: "GET" })
 	.middleware([requireUserMiddleware])
 	.handler(async ({ context }) => {
-		const discordAccount = await prisma.account.findFirst({
-			where: { userId: context.user.id, providerId: "discord" },
-			select: { id: true },
-		});
+		const [discordAccount, user] = await Promise.all([
+			prisma.account.findFirst({
+				where: { userId: context.user.id, providerId: "discord" },
+				select: { id: true },
+			}),
+			prisma.user.findUnique({
+				where: { id: context.user.id },
+				select: { uploadedAvatarKey: true, image: true },
+			}),
+		]);
 		return {
 			email: context.user.email,
+			name: context.user.name,
+			/** アカウントのアイコン（アップロードしたもの、なければ Discord のアイコン） */
+			avatarUrl: resolveAvatarUrl({ user }),
+			hasUploadedAvatar: Boolean(user?.uploadedAvatarKey),
 			discordConfigured: loginMethods.discord,
 			discordAccountId: discordAccount?.id ?? null,
 		};
