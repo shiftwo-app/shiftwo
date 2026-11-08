@@ -90,6 +90,8 @@ model Shift {
   // 希望どおりの持ち場か（DB の列名は以前の名前のまま）
   isPreferredPosition Boolean @map("isPreferredRole")
   status          ShiftStatus @default(draft)
+  // 変えるたびに 1 増える。保存のときに、読んだときの値と同じかを確かめる（同時に直したときの上書きを防ぐ）
+  version         Int       @default(1)
 
   @@index([organizationId, status])
   @@index([tenantId, eventId, status])

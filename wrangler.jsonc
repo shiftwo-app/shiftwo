@@ -42,6 +42,14 @@
 	// アップロードしたアイコンの保存先（STORAGE_DRIVER=r2）
 	"r2_buckets": [{ "binding": "BUCKET" }],
 
+	// 同時編集：シフトの変更を、同じ画面を見ている人に WebSocket で配る（チャンネルごとに 1 つ）
+	"durable_objects": {
+		"bindings": [
+			{ "name": "SHIFT_BOARD_ROOMS", "class_name": "ShiftBoardRoom" },
+		],
+	},
+	"migrations": [{ "tag": "v1", "new_sqlite_classes": ["ShiftBoardRoom"] }],
+
 	// ログインのメール（MAIL_TRANSPORT=cloudflare。Cloudflare Email Service。Workers Paid が要る）。
 	// ローカルの dev では送らずに、送ろうとした内容をターミナルに出す
 	"send_email": [{ "name": "EMAIL" }],

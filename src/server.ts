@@ -3,6 +3,9 @@
 import handler, { createServerEntry } from "@tanstack/react-start/server-entry";
 import { runInRequestScope } from "./lib/request-scope.server";
 
+// Workers で使う Durable Object のクラス（Node では何もない）
+export * from "#worker-exports";
+
 export default createServerEntry({
 	fetch(request, ...rest) {
 		return runInRequestScope(() => handler.fetch(request, ...rest));

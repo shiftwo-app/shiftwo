@@ -5,10 +5,17 @@ import { parseDatabaseProvider } from "../lib/database-provider";
 import { loadEnvFileIfExists } from "../lib/load-env";
 import { createCloudflareRestTransport } from "../lib/mail/cloudflare-rest-transport.server";
 import { createSmtpTransport } from "../lib/mail/smtp-transport.server";
+import { createSseHub } from "../lib/realtime/sse-hub.server";
 import { createLocalBlobStore } from "../lib/storage/local-store.server";
 import type { Platform } from "./types";
 
 loadEnvFileIfExists();
+
+// 開発中は HMR でモジュールが読み直されても、つながっている人を見失わないように globalThis に置く
+const globalForRealtime = globalThis as unknown as {
+	shiftwoSseHub?: ReturnType<typeof createSseHub>;
+};
+globalForRealtime.shiftwoSseHub ??= createSseHub();
 
 export const platform: Platform = {
 	name: "node",
@@ -39,6 +46,7 @@ export const platform: Platform = {
 		}
 		return createLocalBlobStore(process.env.STORAGE_DIR || "data/uploads");
 	},
+	realtime: globalForRealtime.shiftwoSseHub,
 	runInBackground(label, task) {
 		// task がその場で投げたエラーも、ここで受け止める
 		void Promise.resolve()

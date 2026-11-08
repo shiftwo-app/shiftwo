@@ -51,6 +51,10 @@ export default defineConfig({
 						replacement: src("platform/cloudflare.server.ts"),
 					},
 					{
+						find: /^#worker-exports$/,
+						replacement: src("platform/worker-exports.cloudflare.ts"),
+					},
+					{
 						find: /^#cloudflare-database$/,
 						replacement: src(
 							`platform/cloudflare-${cloudflareDatabase}.server.ts`,

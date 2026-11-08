@@ -39,6 +39,7 @@ const shift = (
 	timeRange: { start: at(start), end: at(end) },
 	isPreferredPosition: true,
 	status: ShiftStatus.confirmed,
+	version: 1,
 });
 
 const positions: Position[] = [
