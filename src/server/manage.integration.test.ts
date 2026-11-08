@@ -102,6 +102,7 @@ describe.skipIf(!hasDatabase)("管理の操作（DB）", async () => {
 		color: "#123456",
 		requiredStaffCount: 2,
 		isBreak: false,
+		staffingRules: [],
 	};
 
 	it("テナントの URL 名は団体の中で重ならない（ほかの団体とは同じでよい）", async () => {

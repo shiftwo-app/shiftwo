@@ -1,4 +1,5 @@
 // タイムラインの計算（純粋な関数）。描画は ShiftTimeline.tsx が受け持つ
+import { parseStaffingRules, type StaffingRule } from "../../lib/staffing";
 import type { Position, Shift, Staff } from "../../types";
 
 export const MINUTE_MS = 60_000;
@@ -45,6 +46,8 @@ export type TimelineRow = {
 	laneCount: number;
 	/** 持ち場別の行だけ：必要な人数（Position.requiredStaffCount） */
 	requiredCount?: number;
+	/** 時間帯ごとの必要人員（基本の人数の上に足す決まり。持ち場の行だけ） */
+	staffingRules?: StaffingRule[];
 };
 
 /** ある時間帯に、何人のシフトが重なっているか */
@@ -213,6 +216,7 @@ const toRow = (
 	color?: string,
 	requiredCount?: number,
 	avatarUrl?: string | null,
+	staffingRules?: StaffingRule[],
 ): TimelineRow => {
 	const sorted = shifts
 		.map((shift) => ({
@@ -231,7 +235,16 @@ const toRow = (
 		lane: lanes[index] ?? 0,
 	}));
 	const laneCount = Math.max(1, ...items.map((item) => item.lane + 1));
-	return { id, label, color, items, laneCount, requiredCount, avatarUrl };
+	return {
+		id,
+		label,
+		color,
+		items,
+		laneCount,
+		requiredCount,
+		avatarUrl,
+		staffingRules,
+	};
 };
 
 /** 持ち場別の表示で、持ち場のないシフトをまとめる行の ID */
@@ -262,6 +275,8 @@ export const buildRows = (
 				lookup,
 				position.color,
 				position.requiredStaffCount,
+				undefined,
+				parseStaffingRules(position.staffingRules),
 			),
 		);
 		// 持ち場のないシフト（持ち場を使っていなかったときに作ったもの）は、最後の 1 行にまとめる

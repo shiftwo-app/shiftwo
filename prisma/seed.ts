@@ -208,6 +208,12 @@ async function main() {
 		name: string,
 		color: string,
 		requiredStaffCount: number,
+		staffingRules: {
+			date: string | null;
+			start: string;
+			end: string;
+			count: number;
+		}[] = [],
 	) =>
 		prisma.position.create({
 			data: {
@@ -217,13 +223,19 @@ async function main() {
 				name,
 				color,
 				requiredStaffCount,
+				staffingRules,
 			},
 		});
 	const admin = await eventPosition("管理者", "#EE9A8A", 1);
 	const moderator = await eventPosition("司会進行", "#6FB3AE", 2);
 	await eventPosition("タイムキーパー", "#93C49A", 3);
 	await eventPosition("チェッカー", "#7FA7DE", 4);
-	const reception = await eventPosition("受付", "#A99BE0", 4);
+	// 受付は、開場の前後（9-10 時）とお昼（12-13 時）に人を増やし、2 日目の朝は少なくてよい
+	const reception = await eventPosition("受付", "#A99BE0", 2, [
+		{ date: null, start: "09:00", end: "10:00", count: 4 },
+		{ date: null, start: "12:00", end: "13:00", count: 3 },
+		{ date: "2024-06-02", start: "09:00", end: "10:00", count: 2 },
+	]);
 	await prisma.staff.update({
 		where: { id: yamada.id },
 		data: {

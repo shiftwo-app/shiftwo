@@ -1,5 +1,6 @@
 // テナント・イベント・持ち場・スタッフの入力の決まり。画面とサーバーの両方で使う
 import { z } from "zod";
+import { staffingRulesSchema } from "./staffing";
 import type { MessageKey } from "./i18n/messages";
 import { slugSchema } from "./org/slug";
 import { nameSchema } from "./profile";
@@ -57,6 +58,8 @@ export const positionInputSchema = z.object({
 		.max(99, "settings.requiredCountMax"),
 	// 休憩の持ち場か（レポートで休憩として数え、充足率には入れない）
 	isBreak: z.boolean(),
+	// 時間帯ごとの必要人員（基本の人数の上に足す決まり。src/lib/staffing.ts）
+	staffingRules: staffingRulesSchema,
 });
 export type PositionInput = z.infer<typeof positionInputSchema>;
 

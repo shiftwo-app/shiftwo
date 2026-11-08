@@ -15,7 +15,6 @@ import {
 	buildRows,
 	buildTicks,
 	computeDisplayRange,
-	type CoverageSegment,
 	coverageSegments,
 	formatDayIn,
 	assignLanes,
@@ -33,6 +32,11 @@ import {
 } from "./timeline/layout";
 import Avatar from "./Avatar";
 import { asTimed, type Session } from "./timetable/session";
+import {
+	requirementSegments,
+	type StaffingSegment,
+	staffingSegments,
+} from "../lib/staffing";
 import { roomColor, roomsOf } from "../lib/timetable";
 import { applyDrag, type DragMode } from "./timeline/snap";
 import {
@@ -618,14 +622,20 @@ const ShiftTimeline = ({
 									{row.requiredCount !== undefined && (
 										<StaffingBand
 											label={row.label}
-											requiredCount={row.requiredCount}
-											segments={coverageSegments(
-												row.items.map((item) => ({
-													start: item.start,
-													end: item.end,
-													key: item.shift.staffId,
-												})),
-												range,
+											segments={staffingSegments(
+												coverageSegments(
+													row.items.map((item) => ({
+														start: item.start,
+														end: item.end,
+														key: item.shift.staffId,
+													})),
+													range,
+												),
+												requirementSegments(
+													row.requiredCount,
+													row.staffingRules ?? [],
+													range,
+												),
 											)}
 											toX={toX}
 										/>
@@ -724,13 +734,12 @@ const ShiftTimeline = ({
 /** 持ち場の行の上に、時間帯ごとの「入っている人数 / 必要な人数」を出す（FR-4-D） */
 const StaffingBand = ({
 	label,
-	requiredCount,
 	segments,
 	toX,
 }: {
 	label: string;
-	requiredCount: number;
-	segments: CoverageSegment[];
+	/** 入っている人数と、その時間帯に必要な人数（時間帯ごとの必要人員を当てはめたもの） */
+	segments: StaffingSegment[];
 	toX: (ms: number) => number;
 }) => {
 	const t = useT();
@@ -741,6 +750,7 @@ const StaffingBand = ({
 			style={{ height: BADGE_BAND_HEIGHT_PX }}
 		>
 			{segments.map((segment) => {
+				const requiredCount = segment.required;
 				const short = segment.count < requiredCount;
 				const text = `${segment.count}/${requiredCount}`;
 				const timeRange = t("board.timeRange", {

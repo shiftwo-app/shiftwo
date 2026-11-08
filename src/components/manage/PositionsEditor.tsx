@@ -13,7 +13,9 @@ import {
 	nextPositionColor,
 	POSITION_COLOR_SWATCHES,
 } from "../../lib/position-colors";
+import { parseStaffingRules, type StaffingRule } from "../../lib/staffing";
 import Button from "../ui/Button";
+import StaffingRulesField from "./StaffingRulesField";
 import PositionColorField from "./PositionColorField";
 import ConfirmButton from "./ConfirmButton";
 import type { RunMutation } from "./useMutationRunner";
@@ -47,6 +49,9 @@ function PositionForm({
 	);
 	const [required, setRequired] = useState(position?.requiredStaffCount ?? 1);
 	const [isBreak, setIsBreak] = useState(position?.isBreak ?? false);
+	const [staffingRules, setStaffingRules] = useState<StaffingRule[]>(() =>
+		parseStaffingRules(position?.staffingRules),
+	);
 
 	const submit = async (event: FormEvent<HTMLFormElement>) => {
 		event.preventDefault();
@@ -55,6 +60,7 @@ function PositionForm({
 			color,
 			requiredStaffCount: required,
 			isBreak,
+			staffingRules,
 		};
 		const ok = await run(() =>
 			position
@@ -65,6 +71,7 @@ function PositionForm({
 			setName("");
 			setRequired(1);
 			setIsBreak(false);
+			setStaffingRules([]);
 		}
 	};
 
@@ -123,6 +130,13 @@ function PositionForm({
 				/>
 				{t("settings.positionIsBreak")}
 			</label>
+			{!isBreak && (
+				<StaffingRulesField
+					rules={staffingRules}
+					onChange={setStaffingRules}
+					baseCount={required}
+				/>
+			)}
 			<div className="flex flex-wrap items-center gap-2">
 				<Button
 					type="submit"

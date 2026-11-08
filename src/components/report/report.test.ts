@@ -183,3 +183,57 @@ describe("レポートの CSV", async () => {
 		expect(mine.map((row) => row[0])).toEqual(["スタッフ", "A"]);
 	});
 });
+
+describe("buildDayReport（時間帯ごとの必要人員）", () => {
+	it("決まりのある時間帯だけ必要な人数を変えて、充足率を出す", () => {
+		const report = buildDayReport({
+			day,
+			staffs,
+			breakGapMinutes: 15,
+			positions: [
+				{
+					id: "reception",
+					name: "受付",
+					color: "#f00",
+					requiredStaffCount: 1,
+					isBreak: false,
+					// 10-11 時だけ 3 人要る
+					staffingRules: [
+						{ date: null, start: "10:00", end: "11:00", count: 3 },
+					],
+				},
+			],
+			// 9-12 時に 1 人だけ
+			shifts: [shift("s1", "a", "reception", "09:00", "12:00")],
+		});
+		const [reception] = report.positions;
+		// 必要：9-10 は 1、10-11 は 3、11-12 は 1 → 5 時間分。入っている（必要な人数まで）：3 時間分
+		expect(reception?.neededMs).toBe(5 * HOUR);
+		expect(reception?.filledMs).toBe(3 * HOUR);
+		expect(reception?.rate).toBeCloseTo(0.6);
+		expect(reception?.level).toBe("danger");
+	});
+
+	it("基本の人数が 0 でも、決まりの時間帯があれば充足率に入れる", () => {
+		const report = buildDayReport({
+			day,
+			staffs,
+			breakGapMinutes: 15,
+			positions: [
+				{
+					id: "mc",
+					name: "司会",
+					color: "#0f0",
+					requiredStaffCount: 0,
+					isBreak: false,
+					staffingRules: [
+						{ date: null, start: "10:00", end: "11:00", count: 1 },
+					],
+				},
+			],
+			shifts: [shift("s1", "a", "mc", "09:00", "12:00")],
+		});
+		expect(report.positions[0]?.rate).toBe(1);
+		expect(report.positions[0]?.neededMs).toBe(HOUR);
+	});
+});

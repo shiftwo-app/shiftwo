@@ -10,6 +10,7 @@ import { MCP_SCOPE_WRITE } from "../lib/mcp-config";
 import { hasPermission } from "../lib/org/permissions";
 import type { PreferenceScope } from "../lib/preferences";
 import { prisma } from "../lib/prisma.server";
+import { parseStaffingRules } from "../lib/staffing";
 import { ShiftStatus, type Shift } from "../types";
 import type { McpPrincipal } from "./mcp-auth.server";
 import { findMembership, OrgAccessError } from "./org-access.server";
@@ -257,6 +258,7 @@ export const createShiftwoMcpServer = (principal: McpPrincipal) => {
 			description:
 				"Get the shifts of a location (regular shifts) or an event, with its positions and staff. " +
 				"Each shift has a version; pass it to update_shift or delete_shift. " +
+				"A position needs requiredStaffCount people, except during its staffingRules (date null = every day). " +
 				"preferenceConflicts (shift id -> reasons) is included only when the user can edit shifts.",
 			inputSchema: z.object({
 				...shiftScopeInput,
@@ -299,6 +301,8 @@ export const createShiftwoMcpServer = (principal: McpPrincipal) => {
 						id: position.id,
 						name: position.name,
 						requiredStaffCount: position.requiredStaffCount,
+						// 時間帯ごとの必要人員（date が null なら毎日。時刻は日本時間）
+						staffingRules: parseStaffingRules(position.staffingRules),
 						isBreak: position.isBreak,
 					})),
 					staffs: board.staffs.map((staff) => ({
