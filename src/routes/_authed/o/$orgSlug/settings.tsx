@@ -11,34 +11,49 @@ import {
 	inviteUnusableReason,
 } from "../../../../lib/org/invite-code";
 import {
-	assignableMemberRoles,
-	can,
-	type MemberRole,
-	ROLE_LABELS,
+	hasPermission,
+	PERMISSIONS,
+	type Permission,
 } from "../../../../lib/org/permissions";
 import { NAME_MAX_LENGTH } from "../../../../lib/profile";
 import {
-	changeMemberRole,
 	createInviteFn,
+	createRoleFn,
+	deleteRoleFn,
 	listInvites,
 	listMembers,
+	listRoles,
 	removeMember,
 	revokeInvite,
+	setMemberRolesFn,
 	updateMyDisplayName,
+	updateRoleFn,
 } from "../../../../server/org.functions";
 
 export const Route = createFileRoute("/_authed/o/$orgSlug/settings")({
 	loader: async ({ params, context }) => {
-		const [members, invites] = await Promise.all([
-			listMembers({ data: { orgSlug: params.orgSlug } }),
-			can(context.member.role, "invite.manage")
-				? listInvites({ data: { orgSlug: params.orgSlug } })
+		const perms = context.member.permissions;
+		const orgSlug = params.orgSlug;
+		const [members, roles, invites] = await Promise.all([
+			hasPermission(perms, "member.view")
+				? listMembers({ data: { orgSlug } })
+				: Promise.resolve(null),
+			hasPermission(perms, "member.view")
+				? listRoles({ data: { orgSlug } })
+				: Promise.resolve([]),
+			hasPermission(perms, "invite.manage")
+				? listInvites({ data: { orgSlug } })
 				: Promise.resolve(null),
 		]);
-		return { members, invites };
+		return { members, roles, invites };
 	},
 	component: SettingsPage,
 });
+
+type RoleRow = Awaited<ReturnType<typeof listRoles>>[number];
+type Run = (
+	action: () => Promise<{ ok: boolean; errors?: string[] }>,
+) => Promise<boolean>;
 
 const dateFormatter = new Intl.DateTimeFormat("ja-JP", {
 	timeZone: "Asia/Tokyo",
@@ -48,16 +63,21 @@ const dateFormatter = new Intl.DateTimeFormat("ja-JP", {
 	minute: "2-digit",
 });
 
+const section = "space-y-3";
+const heading = "text-lg font-semibold";
+const control = "rounded border px-2 py-1";
+const primary =
+	"rounded bg-blue-600 px-3 py-1 text-sm font-semibold text-white disabled:opacity-50";
+
 function SettingsPage() {
 	const { organization, member } = Route.useRouteContext();
-	const { members, invites } = Route.useLoaderData();
+	const { members, roles, invites } = Route.useLoaderData();
 	const router = useRouter();
 	const [errors, setErrors] = useState<string[]>([]);
+	const perms = member.permissions;
 
 	/** 操作を 1 回行い、できたら画面を読み直す */
-	const run = async (
-		action: () => Promise<{ ok: boolean; errors?: string[] }>,
-	) => {
+	const run: Run = async (action) => {
 		setErrors([]);
 		try {
 			const result = await action();
@@ -92,33 +112,34 @@ function SettingsPage() {
 				current={member.displayName}
 				run={run}
 			/>
-			<MembersSection
-				orgSlug={organization.slug}
-				members={members}
-				canManage={can(member.role, "member.manage")}
-				run={run}
-			/>
+			{members && (
+				<MembersSection
+					orgSlug={organization.slug}
+					members={members}
+					roles={roles}
+					canManage={hasPermission(perms, "member.manage")}
+					run={run}
+				/>
+			)}
+			{hasPermission(perms, "role.manage") && (
+				<RolesSection
+					orgSlug={organization.slug}
+					roles={roles}
+					myPermissions={perms}
+					run={run}
+				/>
+			)}
 			{invites && (
 				<InvitesSection
 					orgSlug={organization.slug}
-					invites={invites.invites}
-					assignableRoles={invites.assignableRoles}
+					invites={invites}
+					grantableRoles={roles.filter((role) => role.invitable)}
 					run={run}
 				/>
 			)}
 		</main>
 	);
 }
-
-type Run = (
-	action: () => Promise<{ ok: boolean; errors?: string[] }>,
-) => Promise<boolean>;
-
-const section = "space-y-3";
-const heading = "text-lg font-semibold";
-const control = "rounded border px-2 py-1";
-const primary =
-	"rounded bg-blue-600 px-3 py-1 text-sm font-semibold text-white disabled:opacity-50";
 
 function DisplayNameSection({
 	orgSlug,
@@ -161,85 +182,305 @@ function DisplayNameSection({
 	);
 }
 
+function RoleChip({ role }: { role: { name: string; color: string } }) {
+	return (
+		<span className="inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs">
+			<span
+				aria-hidden
+				className="inline-block h-2 w-2 rounded-full"
+				style={{ backgroundColor: role.color }}
+			/>
+			{role.name}
+		</span>
+	);
+}
+
 function MembersSection({
 	orgSlug,
 	members,
+	roles,
 	canManage,
 	run,
 }: {
 	orgSlug: string;
 	members: {
 		id: string;
-		role: MemberRole;
+		isOwner: boolean;
 		displayName: string;
+		roleIds: string[];
 		isMe: boolean;
 	}[];
+	roles: RoleRow[];
 	canManage: boolean;
 	run: Run;
 }) {
-	const change = useServerFn(changeMemberRole);
+	const setRoles = useServerFn(setMemberRolesFn);
 	const remove = useServerFn(removeMember);
 	const id = useId();
+	const roleById = new Map(roles.map((role) => [role.id, role]));
 	return (
 		<section className={section} aria-labelledby={`${id}-h`}>
 			<h2 id={`${id}-h`} className={heading}>
 				メンバー（{members.length} 人）
 			</h2>
 			<ul className="divide-y rounded border">
-				{members.map((m) => (
-					<li
-						key={m.id}
-						className="flex flex-wrap items-center gap-3 px-3 py-2 text-sm"
-					>
-						<span className="font-semibold">
-							{m.displayName}
-							{m.isMe && "（あなた）"}
-						</span>
-						{canManage && m.role !== "owner" ? (
-							<>
-								<label className="sr-only" htmlFor={`${id}-${m.id}`}>
-									{m.displayName}の役割
-								</label>
-								<select
-									id={`${id}-${m.id}`}
-									value={m.role}
-									onChange={(event) =>
-										void run(() =>
-											change({
-												data: {
-													orgSlug,
-													memberId: m.id,
-													role: event.target.value,
-												},
-											}),
-										)
-									}
-									className={control}
-								>
-									{assignableMemberRoles.map((role) => (
-										<option key={role} value={role}>
-											{ROLE_LABELS[role]}
-										</option>
-									))}
-								</select>
-								<button
-									type="button"
-									onClick={() =>
-										void run(() =>
-											remove({ data: { orgSlug, memberId: m.id } }),
-										)
-									}
-									className="ml-auto text-red-700 underline"
-								>
-									外す
-								</button>
-							</>
-						) : (
-							<span className="text-gray-600">{ROLE_LABELS[m.role]}</span>
-						)}
-					</li>
-				))}
+				{members.map((m) => {
+					const memberRoles = m.roleIds
+						.map((roleId) => roleById.get(roleId))
+						.filter((role): role is RoleRow => Boolean(role));
+					const editable = canManage && !m.isOwner;
+					return (
+						<li key={m.id} className="space-y-2 px-3 py-2 text-sm">
+							<div className="flex flex-wrap items-center gap-2">
+								<span className="font-semibold">
+									{m.displayName}
+									{m.isMe && "（あなた）"}
+								</span>
+								{m.isOwner ? (
+									<RoleChip role={{ name: "オーナー", color: "#F59E0B" }} />
+								) : memberRoles.length === 0 ? (
+									<span className="text-xs text-gray-500">ロールなし</span>
+								) : (
+									memberRoles.map((role) => (
+										<RoleChip key={role.id} role={role} />
+									))
+								)}
+								{editable && (
+									<button
+										type="button"
+										onClick={() =>
+											void run(() =>
+												remove({ data: { orgSlug, memberId: m.id } }),
+											)
+										}
+										className="ml-auto text-red-700 underline"
+									>
+										外す
+									</button>
+								)}
+							</div>
+							{editable && (
+								<fieldset className="flex flex-wrap gap-3">
+									<legend className="sr-only">{m.displayName}のロール</legend>
+									{roles.map((role) => {
+										const checked = m.roleIds.includes(role.id);
+										return (
+											<label
+												key={role.id}
+												className={`flex items-center gap-1 text-xs ${role.grantable ? "" : "text-gray-400"}`}
+												title={
+													role.grantable
+														? undefined
+														: "自分が持っていない権限を含むので、付け外しできません"
+												}
+											>
+												<input
+													type="checkbox"
+													checked={checked}
+													disabled={!role.grantable}
+													onChange={() =>
+														void run(() =>
+															setRoles({
+																data: {
+																	orgSlug,
+																	memberId: m.id,
+																	roleIds: checked
+																		? m.roleIds.filter((r) => r !== role.id)
+																		: [...m.roleIds, role.id],
+																},
+															}),
+														)
+													}
+												/>
+												{role.name}
+											</label>
+										);
+									})}
+								</fieldset>
+							)}
+						</li>
+					);
+				})}
 			</ul>
+		</section>
+	);
+}
+
+function PermissionCheckboxes({
+	value,
+	onChange,
+	myPermissions,
+	disabled,
+}: {
+	value: Permission[];
+	onChange: (value: Permission[]) => void;
+	myPermissions: readonly Permission[];
+	disabled?: boolean;
+}) {
+	return (
+		<div className="grid gap-1 sm:grid-cols-2">
+			{PERMISSIONS.map((p) => {
+				const mine = myPermissions.includes(p.key);
+				return (
+					<label
+						key={p.key}
+						className={`flex items-center gap-2 text-xs ${mine && !disabled ? "" : "text-gray-400"}`}
+						title={mine ? undefined : "自分が持っていない権限は付けられません"}
+					>
+						<input
+							type="checkbox"
+							checked={value.includes(p.key)}
+							disabled={disabled || !mine}
+							onChange={(event) =>
+								onChange(
+									event.target.checked
+										? [...value, p.key]
+										: value.filter((key) => key !== p.key),
+								)
+							}
+						/>
+						{p.label}
+					</label>
+				);
+			})}
+		</div>
+	);
+}
+
+function RoleEditor({
+	orgSlug,
+	role,
+	myPermissions,
+	run,
+}: {
+	orgSlug: string;
+	role?: RoleRow;
+	myPermissions: readonly Permission[];
+	run: Run;
+}) {
+	const create = useServerFn(createRoleFn);
+	const update = useServerFn(updateRoleFn);
+	const remove = useServerFn(deleteRoleFn);
+	const id = useId();
+	const [name, setName] = useState(role?.name ?? "");
+	const [color, setColor] = useState(role?.color ?? "#6B7280");
+	const [permissions, setPermissions] = useState<Permission[]>(
+		role?.permissions ?? ["shift.view", "member.view"],
+	);
+	// 自分より強いロール（自分にない権限を含む）は、見るだけ
+	const locked = role !== undefined && !role.grantable;
+
+	const submit = async (event: FormEvent<HTMLFormElement>) => {
+		event.preventDefault();
+		const input = { name, color, permissions };
+		const ok = await run(() =>
+			role
+				? update({ data: { orgSlug, roleId: role.id, role: input } })
+				: create({ data: { orgSlug, role: input } }),
+		);
+		if (ok && !role) {
+			setName("");
+			setPermissions(["shift.view", "member.view"]);
+		}
+	};
+
+	return (
+		<form onSubmit={submit} className="space-y-2 rounded border p-3">
+			<div className="flex flex-wrap items-center gap-2">
+				<label htmlFor={`${id}-name`} className="sr-only">
+					ロール名
+				</label>
+				<input
+					id={`${id}-name`}
+					required
+					maxLength={40}
+					placeholder="ロール名"
+					value={name}
+					disabled={locked}
+					onChange={(event) => setName(event.target.value)}
+					className={control}
+				/>
+				<label htmlFor={`${id}-color`} className="sr-only">
+					色
+				</label>
+				<input
+					id={`${id}-color`}
+					type="color"
+					value={color}
+					disabled={locked}
+					onChange={(event) => setColor(event.target.value)}
+					className="h-8 w-10 rounded border"
+				/>
+				{role && (
+					<span className="text-xs text-gray-600">{role.memberCount} 人</span>
+				)}
+				{locked && (
+					<span className="text-xs text-gray-600">
+						自分が持っていない権限を含むので、変えられません
+					</span>
+				)}
+			</div>
+			<PermissionCheckboxes
+				value={permissions}
+				onChange={setPermissions}
+				myPermissions={myPermissions}
+				disabled={locked}
+			/>
+			{!locked && (
+				<div className="flex gap-3">
+					<button type="submit" className={primary}>
+						{role ? "保存" : "ロールを作る"}
+					</button>
+					{role && (
+						<button
+							type="button"
+							onClick={() =>
+								void run(() => remove({ data: { orgSlug, roleId: role.id } }))
+							}
+							className="text-sm text-red-700 underline"
+						>
+							消す
+						</button>
+					)}
+				</div>
+			)}
+		</form>
+	);
+}
+
+function RolesSection({
+	orgSlug,
+	roles,
+	myPermissions,
+	run,
+}: {
+	orgSlug: string;
+	roles: RoleRow[];
+	myPermissions: readonly Permission[];
+	run: Run;
+}) {
+	const id = useId();
+	return (
+		<section className={section} aria-labelledby={`${id}-h`}>
+			<h2 id={`${id}-h`} className={heading}>
+				ロール
+			</h2>
+			<p className="text-sm text-gray-600">
+				ロールごとに権限を決めます。1
+				人が複数のロールを持て、権限は足し合わせになります。オーナーは常に全権限です。
+				自分が持っていない権限は、ロールに付けたり人に渡したりできません。
+			</p>
+			{roles.map((role) => (
+				<RoleEditor
+					key={`${role.id}-${role.permissions.join()}-${role.name}-${role.color}`}
+					orgSlug={orgSlug}
+					role={role}
+					myPermissions={myPermissions}
+					run={run}
+				/>
+			))}
+			<h3 className="text-sm font-semibold">新しいロール</h3>
+			<RoleEditor orgSlug={orgSlug} myPermissions={myPermissions} run={run} />
 		</section>
 	);
 }
@@ -247,31 +488,31 @@ function MembersSection({
 type InviteRow = {
 	id: string;
 	code: string;
-	role: MemberRole;
 	maxUses: number | null;
 	uses: number;
 	expiresAt: Date;
 	revokedAt: Date | null;
+	role: { id: string; name: string; color: string };
 };
 
 function InvitesSection({
 	orgSlug,
 	invites,
-	assignableRoles,
+	grantableRoles,
 	run,
 }: {
 	orgSlug: string;
 	invites: InviteRow[];
-	assignableRoles: MemberRole[];
+	grantableRoles: RoleRow[];
 	run: Run;
 }) {
 	const create = useServerFn(createInviteFn);
 	const revoke = useServerFn(revokeInvite);
 	const id = useId();
-	const [role, setRole] = useState<MemberRole>(
-		assignableRoles.includes("staff")
-			? "staff"
-			: (assignableRoles[0] ?? "staff"),
+	const [roleId, setRoleId] = useState(
+		grantableRoles.find((role) => role.name === "スタッフ")?.id ??
+			grantableRoles[0]?.id ??
+			"",
 	);
 	const [unlimited, setUnlimited] = useState(false);
 	const [maxUses, setMaxUses] = useState(INVITE_DEFAULT_MAX_USES);
@@ -286,7 +527,7 @@ function InvitesSection({
 			create({
 				data: {
 					orgSlug,
-					role,
+					roleId,
 					maxUses: unlimited ? null : maxUses,
 					expiresInDays,
 				},
@@ -294,11 +535,10 @@ function InvitesSection({
 		);
 	};
 
-	const joinUrl = (code: string) =>
-		`${window.location.origin}/join?code=${encodeURIComponent(code)}`;
-
 	const copy = async (code: string) => {
-		await navigator.clipboard.writeText(joinUrl(code));
+		await navigator.clipboard.writeText(
+			`${window.location.origin}/join?code=${encodeURIComponent(code)}`,
+		);
 		setCopied(code);
 	};
 
@@ -312,16 +552,16 @@ function InvitesSection({
 				className="flex flex-wrap items-end gap-3 rounded border p-3 text-sm"
 			>
 				<label className="flex flex-col gap-1" htmlFor={`${id}-role`}>
-					参加したときの役割
+					参加したときに付けるロール
 					<select
 						id={`${id}-role`}
-						value={role}
-						onChange={(event) => setRole(event.target.value as MemberRole)}
+						value={roleId}
+						onChange={(event) => setRoleId(event.target.value)}
 						className={control}
 					>
-						{assignableRoles.map((r) => (
-							<option key={r} value={r}>
-								{ROLE_LABELS[r]}
+						{grantableRoles.map((role) => (
+							<option key={role.id} value={role.id}>
+								{role.name}
 							</option>
 						))}
 					</select>
@@ -359,7 +599,7 @@ function InvitesSection({
 						className={`${control} w-24`}
 					/>
 				</label>
-				<button type="submit" className={primary}>
+				<button type="submit" disabled={!roleId} className={primary}>
 					発行する
 				</button>
 			</form>
@@ -379,7 +619,7 @@ function InvitesSection({
 								>
 									{formatInviteCode(invite.code)}
 								</span>
-								<span>{ROLE_LABELS[invite.role]}</span>
+								<RoleChip role={invite.role} />
 								<span className="text-gray-600">
 									{invite.uses}/{invite.maxUses ?? "∞"} 回
 								</span>

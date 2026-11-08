@@ -4,7 +4,6 @@ import {
 	notFound,
 	Outlet,
 } from "@tanstack/react-router";
-import { ROLE_LABELS } from "../../../../../lib/org/permissions";
 import { getTenantContext } from "../../../../../server/shifts.functions";
 
 // テナントの画面の土台。テナントがその団体にない・所属していなければ「見つかりません」
@@ -65,7 +64,9 @@ function TenantLayout() {
 					イベント（{tenantContext.events.length}）
 				</Link>
 				<span className="ml-auto text-xs text-gray-600">
-					このテナントでの権限：{ROLE_LABELS[tenantContext.role]}
+					{tenantContext.canEditShifts
+						? "このテナントのシフトを編集できます"
+						: "閲覧のみ"}
 				</span>
 			</nav>
 			<Outlet />

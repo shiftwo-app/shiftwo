@@ -4,7 +4,7 @@ import {
 	notFound,
 	Outlet,
 } from "@tanstack/react-router";
-import { ROLE_LABELS } from "../../../lib/org/permissions";
+import { memberRoleLabel } from "../../../lib/org/member-label";
 import { getOrganization } from "../../../server/org.functions";
 
 // 団体の画面の土台。ここで一度だけメンバーかを確かめ、所属していなければ「見つかりません」にする
@@ -62,7 +62,7 @@ function OrgLayout() {
 					設定・メンバー
 				</Link>
 				<span className="ml-auto text-xs text-gray-600">
-					{member.displayName}（団体では{ROLE_LABELS[member.role]}）
+					{member.displayName}（{memberRoleLabel(member)}）
 				</span>
 			</nav>
 			<Outlet />

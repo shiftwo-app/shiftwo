@@ -1,6 +1,6 @@
 // シフトの API（日常シフト /api/o/<団体>/t/<テナント>/shifts と、イベント .../e/<イベント>/shifts）の handler。
 // ログインしていなければ 401、所属していない・テナントやイベントがない → 404、権限が足りない → 403
-import type { OrgAction } from "../lib/org/permissions";
+import type { Permission } from "../lib/org/permissions";
 import type { ShiftStatus } from "../types";
 import { orgAccessErrorResponse } from "./org-access.server";
 import { requireScopeAccess, type ScopeAccess } from "./scope-access.server";
@@ -22,7 +22,7 @@ type Ctx<P> = { request: Request; params: P };
 
 const withScope =
 	<P extends ScopeRouteParams>(
-		action: OrgAction,
+		permission: Permission,
 		handler: (
 			ctx: Ctx<P> & { access: ScopeAccess },
 		) => Response | Promise<Response>,
@@ -33,7 +33,7 @@ const withScope =
 			return Response.json({ message: "Unauthorized" }, { status: 401 });
 		let access: ScopeAccess;
 		try {
-			access = await requireScopeAccess(user.id, ctx.params, action);
+			access = await requireScopeAccess(user.id, ctx.params, permission);
 		} catch (error) {
 			return orgAccessErrorResponse(error);
 		}
@@ -48,7 +48,7 @@ const idsOf = (access: ScopeAccess) => ({
 
 const writeAccessOf = (access: ScopeAccess): ShiftWriteAccess => ({
 	...idsOf(access),
-	role: access.role,
+	permissions: access.permissions,
 	timeUnitMinutes: access.timeUnitMinutes,
 });
 

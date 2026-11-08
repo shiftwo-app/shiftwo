@@ -4,7 +4,6 @@ import {
 	notFound,
 	Outlet,
 } from "@tanstack/react-router";
-import { ROLE_LABELS } from "../../../../../../../lib/org/permissions";
 import { getEventContext } from "../../../../../../../server/shifts.functions";
 
 // イベントの画面の土台。イベントがそのテナントにない・所属していなければ「見つかりません」
@@ -51,8 +50,10 @@ function EventLayout() {
 					下書き
 				</Link>
 				<span className="ml-auto text-xs text-gray-600">
-					このイベントでの権限：{ROLE_LABELS[eventContext.role]}・時間粒度{" "}
-					{eventContext.timeUnitMinutes} 分
+					{eventContext.canEditShifts
+						? "このイベントのシフトを編集できます"
+						: "閲覧のみ"}
+					・時間粒度 {eventContext.timeUnitMinutes} 分
 				</span>
 			</nav>
 			<Outlet />

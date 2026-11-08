@@ -1,4 +1,6 @@
-// 団体の作成・招待コード・メンバーの操作（サーバー専用）。権限の確認は呼ぶ側（org.functions.ts）で行う
+// 団体の作成・ロール・招待コード・メンバーの操作（サーバー専用）。
+// 「権限を持っているか」の確認は呼ぶ側（org.functions.ts の requireOrgAccess）で行い、
+// ここでは権限の乗っ取りを防ぐ決まり（自分が持っている権限の範囲でしか、ロールに付けたり人に渡したりできない）を確かめる
 import {
 	generateInviteCode,
 	INVITE_DEFAULT_EXPIRES_DAYS,
@@ -7,7 +9,13 @@ import {
 	isWellFormedInviteCode,
 	normalizeInviteCode,
 } from "../lib/org/invite-code";
-import type { MemberRole } from "../lib/org/permissions";
+import {
+	canGrant,
+	canInviteWith,
+	DEFAULT_ROLES,
+	type Permission,
+	parsePermissions,
+} from "../lib/org/permissions";
 import { isPrismaError, PRISMA_ERROR } from "../lib/prisma-errors";
 import { prisma } from "../lib/prisma.server";
 
@@ -17,11 +25,27 @@ export const DEFAULT_TIME_UNIT_MINUTES = 15;
 /** 団体を作ったときに 1 つ作るテナントの URL 名 */
 export const DEFAULT_TENANT_SLUG = "main";
 
-export type CreateOrganizationResult =
-	| { ok: true; slug: string }
-	| { ok: false; errors: string[] };
+/** 操作をする人（requireOrgAccess で確かめた所属） */
+export type Actor = {
+	memberId: string;
+	isOwner: boolean;
+	permissions: Permission[];
+};
 
-/** 団体を作り、作った人をオーナーにする。テナントも 1 つ作る（店舗が 1 つなら、そのまま使える） */
+export type Result<T = object> =
+	| ({ ok: true } & T)
+	| { ok: false; errors: string[] };
+const fail = (...errors: string[]): { ok: false; errors: string[] } => ({
+	ok: false,
+	errors,
+});
+
+const FORBIDDEN_GRANT =
+	"自分が持っていない権限を含むロールは、付けたり渡したりできません";
+
+export type CreateOrganizationResult = Result<{ slug: string }>;
+
+/** 団体を作り、作った人をオーナーにする。最初のロール（マネージャー・リーダー・スタッフ・ゲスト）とテナントも作る */
 export const createOrganization = async (input: {
 	userId: string;
 	name: string;
@@ -36,9 +60,17 @@ export const createOrganization = async (input: {
 				members: {
 					create: {
 						userId: input.userId,
-						role: "owner",
+						isOwner: true,
 						displayName: input.displayName,
 					},
+				},
+				roles: {
+					create: DEFAULT_ROLES.map((role, index) => ({
+						name: role.name,
+						color: role.color,
+						permissions: [...role.permissions],
+						sortOrder: index,
+					})),
 				},
 				tenants: {
 					create: {
@@ -53,34 +85,201 @@ export const createOrganization = async (input: {
 		return { ok: true, slug: organization.slug };
 	} catch (error) {
 		if (isPrismaError(error, PRISMA_ERROR.uniqueViolation)) {
-			return { ok: false, errors: ["この URL はすでに使われています"] };
+			return fail("この URL はすでに使われています");
 		}
 		throw error;
 	}
 };
 
-/** 招待コードを発行する。コードが重なったら作り直す */
+/** 団体のロールを探す（ほかの団体のロールは見つからない） */
+const findRole = (organizationId: string, roleId: string) =>
+	prisma.orgRole.findFirst({
+		where: { id: roleId, organizationId },
+		select: { id: true, name: true, permissions: true, updatedAt: true },
+	});
+
+/** 確かめたあとに、ほかの人が同じロールを変えていたとき */
+const CONCURRENT_CHANGE =
+	"ほかの人が同時にこのロールを変えました。画面を読み直して、もう一度試してください";
+
+// ---- ロール ----
+
+export type RoleInput = {
+	name: string;
+	color: string;
+	permissions: Permission[];
+};
+
+/** ロールを作る。自分が持っていない権限は付けられない */
+export const createRole = async (
+	organizationId: string,
+	actor: Actor,
+	input: RoleInput,
+): Promise<Result<{ id: string }>> => {
+	if (!canGrant(actor.permissions, input.permissions))
+		return fail(FORBIDDEN_GRANT);
+	const last = await prisma.orgRole.aggregate({
+		where: { organizationId },
+		_max: { sortOrder: true },
+	});
+	const role = await prisma.orgRole.create({
+		data: {
+			organizationId,
+			name: input.name,
+			color: input.color,
+			permissions: input.permissions,
+			sortOrder: (last._max.sortOrder ?? -1) + 1,
+		},
+		select: { id: true },
+	});
+	return { ok: true, id: role.id };
+};
+
+/** ロールを変える。自分より強いロール（自分にない権限を含む）は変えられず、自分にない権限も付けられない */
+export const updateRole = async (
+	organizationId: string,
+	actor: Actor,
+	roleId: string,
+	input: RoleInput,
+): Promise<Result> => {
+	const role = await findRole(organizationId, roleId);
+	if (!role) return fail("ロールが見つかりません");
+	if (!canGrant(actor.permissions, parsePermissions(role.permissions))) {
+		return fail("自分が持っていない権限を含むロールは変えられません");
+	}
+	if (!canGrant(actor.permissions, input.permissions))
+		return fail(FORBIDDEN_GRANT);
+	// 確かめたときのまま（updatedAt が同じ）のときだけ書く。途中でほかの人が権限を足していたら書かない
+	const updated = await prisma.orgRole.updateMany({
+		where: { id: role.id, organizationId, updatedAt: role.updatedAt },
+		data: {
+			name: input.name,
+			color: input.color,
+			permissions: input.permissions,
+		},
+	});
+	if (updated.count === 0) return fail(CONCURRENT_CHANGE);
+	return { ok: true };
+};
+
+/** ロールを消す（付いていたメンバー・割り当て・招待コードからも外れる）。自分より強いロールは消せない */
+export const deleteRole = async (
+	organizationId: string,
+	actor: Actor,
+	roleId: string,
+): Promise<Result> => {
+	const role = await findRole(organizationId, roleId);
+	if (!role) return fail("ロールが見つかりません");
+	if (!canGrant(actor.permissions, parsePermissions(role.permissions))) {
+		return fail("自分が持っていない権限を含むロールは消せません");
+	}
+	// 確かめたときのまま（updatedAt が同じ）のときだけ消す
+	const deleted = await prisma.orgRole.deleteMany({
+		where: { id: role.id, organizationId, updatedAt: role.updatedAt },
+	});
+	if (deleted.count === 0) return fail(CONCURRENT_CHANGE);
+	return { ok: true };
+};
+
+// ---- メンバーのロール ----
+
+/**
+ * メンバーのロールを付け直す。付ける・外すロールはどれも、自分が持っている権限の範囲のものだけ
+ * （自分より強いロールを付けたり、外したりはできない）。オーナーは対象にできない
+ */
+export const setMemberRoles = async (
+	organizationId: string,
+	actor: Actor,
+	memberId: string,
+	roleIds: string[],
+): Promise<Result> =>
+	// 読む・確かめる・書くを 1 つのトランザクションで行い、書くのは確かめたロールだけにする
+	// （確かめたあとに別の人が付けたロールを、確かめないまま外してしまわないように）
+	prisma.$transaction(async (tx) => {
+		const member = await tx.member.findFirst({
+			where: { id: memberId, organizationId },
+			select: { id: true, isOwner: true, roles: { select: { roleId: true } } },
+		});
+		if (!member) return fail("メンバーが見つかりません");
+		if (member.isOwner) {
+			return fail(
+				"オーナーのロールは変えられません（オーナーは常に全権限です）",
+			);
+		}
+
+		const wanted = [...new Set(roleIds)];
+		const found = await tx.orgRole.count({
+			where: { organizationId, id: { in: wanted } },
+		});
+		if (found !== wanted.length) return fail("ロールが見つかりません");
+
+		const current = member.roles.map((r) => r.roleId);
+		const toAdd = wanted.filter((id) => !current.includes(id));
+		const toRemove = current.filter((id) => !wanted.includes(id));
+		const changedRoles = await tx.orgRole.findMany({
+			where: { organizationId, id: { in: [...toAdd, ...toRemove] } },
+			select: { permissions: true },
+		});
+		if (
+			changedRoles.some(
+				(r) => !canGrant(actor.permissions, parsePermissions(r.permissions)),
+			)
+		) {
+			return fail(FORBIDDEN_GRANT);
+		}
+
+		// 外すのは、上で確かめたロールだけ
+		await tx.memberRoleAssignment.deleteMany({
+			where: { memberId: member.id, roleId: { in: toRemove } },
+		});
+		for (const roleId of toAdd) {
+			await tx.memberRoleAssignment.upsert({
+				where: { memberId_roleId: { memberId: member.id, roleId } },
+				update: {},
+				create: { memberId: member.id, roleId },
+			});
+		}
+		return { ok: true } as const;
+	});
+
+// ---- 招待コード ----
+
+/**
+ * 招待コードを発行する。付けるロールは、自分が持っている権限の範囲のものだけ
+ * （「ゲストを招待する」がある人は、Discord の条件の免除を含むロールも）。コードが重なったら作り直す
+ */
 export const createInvite = async (input: {
 	organizationId: string;
+	actor: Actor;
 	createdById: string;
-	role: MemberRole;
+	roleId: string;
 	maxUses: number | null;
 	expiresInDays: number;
 	now?: Date;
-}) => {
+}): Promise<Result<{ code: string }>> => {
+	const role = await findRole(input.organizationId, input.roleId);
+	if (!role) return fail("ロールが見つかりません");
+	// 招待で渡せるのは、自分が持っている権限の範囲のロールだけ（「ゲストを招待する」がある人は、Discord の条件の免除も渡せる）
+	if (
+		!canInviteWith(input.actor.permissions, parsePermissions(role.permissions))
+	) {
+		return fail(FORBIDDEN_GRANT);
+	}
 	const now = input.now ?? new Date();
 	for (let attempt = 0; attempt < 5; attempt++) {
 		try {
-			return await prisma.invite.create({
+			const invite = await prisma.invite.create({
 				data: {
 					organizationId: input.organizationId,
 					createdById: input.createdById,
 					code: generateInviteCode(),
-					role: input.role,
+					roleId: role.id,
 					maxUses: input.maxUses,
 					expiresAt: new Date(now.getTime() + input.expiresInDays * DAY_MS),
 				},
+				select: { code: true },
 			});
+			return { ok: true, code: invite.code };
 		} catch (error) {
 			if (!isPrismaError(error, PRISMA_ERROR.uniqueViolation)) throw error;
 		}
@@ -93,12 +292,12 @@ export type InvitePreview =
 			ok: true;
 			organizationName: string;
 			organizationSlug: string;
-			role: MemberRole;
+			roleName: string;
 			alreadyMember: boolean;
 	  }
 	| { ok: false; reason: InviteUnusableReason | "not_found" };
 
-/** 招待コードを確かめる（参加する前に、どの団体かを見せるため） */
+/** 招待コードを確かめる（参加する前に、どの団体に、どのロールで参加するかを見せるため） */
 export const previewInvite = async (
 	userId: string,
 	rawCode: string,
@@ -108,7 +307,10 @@ export const previewInvite = async (
 	if (!isWellFormedInviteCode(code)) return { ok: false, reason: "not_found" };
 	const invite = await prisma.invite.findUnique({
 		where: { code },
-		include: { organization: { select: { id: true, name: true, slug: true } } },
+		include: {
+			organization: { select: { id: true, name: true, slug: true } },
+			role: { select: { name: true } },
+		},
 	});
 	if (!invite) return { ok: false, reason: "not_found" };
 	const reason = inviteUnusableReason(invite, now);
@@ -120,7 +322,7 @@ export const previewInvite = async (
 		ok: true,
 		organizationName: invite.organization.name,
 		organizationSlug: invite.organization.slug,
-		role: invite.role,
+		roleName: invite.role.name,
 		alreadyMember: existing > 0,
 	};
 };
@@ -133,8 +335,8 @@ export type AcceptInviteResult =
 	  };
 
 /**
- * 招待コードで団体に参加する。使った回数は、上限を超えないことを条件に 1 つずつ増やす
- * （同時に使われても、上限を超えて参加させない）
+ * 招待コードで団体に参加し、招待コードのロールを付ける。使った回数は、上限を超えないことを条件に
+ * 1 つずつ増やす（同時に使われても、上限を超えて参加させない）
  */
 export const acceptInvite = async (input: {
 	userId: string;
@@ -178,8 +380,8 @@ export const acceptInvite = async (input: {
 			data: {
 				organizationId: invite.organizationId,
 				userId: input.userId,
-				role: invite.role,
 				displayName: input.displayName,
+				roles: { create: { roleId: invite.roleId } },
 			},
 		});
 		return { ok: true as const, slug: invite.organization.slug };

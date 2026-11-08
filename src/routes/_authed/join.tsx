@@ -7,7 +7,6 @@ import {
 	INVITE_UNUSABLE_MESSAGES,
 	type InviteUnusableReason,
 } from "../../lib/org/invite-code";
-import { ROLE_LABELS } from "../../lib/org/permissions";
 import { NAME_MAX_LENGTH } from "../../lib/profile";
 import { acceptInviteFn, previewInviteFn } from "../../server/org.functions";
 import type { InvitePreview } from "../../server/org.server";
@@ -116,8 +115,8 @@ function JoinPage() {
 			) : (
 				<form onSubmit={join} className="space-y-3">
 					<p className="text-sm">
-						「<strong>{found.organizationName}</strong>」に
-						{ROLE_LABELS[found.role]}として参加します（招待コード{" "}
+						「<strong>{found.organizationName}</strong>」に ロール「
+						{found.roleName}」で参加します（招待コード{" "}
 						{formatInviteCode(code.toUpperCase().replace(/[\s-]/g, ""))}）。
 					</p>
 					<label htmlFor={`${id}-display`} className="block text-sm">
