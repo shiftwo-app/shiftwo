@@ -302,6 +302,51 @@ describe.skipIf(!hasDatabase)("スタッフの希望（DB）", async () => {
 		expect(effective.get(ownerStaffId)?.source).toBeNull();
 	});
 
+	it("CSV で一括登録できる（確かめるだけでは登録しない・問題があれば何も登録しない・扱える人だけ）", async () => {
+		const ownerContext = await contextOf(owner.id, scopes.event());
+		const csv = `スタッフ,休憩,持ち場,メモ\nスタッフさん,2026-11-20 13:00-13:30,受付,CSV から\n`;
+		const checked = await preferences.importPreferences(
+			ownerContext,
+			csv,
+			false,
+		);
+		expect(checked).toMatchObject({ ok: true, applied: false });
+		expect(
+			await prisma.staffPreference.count({
+				where: {
+					staffId: myStaffId,
+					scopeKey: `e:${event.id}`,
+					memo: "CSV から",
+				},
+			}),
+		).toBe(0);
+
+		const broken = `${csv}だれか,,,\n`;
+		expect(
+			await preferences.importPreferences(ownerContext, broken, true),
+		).toMatchObject({ ok: true, applied: false });
+
+		expect(
+			await preferences.importPreferences(ownerContext, csv, true),
+		).toMatchObject({ ok: true, applied: true, count: 1 });
+		const saved = await preferences.getPreferenceOf(ownerContext, {
+			id: myStaffId,
+			name: "",
+		});
+		expect(saved.own).toMatchObject({
+			memo: "CSV から",
+			positionIds: [eventPositionId],
+		});
+
+		await expect(
+			preferences.importPreferences(
+				await contextOf(staffUser.id, scopes.event()),
+				csv,
+				true,
+			),
+		).rejects.toMatchObject({ status: 403 });
+	});
+
 	it("ほかの団体の人は、どの単位にも入れない", async () => {
 		const outsider = await createUser("p-outsider");
 		await expect(contextOf(outsider.id, scopes.org)).rejects.toMatchObject({

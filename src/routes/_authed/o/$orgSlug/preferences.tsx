@@ -4,6 +4,7 @@ import { useId, useState } from "react";
 import type { FormEvent } from "react";
 import ErrorList from "../../../../components/manage/ErrorList";
 import { useMutationRunner } from "../../../../components/manage/useMutationRunner";
+import PreferenceCsvImport from "../../../../components/preferences/PreferenceCsvImport";
 import PreferenceForm from "../../../../components/preferences/PreferenceForm";
 import Alert from "../../../../components/ui/Alert";
 import Badge from "../../../../components/ui/Badge";
@@ -241,6 +242,15 @@ function PreferencesPage() {
 							/>
 						))}
 					</ul>
+					<PreferenceCsvImport
+						orgSlug={params.orgSlug}
+						scope={scope}
+						example={{
+							staffName: page.all[0]?.staff.name ?? "",
+							date: period?.start ?? Date.now(),
+							positionName: page.positions[0]?.name,
+						}}
+					/>
 				</Section>
 			)}
 		</main>

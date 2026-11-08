@@ -18,6 +18,10 @@ import {
 	type TimeRangeMs,
 	validatePreference,
 } from "../lib/preferences";
+import {
+	parsePreferenceCsv,
+	type PreferenceCsvRow,
+} from "../lib/preferences-csv";
 import { prisma } from "../lib/prisma.server";
 import {
 	findMembership,
@@ -534,4 +538,63 @@ export const listPreferenceScopes = async (
 				]
 			: [],
 	);
+};
+
+/** CSV の一括登録の、1 行分の結果（画面に出す形） */
+export type PreferenceCsvPreviewRow = Omit<PreferenceCsvRow, "input">;
+
+/**
+ * CSV で、この単位の希望をまとめて登録する（全員の希望を扱える人だけ）。
+ * apply が false なら確かめるだけ。true でも、どれかの行に問題があれば何も登録しない
+ * （サーバーで読み直して確かめる。画面での確かめは信じない）
+ */
+export const importPreferences = async (
+	context: PreferenceContext,
+	csv: string,
+	apply: boolean,
+	now = new Date(),
+): Promise<
+	| {
+			ok: true;
+			applied: boolean;
+			count: number;
+			rows: PreferenceCsvPreviewRow[];
+	  }
+	| Fail
+> => {
+	if (!context.canManageAll) throw new OrgAccessError(403, "Forbidden");
+	const [staffs, positions] = await Promise.all([
+		prisma.staff.findMany({
+			where: { organizationId: context.ids.organizationId },
+			select: { id: true, name: true },
+		}),
+		selectablePositions(context),
+	]);
+	const parsed = parsePreferenceCsv(
+		csv,
+		{
+			staffs,
+			positions,
+			positionsEnabled: context.positionsEnabled,
+			timeUnitMinutes: context.timeUnitMinutes,
+			period: context.period
+				? {
+						start: context.period.start.getTime(),
+						end: context.period.end.getTime(),
+					}
+				: null,
+		},
+		serverT,
+	);
+	if (!parsed.ok) return parsed;
+	const rows = parsed.rows.map(({ input: _input, ...row }) => row);
+	const ready = parsed.rows.every((row) => row.input && row.staffId);
+	if (!apply || !ready) {
+		return { ok: true, applied: false, count: 0, rows };
+	}
+	for (const row of parsed.rows) {
+		const result = await savePreference(context, row.staffId!, row.input, now);
+		if (!result.ok) return result;
+	}
+	return { ok: true, applied: true, count: parsed.rows.length, rows };
 };
