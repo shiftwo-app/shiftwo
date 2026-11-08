@@ -1,6 +1,6 @@
 // メールの送り方。送り先（transport）は MAIL_TRANSPORT で選ぶ。
-// console（開発用）はどこでも使える。cloudflare（Cloudflare Email Service）は Workers でだけ使える
-// （中身は #platform にある）。SMTP はセルフホストの PR で足す
+// console（開発用）はどこでも使える。smtp は Node（セルフホスト）で使える。cloudflare（Cloudflare Email Service）は
+// Workers では binding で、Node では REST API で送る（中身は #platform にある）
 import { platform } from "#platform";
 
 export type Mail = {
@@ -23,7 +23,7 @@ const consoleTransport: MailTransport = {
 	},
 };
 
-export const MAIL_TRANSPORTS = ["console", "cloudflare"] as const;
+export const MAIL_TRANSPORTS = ["console", "smtp", "cloudflare"] as const;
 export type MailTransportName = (typeof MAIL_TRANSPORTS)[number];
 
 /** MAIL_TRANSPORT を読む。未設定なら、開発中は console、本番ではエラー（送れないまま動かさない） */

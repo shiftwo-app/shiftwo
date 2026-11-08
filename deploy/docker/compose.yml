@@ -1,0 +1,57 @@
+# セルフホスト（Docker）。このディレクトリで:
+#
+#   cp env.example .env   # 値を書き換える
+#   docker compose up -d --build
+#
+# migrate がマイグレーションを当て終わってから app が起動する。更新するときも同じコマンドでよい
+name: shiftwo
+
+services:
+  db:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: shiftwo
+      POSTGRES_USER: shiftwo
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?.env に POSTGRES_PASSWORD を書いてください}
+    volumes:
+      - db:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U shiftwo -d shiftwo"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  migrate:
+    build:
+      context: ../..
+      target: build
+    command: ["pnpm", "exec", "prisma", "migrate", "deploy"]
+    environment:
+      DATABASE_URL: postgresql://shiftwo:${POSTGRES_PASSWORD}@db:5432/shiftwo
+    depends_on:
+      db:
+        condition: service_healthy
+
+  app:
+    build:
+      context: ../..
+      target: runtime
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      DATABASE_URL: postgresql://shiftwo:${POSTGRES_PASSWORD}@db:5432/shiftwo
+      # コンテナの中では常に 3000 番で待ち受ける（.env の PORT は外に公開するポート）
+      PORT: "3000"
+    ports:
+      - "${PORT:-3000}:3000"
+    volumes:
+      # アップロードしたアイコン（STORAGE_DIR）
+      - uploads:/data/uploads
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+
+volumes:
+  db:
+  uploads:

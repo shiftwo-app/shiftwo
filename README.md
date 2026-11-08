@@ -9,7 +9,7 @@
 - [TanStack Start](https://tanstack.com/start)（React 19・TanStack Router）
 - [Vite+](https://viteplus.dev/)（`vp`。Vite・Oxlint・Oxfmt・Vitest をまとめたツールチェーン）
 - [Prisma](https://www.prisma.io/) + PostgreSQL（Cloudflare では D1 か Hyperdrive 経由の Postgres）
-- Node.js でも Cloudflare Workers でも動きます（[Cloudflare で動かす](#cloudflare-で動かす)）
+- Node.js（[セルフホスト](#セルフホストdocker)）でも Cloudflare Workers（[Cloudflare で動かす](#cloudflare-で動かす)）でも動きます
 - Tailwind CSS v4
 - Node.js 26 系 LTS・pnpm 12
 
@@ -68,7 +68,7 @@ pnpm dev
 
 ログインは [Better Auth](https://www.better-auth.com/) で、次の 2 つの方法があります。
 
-- **メール**：確認コードと、押すだけでログインできるリンクを 1 通のメールで送ります（10 分で使えなくなります）。開発中（`MAIL_TRANSPORT` が未設定）はメールを送らず、dev サーバーのターミナルに出します
+- **メール**：確認コードと、押すだけでログインできるリンクを 1 通のメールで送ります（10 分で使えなくなります）。開発中（`MAIL_TRANSPORT` が未設定）はメールを送らず、dev サーバーのターミナルに出します。本番では `MAIL_TRANSPORT` を `smtp` か `cloudflare`（Cloudflare Email Service）にします
 - **Discord**：`DISCORD_CLIENT_ID` と `DISCORD_CLIENT_SECRET` の両方を設定したときだけ、ログイン画面にボタンが出ます。[Discord Developer Portal](https://discord.com/developers/applications) でアプリを作り、OAuth2 の Redirects に `<BETTER_AUTH_URL>/api/auth/callback/discord` を登録してください。Discord でメールアドレスを確認していないアカウントではログインできません
 
 はじめての人は、どちらの方法でもアカウントが作られ、`/welcome` で名前を決めてから使い始めます（新規登録は `/signup`）。
@@ -157,6 +157,30 @@ DB は Postgres（自前・Docker・Cloudflare Hyperdrive）と SQLite（Cloudfl
 - どちらの DB を使うかは `DATABASE_PROVIDER`（`postgresql` か `sqlite`、既定は `postgresql`）で選びます
 - モデルを変えてクライアントを作り直したら、dev サーバーを再起動してください（動いている dev サーバーは古いクライアントを持ったままになります）
 - `.env` はアプリ・Prisma CLI・seed のどれからも `src/lib/load-env.ts` で読み込み、すでに設定されている環境変数は上書きしません
+
+## セルフホスト（Docker）
+
+自分のサーバーで、Docker で動かせます（アプリ・Postgres・マイグレーション）。設定は `deploy/docker/` にあります。
+
+```bash
+cd deploy/docker
+cp env.example .env      # POSTGRES_PASSWORD・BETTER_AUTH_SECRET・BETTER_AUTH_URL・メールの設定を書く
+docker compose up -d --build
+```
+
+- `migrate` が `prisma migrate deploy` を流し終えてから `app` が起動します。更新するときも、`git pull` のあとに同じコマンドを流せば済みます
+- データは volume に残ります（Postgres は `db`、アップロードしたアイコンは `uploads`）。バックアップするときは、この 2 つを取ります
+- 公開するポートは `.env` の `PORT`（既定は 3000）です。HTTPS はリバースプロキシ（Caddy・nginx など）で付け、`BETTER_AUTH_URL` には外から見た URL を書きます
+- このディレクトリの `.env` は、開発用のリポジトリ直下の `.env` とは別のものです
+
+### メールの送り方
+
+| `MAIL_TRANSPORT` | 送り先                               | 設定                                                      |
+| ---------------- | ------------------------------------ | --------------------------------------------------------- |
+| `smtp`           | ふつうのメールサーバー               | `SMTP_URL`（例：`smtp://user:pass@smtp.example.com:587`） |
+| `cloudflare`     | Cloudflare Email Service（REST API） | `CLOUDFLARE_ACCOUNT_ID`・`CLOUDFLARE_EMAIL_API_TOKEN`     |
+
+どちらも、送り主は `MAIL_FROM`（と `MAIL_FROM_NAME`）です。`cloudflare` のときは、Email Sending に登録したドメインのアドレスにし、API トークンには「Email Sending: Edit」の権限を付けます。Cloudflare の SMTP（`smtps://api_token:<トークン>@smtp.mx.cloudflare.net:465`）を `smtp` で使うこともできます。
 
 ## Cloudflare で動かす
 
