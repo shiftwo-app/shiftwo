@@ -26,4 +26,6 @@ export default {
 	menuClose: "메뉴 닫기",
 	menuTitle: "메뉴",
 	menuAccount: "계정",
+	sidebarPin: "열어 두기",
+	sidebarUnpin: "접기",
 } satisfies Messages<typeof ja>;

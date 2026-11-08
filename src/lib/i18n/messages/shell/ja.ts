@@ -24,4 +24,6 @@ export default {
 	menuClose: "メニューを閉じる",
 	menuTitle: "メニュー",
 	menuAccount: "アカウント",
+	sidebarPin: "開いたままにする",
+	sidebarUnpin: "縮める",
 } as const;

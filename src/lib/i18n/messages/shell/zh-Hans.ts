@@ -26,4 +26,6 @@ export default {
 	menuClose: "关闭菜单",
 	menuTitle: "菜单",
 	menuAccount: "账户",
+	sidebarPin: "保持展开",
+	sidebarUnpin: "收起",
 } satisfies Messages<typeof ja>;

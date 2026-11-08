@@ -26,4 +26,6 @@ export default {
 	menuClose: "Close menu",
 	menuTitle: "Menu",
 	menuAccount: "Account",
+	sidebarPin: "Keep open",
+	sidebarUnpin: "Collapse",
 } satisfies Messages<typeof ja>;
