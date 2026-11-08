@@ -11,6 +11,9 @@ const cloudflareBuild = process.env.CLOUDFLARE === "1";
 // wrangler.jsonc の DATABASE_PROVIDER と同じにする（食い違うと起動時に止まる）
 const cloudflareDatabase =
 	process.env.CLOUDFLARE_DATABASE === "postgresql" ? "hyperdrive" : "d1";
+// BUNDLE_SERVER=1 のとき（Docker のイメージを作るとき）は、Node 向けの build でも、
+// サーバーの依存をすべて dist/server に入れる。動かすときに node_modules を持たなくてよくなり、イメージが小さくなる
+const bundleServer = !cloudflareBuild && process.env.BUNDLE_SERVER === "1";
 const src = (path: string) =>
 	fileURLToPath(new URL(`./src/${path}`, import.meta.url));
 
@@ -41,6 +44,21 @@ export default defineConfig({
 	server: {
 		port: 3000,
 	},
+	...(bundleServer
+		? {
+				ssr: {
+					noExternal: true,
+					// Better Auth（kysely）が、使うときだけ読む DB のドライバ。シフトヲは使わないので入れない
+					external: [
+						"better-sqlite3",
+						"mysql2",
+						"tedious",
+						"tarn",
+						"pg-native",
+					],
+				},
+			}
+		: {}),
 	resolve: {
 		tsconfigPaths: true,
 		// 動かす場所で変わる部分（src/platform/types.ts）を、Workers 用に差し替える
