@@ -13,8 +13,10 @@ import { useT } from "../lib/i18n/react";
 import { getSession } from "../server/session.functions";
 
 // ログインが必要な画面のまとまり。ここで一度だけログインを確かめ、していなければログイン画面へ
+const LOCALE_SYNC_KEY = "shiftwo-locale-synced";
+
 export const Route = createFileRoute("/_authed")({
-	beforeLoad: async ({ location }) => {
+	beforeLoad: async ({ location, context }) => {
 		const user = await getSession();
 		if (!user) {
 			throw redirect({ to: "/login", search: { redirect: location.href } });
@@ -22,6 +24,17 @@ export const Route = createFileRoute("/_authed")({
 		// はじめての人は、名前を決めてから
 		if (!user.onboarded) {
 			throw redirect({ to: "/welcome", search: { redirect: location.href } });
+		}
+		// アカウントで選んだ言語と、いま出している言語が違えば（ほかのブラウザで選んだ言語でログインした直後など）、
+		// getSession がそろえた Cookie で読み直す。読み直しは 1 回だけ（Cookie を書けないときに繰り返さない）
+		if (
+			typeof window !== "undefined" &&
+			user.locale &&
+			user.locale !== context.locale &&
+			sessionStorage.getItem(LOCALE_SYNC_KEY) !== user.locale
+		) {
+			sessionStorage.setItem(LOCALE_SYNC_KEY, user.locale);
+			window.location.reload();
 		}
 		return { user };
 	},

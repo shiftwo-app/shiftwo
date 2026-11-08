@@ -29,4 +29,8 @@ export default {
 	discordLink: "Discord と連携する",
 	nameRequired: "名前を入力してください",
 	nameTooLong: "名前は {max} 文字までにしてください",
+	languageTitle: "言語",
+	languageDescription:
+		"画面と、あなたに届くメール（ログインのメールなど）の言語です。",
+	languageAuto: "ブラウザに合わせる",
 } as const;

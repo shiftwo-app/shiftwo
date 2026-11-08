@@ -30,6 +30,8 @@ export const auth = betterAuth({
 		additionalFields: {
 			// はじめての設定（/welcome）を済ませた日時。クライアントからは書けない（input: false）
 			onboardedAt: { type: "date", required: false, input: false },
+			// 本人が選んだ言語（アカウントの設定で変える）。クライアントからは書けない
+			locale: { type: "string", required: false, input: false },
 		},
 	},
 	socialProviders: discord
@@ -95,12 +97,20 @@ export const auth = betterAuth({
 					email,
 					otp,
 				);
-				// 文面は、ログインのメールを頼んだリクエストの言語にする（送るのは応答のあとになるので、先に決める）
-				const t = translatorFor(getRequestLocale());
-				// 送るのを待つと、届く宛先かどうかが応答時間でわかってしまうので待たない
+				// 文面は、受け取る人が選んだ言語、なければログインのメールを頼んだリクエストの言語にする
+				// （リクエストの言語は、送るのが応答のあとになるので先に決めておく）
+				const requestLocale = getRequestLocale();
+				// 送るのを待つと、届く宛先かどうかが応答時間でわかってしまうので待たない。
+				// 受け取る人の言語を調べるのも、応答のあと（送る処理の中）で行う
 				// （Workers では waitUntil に載せて、応答を返したあとも送り終えるまで続けさせる）
-				platform.runInBackground("ログインのメールを送れませんでした", () =>
-					sendMail(buildLoginEmail({ email, otp, link, t })),
+				platform.runInBackground(
+					"ログインのメールを送れませんでした",
+					async () => {
+						const { localeForEmail } =
+							await import("../server/user-locale.server");
+						const t = translatorFor(await localeForEmail(email, requestLocale));
+						await sendMail(buildLoginEmail({ email, otp, link, t }));
+					},
 				);
 			},
 		}),

@@ -16,28 +16,32 @@ export const buildLoginEmail = ({
 	email,
 	otp,
 	link,
-	appName = "shiftwo",
+	appName,
 	t = translatorFor("ja"),
 }: {
 	email: string;
 	otp: string;
 	link: string;
+	/** アプリの名前（省けば、その言語での名前。日本語ならシフトヲ） */
 	appName?: string;
 	/** 文面の言語（既定は日本語） */
 	t?: Translate;
-}) => ({
-	to: email,
-	subject: t("auth.loginEmailSubject", { app: appName, otp }),
-	text: [
-		t("auth.loginEmailIntro", { app: appName }),
-		"",
-		t("auth.loginEmailOpenLink"),
-		link,
-		"",
-		t("auth.loginEmailEnterCode"),
-		otp,
-		"",
-		t("auth.loginEmailExpires", { minutes: LOGIN_CODE_EXPIRES_MINUTES }),
-		t("auth.loginEmailIgnore"),
-	].join("\n"),
-});
+}) => {
+	const app = appName ?? t("common.appName");
+	return {
+		to: email,
+		subject: t("auth.loginEmailSubject", { app, otp }),
+		text: [
+			t("auth.loginEmailIntro", { app }),
+			"",
+			t("auth.loginEmailOpenLink"),
+			link,
+			"",
+			t("auth.loginEmailEnterCode"),
+			otp,
+			"",
+			t("auth.loginEmailExpires", { minutes: LOGIN_CODE_EXPIRES_MINUTES }),
+			t("auth.loginEmailIgnore"),
+		].join("\n"),
+	};
+};

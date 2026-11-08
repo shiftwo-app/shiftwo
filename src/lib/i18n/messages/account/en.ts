@@ -31,4 +31,8 @@ export default {
 	discordLink: "Link Discord",
 	nameRequired: "Please enter a name",
 	nameTooLong: "Names can be up to {max} characters",
+	languageTitle: "Language",
+	languageDescription:
+		"Used for the screens and for emails sent to you, such as login emails.",
+	languageAuto: "Match my browser",
 } satisfies Messages<typeof ja>;

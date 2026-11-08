@@ -1,5 +1,10 @@
 import { createServerFn } from "@tanstack/react-start";
-import { getCookie, setCookie } from "@tanstack/react-start/server";
+import {
+	getCookie,
+	getRequestHeader,
+	setCookie,
+} from "@tanstack/react-start/server";
+import { localeFromCookie } from "../lib/i18n/locales";
 import { z } from "zod";
 import { loginMethods } from "../lib/auth.server";
 import {
@@ -11,11 +16,25 @@ import {
 import { prisma } from "../lib/prisma.server";
 import { nameSchema } from "../lib/profile";
 import { requireUserMiddleware } from "./auth-middleware";
+import { rememberLocale } from "./locale-cookie.server";
 import { getCurrentUser } from "./session.server";
 
-/** ログインしている人（していなければ null）。画面の beforeLoad から呼ぶ */
-export const getSession = createServerFn({ method: "GET" }).handler(() =>
-	getCurrentUser(),
+/**
+ * ログインしている人（していなければ null）。画面の beforeLoad から呼ぶ。
+ * アカウントで言語を選んでいて、このブラウザの言語（Cookie）と違えば、Cookie をアカウントの言語にそろえる
+ * （ほかのブラウザで選んだ言語を、ログインしたブラウザでも使うため。次に読み込んだときから効く）
+ */
+export const getSession = createServerFn({ method: "GET" }).handler(
+	async () => {
+		const user = await getCurrentUser();
+		if (
+			user?.locale &&
+			localeFromCookie(getRequestHeader("cookie")) !== user.locale
+		) {
+			rememberLocale(user.locale);
+		}
+		return user;
+	},
 );
 
 /** ログイン画面に出す方法（Discord が設定されているか） */
