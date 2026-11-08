@@ -48,6 +48,11 @@ if (command === "new") {
 		const status = prisma(provider, ["migrate", "dev", "--name", name], env);
 		if (status !== 0) process.exit(status);
 	}
+	// Prisma 7 の migrate dev はクライアントを作り直さないので、ここで両方を作り直す
+	const generated = spawnSync("pnpm", ["prisma:generate"], {
+		stdio: "inherit",
+	});
+	process.exit(generated.status ?? 1);
 } else if (command === "check") {
 	generateSchemas();
 	let failed = false;

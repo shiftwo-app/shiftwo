@@ -1,9 +1,9 @@
 import { createFileRoute } from "@tanstack/react-router";
-import ShiftBoard from "../components/ShiftBoard";
-import { getShiftBoard } from "../server/shifts.functions";
-import { ShiftStatus } from "../types";
+import ShiftBoard from "../../components/ShiftBoard";
+import { getShiftBoard } from "../../server/shifts.functions";
+import { ShiftStatus } from "../../types";
 
-export const Route = createFileRoute("/draft")({
+export const Route = createFileRoute("/_authed/draft")({
 	loader: () => getShiftBoard({ data: ShiftStatus.draft }),
 	component: DraftPage,
 });

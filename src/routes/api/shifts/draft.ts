@@ -1,11 +1,12 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { withUser } from "../../../server/session.server";
 import { findShiftsWithRelations } from "../../../server/shifts.server";
 import { ShiftStatus } from "../../../types";
 
 export const Route = createFileRoute("/api/shifts/draft")({
 	server: {
 		handlers: {
-			GET: async () => {
+			GET: withUser(async () => {
 				try {
 					return Response.json(
 						await findShiftsWithRelations(ShiftStatus.draft),
@@ -17,7 +18,7 @@ export const Route = createFileRoute("/api/shifts/draft")({
 						{ status: 500 },
 					);
 				}
-			},
+			}),
 		},
 	},
 });

@@ -1,5 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { type Shift, ShiftStatus } from "../types";
+import { requireUserMiddleware } from "./auth-middleware";
 import {
 	removeShift,
 	saveShift,
@@ -9,7 +10,10 @@ import { findShiftBoard } from "./shifts.server";
 
 // 画面から呼ぶ。中身はサーバーで動き、クライアントには RPC の呼び出しだけが入る
 
+// どれもログインが必要（requireUserMiddleware）。団体ごとの権限は、複数団体の PR で足す
+
 export const getShiftBoard = createServerFn({ method: "GET" })
+	.middleware([requireUserMiddleware])
 	.validator((status: unknown): ShiftStatus => {
 		if (status === ShiftStatus.draft || status === ShiftStatus.confirmed)
 			return status;
@@ -40,11 +44,13 @@ const toMutationResult = (result: ShiftWriteResult): ShiftMutationResult =>
 
 /** シフトを作る。入力の検証は saveShift が行う */
 export const createShift = createServerFn({ method: "POST" })
+	.middleware([requireUserMiddleware])
 	.validator((input: unknown) => input)
 	.handler(async ({ data }) => toMutationResult(await saveShift(data)));
 
 /** シフトを更新する */
 export const updateShift = createServerFn({ method: "POST" })
+	.middleware([requireUserMiddleware])
 	.validator((data: { id: unknown; input: unknown }) => ({
 		id: requireId(data.id),
 		input: data.input,
@@ -55,5 +61,6 @@ export const updateShift = createServerFn({ method: "POST" })
 
 /** シフトを消す */
 export const deleteShift = createServerFn({ method: "POST" })
+	.middleware([requireUserMiddleware])
 	.validator((id: unknown) => requireId(id))
 	.handler(async ({ data: id }) => toMutationResult(await removeShift(id)));

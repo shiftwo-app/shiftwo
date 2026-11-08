@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { withUser } from "../../../server/session.server";
 import { writeShift } from "../../../server/shift-write.server";
 import { findShiftsWithRelations } from "../../../server/shifts.server";
 import { ShiftStatus } from "../../../types";
@@ -6,7 +7,7 @@ import { ShiftStatus } from "../../../types";
 export const Route = createFileRoute("/api/shifts/")({
 	server: {
 		handlers: {
-			GET: async () => {
+			GET: withUser(async () => {
 				try {
 					return Response.json(
 						await findShiftsWithRelations(ShiftStatus.confirmed),
@@ -18,8 +19,8 @@ export const Route = createFileRoute("/api/shifts/")({
 						{ status: 500 },
 					);
 				}
-			},
-			POST: ({ request }) => writeShift(request),
+			}),
+			POST: withUser(({ request }) => writeShift(request)),
 		},
 	},
 });
