@@ -10,6 +10,7 @@ import {
 import {
 	ALL_PERMISSIONS,
 	canGrant,
+	canInviteWith,
 	DEFAULT_ROLES,
 	hasPermission,
 	permissionsOf,
@@ -63,6 +64,25 @@ describe("ロールと権限", () => {
 		);
 	});
 
+	it("「ゲストを招待する」を持つ人は、Discord の条件の免除を含むロールを招待で渡せる（それ以外の例外はない）", () => {
+		const leader = [
+			"shift.view",
+			"member.view",
+			"invite.manage",
+			"invite.guest",
+		] as const;
+		const guestRole = ["shift.view", "member.view", "guild.bypass"] as const;
+		expect(canInviteWith(leader, guestRole)).toBe(true);
+		// 免除のほかに自分にない権限があれば渡せない
+		expect(canInviteWith(leader, [...guestRole, "member.manage"])).toBe(false);
+		// 「ゲストを招待する」がなければ渡せない
+		expect(
+			canInviteWith(["shift.view", "member.view", "invite.manage"], guestRole),
+		).toBe(false);
+		// 招待以外（ロールの付け外し）の判定は変わらない
+		expect(canGrant(leader, guestRole)).toBe(false);
+	});
+
 	it("最初のロール：マネージャー・リーダー・スタッフ・ゲスト。ゲストだけ Discord の条件を免除", () => {
 		expect(DEFAULT_ROLES.map((r) => r.name)).toEqual([
 			"マネージャー",
@@ -79,6 +99,8 @@ describe("ロールと権限", () => {
 		expect(hasPermission(byName["リーダー"], "member.manage")).toBe(false);
 		expect(hasPermission(byName["スタッフ"], "shift.edit")).toBe(false);
 		expect(hasPermission(byName["マネージャー"], "member.manage")).toBe(true);
+		expect(hasPermission(byName["リーダー"], "invite.guest")).toBe(true);
+		expect(hasPermission(byName["マネージャー"], "invite.guest")).toBe(true);
 	});
 });
 

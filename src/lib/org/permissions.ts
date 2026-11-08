@@ -11,6 +11,12 @@ export const PERMISSIONS = [
 	{ key: "member.view", label: "メンバーを見る", scoped: false },
 	{ key: "invite.manage", label: "招待コードを発行・取り消す", scoped: false },
 	{
+		key: "invite.guest",
+		label:
+			"ゲストを招待する（Discord サーバーの参加条件の免除を含むロールの招待コードを発行できる）",
+		scoped: false,
+	},
+	{
 		key: "member.manage",
 		label: "メンバーのロールを変える・外す",
 		scoped: false,
@@ -96,6 +102,20 @@ export const canGrant = (
 	targetPermissions: readonly Permission[],
 ): boolean => targetPermissions.every((p) => actorPermissions.includes(p));
 
+/**
+ * 招待コードで、そのロールを渡せるか。基本は canGrant（自分が持っている権限の範囲だけ）。
+ * 例外として「ゲストを招待する」（invite.guest）を持つ人は、自分になくても
+ * 「Discord サーバーの参加条件の免除」（guild.bypass）を含むロールを渡せる。それ以外の権限の例外はない
+ */
+export const canInviteWith = (
+	actorPermissions: readonly Permission[],
+	rolePermissions: readonly Permission[],
+): boolean => {
+	if (canGrant(actorPermissions, rolePermissions)) return true;
+	if (!actorPermissions.includes("invite.guest")) return false;
+	return canGrant([...actorPermissions, "guild.bypass"], rolePermissions);
+};
+
 /** 団体を作ったときに用意するロール（あとで編集・追加・削除できる） */
 export const DEFAULT_ROLES: readonly {
 	key: string;
@@ -122,6 +142,7 @@ export const DEFAULT_ROLES: readonly {
 			"staff.manage",
 			"member.view",
 			"invite.manage",
+			"invite.guest",
 		],
 	},
 	{

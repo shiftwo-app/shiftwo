@@ -9,6 +9,7 @@ import {
 import {
 	ALL_PERMISSIONS,
 	canGrant,
+	canInviteWith,
 	type Permission,
 	parsePermissions,
 	permissionsOf,
@@ -289,8 +290,10 @@ export const listRoles = createServerFn({ method: "GET" })
 				color: role.color,
 				permissions,
 				memberCount: role._count.members,
-				// 自分が持っている権限の範囲のロールだけ、付け外し・編集・招待で渡せる
+				// 自分が持っている権限の範囲のロールだけ、付け外し・編集できる
 				grantable: canGrant(access.member.permissions, permissions),
+				// 招待で渡せるか（「ゲストを招待する」がある人は、Discord の条件の免除を含むロールも）
+				invitable: canInviteWith(access.member.permissions, permissions),
 			};
 		});
 	});

@@ -133,7 +133,7 @@ function SettingsPage() {
 				<InvitesSection
 					orgSlug={organization.slug}
 					invites={invites}
-					grantableRoles={roles.filter((role) => role.grantable)}
+					grantableRoles={roles.filter((role) => role.invitable)}
 					run={run}
 				/>
 			)}

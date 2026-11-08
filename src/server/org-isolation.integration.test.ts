@@ -629,6 +629,36 @@ describe.skipIf(!hasDatabase)(
 				).toMatchObject({ ok: false });
 			});
 
+			it("「ゲストを招待する」を持つリーダーは、ゲストの招待コードを発行できる。ほかの例外はない", async () => {
+				const leader = await actorOf("leaderA");
+				const invite = (roleId: string) =>
+					org.createInvite({
+						organizationId: orgs.a.id,
+						actor: leader,
+						createdById: users.leaderA.id,
+						roleId,
+						maxUses: 1,
+						expiresInDays: 7,
+					});
+				expect(await invite(roleIdsA.guest)).toMatchObject({ ok: true });
+				// 招待以外（メンバーへのロールの付け外し）では、Discord の条件の免除を渡せない
+				expect(
+					await org.setMemberRoles(orgs.a.id, leader, members.staffA.id, [
+						roleIdsA.staff,
+						roleIdsA.guest,
+					]),
+				).toMatchObject({ ok: false });
+				// 免除のほかに自分にない権限（メンバーの管理）を含むロールは、招待でも渡せない
+				const owner = await actorOf("ownerA");
+				const created = await org.createRole(orgs.a.id, owner, {
+					name: "免除＋管理",
+					color: "#000000",
+					permissions: ["guild.bypass", "member.manage"],
+				});
+				if (!created.ok) throw new Error(created.errors.join());
+				expect(await invite(created.id)).toMatchObject({ ok: false });
+			});
+
 			it("オーナーのロールは変えられない。ほかの団体のロールは付けられない", async () => {
 				const owner = await actorOf("ownerA");
 				expect(

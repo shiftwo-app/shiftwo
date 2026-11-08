@@ -11,6 +11,7 @@ import {
 } from "../lib/org/invite-code";
 import {
 	canGrant,
+	canInviteWith,
 	DEFAULT_ROLES,
 	type Permission,
 	parsePermissions,
@@ -243,7 +244,10 @@ export const setMemberRoles = async (
 
 // ---- 招待コード ----
 
-/** 招待コードを発行する。付けるロールは、自分が持っている権限の範囲のものだけ。コードが重なったら作り直す */
+/**
+ * 招待コードを発行する。付けるロールは、自分が持っている権限の範囲のものだけ
+ * （「ゲストを招待する」がある人は、Discord の条件の免除を含むロールも）。コードが重なったら作り直す
+ */
 export const createInvite = async (input: {
 	organizationId: string;
 	actor: Actor;
@@ -255,7 +259,10 @@ export const createInvite = async (input: {
 }): Promise<Result<{ code: string }>> => {
 	const role = await findRole(input.organizationId, input.roleId);
 	if (!role) return fail("ロールが見つかりません");
-	if (!canGrant(input.actor.permissions, parsePermissions(role.permissions))) {
+	// 招待で渡せるのは、自分が持っている権限の範囲のロールだけ（「ゲストを招待する」がある人は、Discord の条件の免除も渡せる）
+	if (
+		!canInviteWith(input.actor.permissions, parsePermissions(role.permissions))
+	) {
 		return fail(FORBIDDEN_GRANT);
 	}
 	const now = input.now ?? new Date();
