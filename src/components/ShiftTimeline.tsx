@@ -6,7 +6,7 @@ import {
 	useRef,
 	useState,
 } from "react";
-import type { RefObject } from "react";
+import type { KeyboardEvent, PointerEvent, RefObject } from "react";
 import { type Role, type Shift, ShiftStatus, type Staff } from "../types";
 import {
 	buildRows,
@@ -27,18 +27,28 @@ import {
 	ZOOM_OPTIONS,
 	type ZoomMinutes,
 } from "./timeline/layout";
+import { applyDrag, type DragMode } from "./timeline/snap";
 import {
 	accumulateWheelZoom,
 	wheelDeltaToPx,
 	zoomedScrollOffset,
 } from "./timeline/wheelZoom";
 
+/** 編集モードのときに渡す。渡さなければ閲覧だけ */
+export interface TimelineEditing {
+	/** 時間を変えたとき。保存できたら true（できなければ表示を元に戻す） */
+	onChangeTime: (shift: Shift, start: number, end: number) => Promise<boolean>;
+	/** Delete キーで消したとき */
+	onDelete: (shift: Shift) => void;
+}
+
 interface ShiftTimelineProps {
 	shifts: Shift[];
 	roles: Role[];
 	staffs: Staff[];
-	/** ShiftSetting.timeUnitMinutes。ズームの初期値に使う */
+	/** ShiftSetting.timeUnitMinutes。ズームの初期値と、編集のときの吸着の刻みに使う */
 	timeUnitMinutes: number;
+	editing?: TimelineEditing;
 }
 
 /** 1 目盛りの幅（px）。ズームを変えると 1 分あたりの幅が変わる */
@@ -46,6 +56,9 @@ const TICK_WIDTH_PX = 40;
 const LANE_HEIGHT_PX = 40;
 /** 役割別の行の上に出す、充足バッジの帯の高さ */
 const BADGE_BAND_HEIGHT_PX = 22;
+/** 編集モードで表示期間の前後に足す余白 */
+const EDIT_PADDING_MS = 60 * 60_000;
+const DAY_MS = 24 * 60 * 60_000;
 /** 行の見出し（役割名・スタッフ名）の幅。横にスクロールしても左に残る */
 const HEADER_WIDTH_PX = 160;
 
@@ -120,6 +133,7 @@ const ShiftTimeline = ({
 	roles,
 	staffs,
 	timeUnitMinutes,
+	editing,
 }: ShiftTimelineProps) => {
 	const [axis, setAxis] = useState<TimelineAxis>("role");
 	const [zoom, setZoom] = useState<ZoomMinutes>(toZoom(timeUnitMinutes));
@@ -150,10 +164,21 @@ const ShiftTimeline = ({
 		[shifts, day],
 	);
 
-	const range = useMemo(
-		() => computeDisplayRange(dayShifts, undefined, day),
-		[dayShifts, day],
-	);
+	// 編集中は前後に 1 時間ずつ余白を足し、端のシフトも外側へ動かせるようにする（その日の中で）
+	const isEditing = editing !== undefined;
+	const range = useMemo(() => {
+		const base = computeDisplayRange(dayShifts, undefined, day);
+		if (!isEditing) return base;
+		const padded = {
+			start: base.start - EDIT_PADDING_MS,
+			end: base.end + EDIT_PADDING_MS,
+		};
+		if (day === undefined) return padded;
+		return {
+			start: Math.max(padded.start, day),
+			end: Math.min(padded.end, day + DAY_MS),
+		};
+	}, [dayShifts, day, isEditing]);
 	const ticks = useMemo(() => buildTicks(range, zoom), [range, zoom]);
 	const rows = useMemo(
 		() => buildRows(axis, dayShifts, roles, staffs),
@@ -304,12 +329,10 @@ const ShiftTimeline = ({
 												key={item.shift.id}
 												item={item}
 												axis={axis}
-												left={toX(Math.max(item.start, range.start))}
-												width={
-													(Math.min(item.end, range.end) -
-														Math.max(item.start, range.start)) *
-													pxPerMs
-												}
+												range={range}
+												pxPerMs={pxPerMs}
+												unitMinutes={timeUnitMinutes}
+												editing={editing}
 											/>
 										))}
 									</ul>
@@ -333,6 +356,8 @@ const ShiftTimeline = ({
 				点線の枠は下書き、オレンジの枠は希望外の割り当てです。役割別の行の上の数字は「入っている人数
 				/ 必要な人数」で、足りない時間帯は赤くなります。⌘ / Ctrl
 				を押しながらホイール（ピンチ）でズームできます。
+				{editing &&
+					" 編集モードでは、シフトをドラッグで移動、右端のドラッグで長さを変えられます。キーボードでは ←→ で移動、Shift+←→ で長さ、Delete で削除です。"}
 			</p>
 		</section>
 	);
@@ -380,19 +405,35 @@ const StaffingBand = ({
 const ShiftBlock = ({
 	item,
 	axis,
-	left,
-	width,
+	range,
+	pxPerMs,
+	unitMinutes,
+	editing,
 }: {
 	item: TimelineItem;
 	axis: TimelineAxis;
-	left: number;
-	width: number;
+	range: { start: number; end: number };
+	pxPerMs: number;
+	unitMinutes: number;
+	editing?: TimelineEditing;
 }) => {
 	const { shift, role, staff } = item;
+	// ドラッグ中・保存中は、動かした先を仮に表示する。保存後にデータが変われば消す
+	const [preview, setPreview] = useState<{ start: number; end: number } | null>(
+		null,
+	);
+	const dragRef = useRef<{
+		mode: DragMode;
+		originX: number;
+		original: { start: number; end: number };
+	} | null>(null);
+	useEffect(() => setPreview(null), [item.start, item.end]);
+
+	const shown = preview ?? { start: item.start, end: item.end };
 	const isDraft = shift.status === ShiftStatus.draft;
 	// 役割別の行ではスタッフ名、スタッフ別の行では役割名を出す
 	const title = axis === "role" ? staff?.name : role?.name;
-	const time = `${formatTime(item.start)}〜${formatTime(item.end)}`;
+	const time = `${formatTime(shown.start)}〜${formatTime(shown.end)}`;
 	const notes = [
 		isDraft ? "下書き" : undefined,
 		shift.isPreferredRole ? undefined : "希望外の割り当て",
@@ -401,13 +442,93 @@ const ShiftBlock = ({
 		.filter(Boolean)
 		.join("、");
 
+	const left = (Math.max(shown.start, range.start) - range.start) * pxPerMs;
+	const width =
+		(Math.min(shown.end, range.end) - Math.max(shown.start, range.start)) *
+		pxPerMs;
+
+	const commit = async (next: { start: number; end: number }) => {
+		if (!editing) return;
+		if (next.start === item.start && next.end === item.end) {
+			setPreview(null);
+			return;
+		}
+		setPreview(next);
+		const saved = await editing.onChangeTime(shift, next.start, next.end);
+		if (!saved) setPreview(null);
+	};
+
+	const startDrag = (mode: DragMode) => (event: PointerEvent<HTMLElement>) => {
+		if (!editing || event.button !== 0) return;
+		event.preventDefault();
+		event.stopPropagation();
+		event.currentTarget.setPointerCapture(event.pointerId);
+		dragRef.current = {
+			mode,
+			originX: event.clientX,
+			original: { start: item.start, end: item.end },
+		};
+	};
+
+	const dragTo = (event: PointerEvent<HTMLElement>) => {
+		const drag = dragRef.current;
+		if (!drag) return null;
+		return applyDrag(
+			drag.mode,
+			drag.original,
+			(event.clientX - drag.originX) / pxPerMs,
+			unitMinutes,
+		);
+	};
+
+	const handleKeyDown = (event: KeyboardEvent<HTMLElement>) => {
+		if (!editing) return;
+		if (event.key === "Delete" || event.key === "Backspace") {
+			event.preventDefault();
+			editing.onDelete(shift);
+			return;
+		}
+		if (event.key !== "ArrowLeft" && event.key !== "ArrowRight") return;
+		event.preventDefault();
+		const delta =
+			(event.key === "ArrowLeft" ? -1 : 1) * unitMinutes * MINUTE_MS;
+		void commit(
+			applyDrag(
+				event.shiftKey ? "resize-end" : "move",
+				shown,
+				delta,
+				unitMinutes,
+			),
+		);
+	};
+
 	return (
 		<li
 			// キーボードでたどって読み上げられるように、フォーカスできるようにする
 			tabIndex={0}
 			aria-label={label}
+			aria-keyshortcuts={
+				editing
+					? "ArrowLeft ArrowRight Shift+ArrowLeft Shift+ArrowRight Delete"
+					: undefined
+			}
 			title={label}
-			className={`absolute overflow-hidden rounded px-1 text-xs leading-tight shadow-sm focus:outline-2 focus:outline-offset-1 focus:outline-blue-600 ${isDraft ? "border-2 border-dashed" : "border"} ${shift.isPreferredRole ? "border-gray-700/40" : "border-orange-500 ring-2 ring-orange-400"}`}
+			onPointerDown={startDrag("move")}
+			onPointerMove={(event) => {
+				const next = dragTo(event);
+				if (next) setPreview(next);
+			}}
+			onPointerUp={(event) => {
+				const next = dragTo(event);
+				dragRef.current = null;
+				if (next) void commit(next);
+			}}
+			onPointerCancel={() => {
+				dragRef.current = null;
+				setPreview(null);
+			}}
+			onKeyDown={handleKeyDown}
+			className={`absolute overflow-hidden rounded px-1 text-xs leading-tight shadow-sm select-none focus:outline-2 focus:outline-offset-1 focus:outline-blue-600 ${isDraft ? "border-2 border-dashed" : "border"} ${shift.isPreferredRole ? "border-gray-700/40" : "border-orange-500 ring-2 ring-orange-400"} ${editing ? "cursor-grab touch-none active:cursor-grabbing" : ""} ${preview ? "opacity-80 shadow-lg" : ""}`}
 			style={{
 				left,
 				width: Math.max(width - 2, 4),
@@ -419,6 +540,13 @@ const ShiftBlock = ({
 		>
 			<span className="block truncate font-semibold">{title}</span>
 			<span className="block truncate">{time}</span>
+			{editing && (
+				<span
+					aria-hidden
+					onPointerDown={startDrag("resize-end")}
+					className="absolute top-0 right-0 h-full w-2 cursor-ew-resize bg-black/10 hover:bg-black/25"
+				/>
+			)}
 		</li>
 	);
 };
