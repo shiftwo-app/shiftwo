@@ -18,6 +18,8 @@ import {
 	type ShiftWriteAccess,
 	type ShiftWriteResult,
 } from "./shift-write.server";
+import { preferenceConflicts } from "../lib/preferences";
+import { loadEffectivePreferences } from "./preferences.server";
 import { findShiftBoard } from "./shifts.server";
 
 // 画面から呼ぶ。どれもログインが必要で（requireUserMiddleware）、
@@ -86,6 +88,31 @@ export const getEventContext = createServerFn({ method: "GET" })
 		};
 	});
 
+/** シフトごとの、希望と違うところ（違うものだけ） */
+const conflictsOf = async (
+	ids: { organizationId: string; tenantId: string; eventId: string | null },
+	shifts: Shift[],
+): Promise<Record<string, string[]>> => {
+	const preferences = await loadEffectivePreferences(ids, [
+		...new Set(shifts.map((shift) => shift.staffId)),
+	]);
+	const conflicts: Record<string, string[]> = {};
+	for (const shift of shifts) {
+		const preference = preferences.get(shift.staffId);
+		if (!preference) continue;
+		const reasons = preferenceConflicts(
+			{
+				positionId: shift.positionId,
+				start: new Date(shift.timeRange.start).getTime(),
+				end: new Date(shift.timeRange.end).getTime(),
+			},
+			preference,
+		);
+		if (reasons.length > 0) conflicts[shift.id] = reasons;
+	}
+	return conflicts;
+};
+
 export const getShiftBoard = createServerFn({ method: "GET" })
 	.middleware([requireUserMiddleware])
 	.validator((data: ShiftScopeParams & { status: unknown }) => ({
@@ -99,10 +126,18 @@ export const getShiftBoard = createServerFn({ method: "GET" })
 			"shift.view",
 		);
 		const board = await findShiftBoard(toIds(access), data.status);
+		const canEdit = hasPermission(access.permissions, "shift.edit");
 		return {
 			...board,
 			timeUnitMinutes: access.timeUnitMinutes,
-			canEdit: hasPermission(access.permissions, "shift.edit"),
+			canEdit,
+			/**
+			 * 希望と違う割り当て（FR-4-E）：シフトの ID → 理由。希望の中身（休憩・持ち場）は本人とシフトを組む人のものなので、
+			 * シフトを編集できる人にだけ返す
+			 */
+			preferenceConflicts: canEdit
+				? await conflictsOf(toIds(access), board.shifts)
+				: {},
 			/** ほかの人の変更を受け取る方式（同時編集） */
 			liveTransport: platform.realtime.transport,
 		};

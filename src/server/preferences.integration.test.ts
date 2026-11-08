@@ -284,6 +284,24 @@ describe.skipIf(!hasDatabase)("スタッフの希望（DB）", async () => {
 		).toBeNull();
 	});
 
+	it("シフトの単位で使う希望を、スタッフごとにまとめて読める（希望と違う割り当てを見つけるため）", async () => {
+		const eventIds = { organizationId, tenantId: tenant.id, eventId: event.id };
+		await preferences.savePreference(
+			await contextOf(owner.id, scopes.event()),
+			myStaffId,
+			input([["12:00", "13:00"]], [eventPositionId]),
+		);
+		const effective = await preferences.loadEffectivePreferences(eventIds, [
+			myStaffId,
+			ownerStaffId,
+		]);
+		expect(effective.get(myStaffId)).toMatchObject({
+			source: "event",
+			positionIds: [eventPositionId],
+		});
+		expect(effective.get(ownerStaffId)?.source).toBeNull();
+	});
+
 	it("ほかの団体の人は、どの単位にも入れない", async () => {
 		const outsider = await createUser("p-outsider");
 		await expect(contextOf(outsider.id, scopes.org)).rejects.toMatchObject({
