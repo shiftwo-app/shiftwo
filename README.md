@@ -52,6 +52,7 @@ pnpm dev
 | `pnpm start`       | build したものを Node.js で動かす（srvx）                                      |
 | `pnpm check`       | 書式・lint・型チェックをまとめて行う（`vp check`）                             |
 | `pnpm check:fix`   | 書式を直し、lint の自動修正をかける                                            |
+| `pnpm test`        | テストを動かす（`vp test`）                                                    |
 | `pnpm prisma:seed` | 初期データを入れる（`prisma db seed`。Node 26 で `prisma/seed.ts` を直接実行） |
 
 書式と lint の設定は `vite.config.ts` の `fmt`・`lint` にあります。
