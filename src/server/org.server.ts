@@ -94,8 +94,12 @@ export const createOrganization = async (input: {
 const findRole = (organizationId: string, roleId: string) =>
 	prisma.orgRole.findFirst({
 		where: { id: roleId, organizationId },
-		select: { id: true, name: true, permissions: true },
+		select: { id: true, name: true, permissions: true, updatedAt: true },
 	});
+
+/** 確かめたあとに、ほかの人が同じロールを変えていたとき */
+const CONCURRENT_CHANGE =
+	"ほかの人が同時にこのロールを変えました。画面を読み直して、もう一度試してください";
 
 // ---- ロール ----
 
@@ -144,14 +148,16 @@ export const updateRole = async (
 	}
 	if (!canGrant(actor.permissions, input.permissions))
 		return fail(FORBIDDEN_GRANT);
-	await prisma.orgRole.update({
-		where: { id: role.id },
+	// 確かめたときのまま（updatedAt が同じ）のときだけ書く。途中でほかの人が権限を足していたら書かない
+	const updated = await prisma.orgRole.updateMany({
+		where: { id: role.id, organizationId, updatedAt: role.updatedAt },
 		data: {
 			name: input.name,
 			color: input.color,
 			permissions: input.permissions,
 		},
 	});
+	if (updated.count === 0) return fail(CONCURRENT_CHANGE);
 	return { ok: true };
 };
 
@@ -166,7 +172,11 @@ export const deleteRole = async (
 	if (!canGrant(actor.permissions, parsePermissions(role.permissions))) {
 		return fail("自分が持っていない権限を含むロールは消せません");
 	}
-	await prisma.orgRole.delete({ where: { id: role.id } });
+	// 確かめたときのまま（updatedAt が同じ）のときだけ消す
+	const deleted = await prisma.orgRole.deleteMany({
+		where: { id: role.id, organizationId, updatedAt: role.updatedAt },
+	});
+	if (deleted.count === 0) return fail(CONCURRENT_CHANGE);
 	return { ok: true };
 };
 
@@ -181,53 +191,55 @@ export const setMemberRoles = async (
 	actor: Actor,
 	memberId: string,
 	roleIds: string[],
-): Promise<Result> => {
-	const member = await prisma.member.findFirst({
-		where: { id: memberId, organizationId },
-		select: { id: true, isOwner: true, roles: { select: { roleId: true } } },
-	});
-	if (!member) return fail("メンバーが見つかりません");
-	if (member.isOwner)
-		return fail("オーナーのロールは変えられません（オーナーは常に全権限です）");
+): Promise<Result> =>
+	// 読む・確かめる・書くを 1 つのトランザクションで行い、書くのは確かめたロールだけにする
+	// （確かめたあとに別の人が付けたロールを、確かめないまま外してしまわないように）
+	prisma.$transaction(async (tx) => {
+		const member = await tx.member.findFirst({
+			where: { id: memberId, organizationId },
+			select: { id: true, isOwner: true, roles: { select: { roleId: true } } },
+		});
+		if (!member) return fail("メンバーが見つかりません");
+		if (member.isOwner) {
+			return fail(
+				"オーナーのロールは変えられません（オーナーは常に全権限です）",
+			);
+		}
 
-	const wanted = [...new Set(roleIds)];
-	const roles = await prisma.orgRole.findMany({
-		where: { organizationId, id: { in: wanted } },
-		select: { id: true, permissions: true },
-	});
-	if (roles.length !== wanted.length) return fail("ロールが見つかりません");
+		const wanted = [...new Set(roleIds)];
+		const found = await tx.orgRole.count({
+			where: { organizationId, id: { in: wanted } },
+		});
+		if (found !== wanted.length) return fail("ロールが見つかりません");
 
-	const current = member.roles.map((r) => r.roleId);
-	const changed = [
-		...wanted.filter((id) => !current.includes(id)),
-		...current.filter((id) => !wanted.includes(id)),
-	];
-	const changedRoles = await prisma.orgRole.findMany({
-		where: { organizationId, id: { in: changed } },
-		select: { permissions: true },
-	});
-	if (
-		changedRoles.some(
-			(r) => !canGrant(actor.permissions, parsePermissions(r.permissions)),
-		)
-	) {
-		return fail(FORBIDDEN_GRANT);
-	}
+		const current = member.roles.map((r) => r.roleId);
+		const toAdd = wanted.filter((id) => !current.includes(id));
+		const toRemove = current.filter((id) => !wanted.includes(id));
+		const changedRoles = await tx.orgRole.findMany({
+			where: { organizationId, id: { in: [...toAdd, ...toRemove] } },
+			select: { permissions: true },
+		});
+		if (
+			changedRoles.some(
+				(r) => !canGrant(actor.permissions, parsePermissions(r.permissions)),
+			)
+		) {
+			return fail(FORBIDDEN_GRANT);
+		}
 
-	await prisma.$transaction([
-		prisma.memberRoleAssignment.deleteMany({
-			where: { memberId: member.id, roleId: { notIn: wanted } },
-		}),
-		...wanted
-			.filter((id) => !current.includes(id))
-			.map((roleId) =>
-				prisma.memberRoleAssignment.create({
-					data: { memberId: member.id, roleId },
-				}),
-			),
-	]);
-	return { ok: true };
-};
+		// 外すのは、上で確かめたロールだけ
+		await tx.memberRoleAssignment.deleteMany({
+			where: { memberId: member.id, roleId: { in: toRemove } },
+		});
+		for (const roleId of toAdd) {
+			await tx.memberRoleAssignment.upsert({
+				where: { memberId_roleId: { memberId: member.id, roleId } },
+				update: {},
+				create: { memberId: member.id, roleId },
+			});
+		}
+		return { ok: true } as const;
+	});
 
 // ---- 招待コード ----
 
