@@ -8,6 +8,9 @@ model Staff {
   organizationId  String
   organization    Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   name            String
+  // 紐づく団体のメンバー（アカウント）。任意で、1 人のメンバーに紐づくスタッフは 1 人まで。アイコンなどに使う
+  memberId        String?   @unique
+  member          Member?   @relation(fields: [memberId], references: [id], onDelete: SetNull)
   // 希望する持ち場（relation の名前は、中間テーブルの名前を変えないよう StaffPreferredRoles のまま）
   preferredPositions Position[] @relation("StaffPreferredRoles")
   // TimeRange（start, end）の配列。SQLite（D1）には配列型がないので、Json の中に配列で持つ。
@@ -213,6 +216,7 @@ model Member {
   createdAt      DateTime     @default(now())
   updatedAt      DateTime     @updatedAt
   roles          MemberRoleAssignment[]
+  staff          Staff?
   tenantRoles    TenantMember[]
   eventRoles     EventMember[]
 

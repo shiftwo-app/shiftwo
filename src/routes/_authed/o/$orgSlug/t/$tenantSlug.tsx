@@ -4,6 +4,7 @@ import {
 	notFound,
 	Outlet,
 } from "@tanstack/react-router";
+import { hasPermission } from "../../../../../lib/org/permissions";
 import { getTenantContext } from "../../../../../server/shifts.functions";
 
 // テナントの画面の土台。テナントがその団体にない・所属していなければ「見つかりません」
@@ -19,7 +20,13 @@ export const Route = createFileRoute("/_authed/o/$orgSlug/t/$tenantSlug")({
 });
 
 function TenantLayout() {
-	const { organization, tenants, tenantContext } = Route.useRouteContext();
+	const { organization, tenants, tenantContext, member } =
+		Route.useRouteContext();
+	// 設定に何か変えられるものがあるときだけ、設定へのリンクを出す（守りはサーバー側）
+	const canOpenSettings =
+		hasPermission(member.permissions, "tenant.manage") ||
+		hasPermission(member.permissions, "member.manage") ||
+		hasPermission(tenantContext.permissions, "position.manage");
 	const params = {
 		orgSlug: organization.slug,
 		tenantSlug: tenantContext.tenant.slug,
@@ -63,6 +70,16 @@ function TenantLayout() {
 				>
 					イベント（{tenantContext.events.length}）
 				</Link>
+				{canOpenSettings && (
+					<Link
+						to="/o/$orgSlug/t/$tenantSlug/settings"
+						params={params}
+						activeProps={active}
+						className={link}
+					>
+						テナントの設定
+					</Link>
+				)}
 				<span className="ml-auto text-xs text-gray-600">
 					{tenantContext.canEditShifts
 						? "このテナントのシフトを編集できます"
