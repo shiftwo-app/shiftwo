@@ -6,6 +6,7 @@ import {
 	redirect,
 	useMatch,
 } from "@tanstack/react-router";
+import { useState } from "react";
 import ScopeTabs, { type ScopeTab } from "../../../components/shell/ScopeTabs";
 import {
 	type NavSection,
@@ -17,6 +18,10 @@ import { translate } from "../../../lib/i18n/translate";
 import { memberRoleLabel } from "../../../lib/org/member-label";
 import { hasPermission } from "../../../lib/org/permissions";
 import { getOrganization } from "../../../server/org.functions";
+import {
+	getSidebarPinned,
+	rememberSidebarPinned,
+} from "../../../lib/sidebar-pref";
 
 // 団体の画面の土台。ここで一度だけメンバーかを確かめ、所属していなければ「見つかりません」にする
 // （団体があるかどうかも漏らさない）。データの守りは、server function 側でも毎回確かめる
@@ -31,7 +36,8 @@ export const Route = createFileRoute("/_authed/o/$orgSlug")({
 				params: { orgSlug: params.orgSlug },
 			});
 		}
-		return org;
+		// デスクトップのサイドバーを開いたまま固定しているか（サーバーと画面で同じ幅に描く）
+		return { ...org, sidebarPinned: getSidebarPinned() };
 	},
 	head: ({ match }) => ({
 		meta: [
@@ -48,7 +54,15 @@ export const Route = createFileRoute("/_authed/o/$orgSlug")({
 });
 
 function OrgLayout() {
-	const { organization, member, tenants } = Route.useRouteContext();
+	const { organization, member, tenants, sidebarPinned } =
+		Route.useRouteContext();
+	const [pinned, setPinned] = useState(sidebarPinned);
+	const togglePinned = () => {
+		setPinned((current) => {
+			rememberSidebarPinned(!current);
+			return !current;
+		});
+	};
 	const t = useT();
 	// いま開いているテナント・イベント（その画面の土台の beforeLoad で確かめたもの）
 	const tenantMatch = useMatch({
@@ -243,8 +257,13 @@ function OrgLayout() {
 		"text-ink-muted hover:text-ink hover:underline underline-offset-4";
 	return (
 		// デスクトップでは、左のサイドバーの幅だけ中身を右へ寄せる
-		<div className="lg:pl-16">
-			<SideNav label={tabsLabel} sections={sections} />
+		<div className={pinned ? "lg:pl-60" : "lg:pl-16"}>
+			<SideNav
+				label={tabsLabel}
+				sections={sections}
+				pinned={pinned}
+				onTogglePinned={togglePinned}
+			/>
 			<div className="border-b border-line bg-surface">
 				<div className="mx-auto max-w-7xl px-4 sm:px-6">
 					<div className="flex flex-wrap items-center justify-between gap-x-6 gap-y-2 pt-4">

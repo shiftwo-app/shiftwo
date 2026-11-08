@@ -26,4 +26,6 @@ export default {
 	menuClose: "關閉選單",
 	menuTitle: "選單",
 	menuAccount: "帳戶",
+	sidebarPin: "保持展開",
+	sidebarUnpin: "收合",
 } satisfies Messages<typeof ja>;
