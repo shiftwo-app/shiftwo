@@ -12,6 +12,8 @@ import {
 	buildRows,
 	buildTicks,
 	computeDisplayRange,
+	type CoverageSegment,
+	coverageSegments,
 	formatDay,
 	formatTime,
 	isHourTick,
@@ -42,6 +44,8 @@ interface ShiftTimelineProps {
 /** 1 目盛りの幅（px）。ズームを変えると 1 分あたりの幅が変わる */
 const TICK_WIDTH_PX = 40;
 const LANE_HEIGHT_PX = 40;
+/** 役割別の行の上に出す、充足バッジの帯の高さ */
+const BADGE_BAND_HEIGHT_PX = 22;
 /** 行の見出し（役割名・スタッフ名）の幅。横にスクロールしても左に残る */
 const HEADER_WIDTH_PX = 160;
 
@@ -253,7 +257,14 @@ const ShiftTimeline = ({
 								</div>
 								<div
 									className="relative"
-									style={{ width, height: row.laneCount * LANE_HEIGHT_PX }}
+									style={{
+										width,
+										height:
+											row.laneCount * LANE_HEIGHT_PX +
+											(row.requiredCount !== undefined
+												? BADGE_BAND_HEIGHT_PX
+												: 0),
+									}}
 								>
 									{ticks.map((tick) => (
 										<span
@@ -263,7 +274,31 @@ const ShiftTimeline = ({
 											style={{ left: toX(tick) }}
 										/>
 									))}
-									<ul aria-label={`${row.label}のシフト`}>
+									{row.requiredCount !== undefined && (
+										<StaffingBand
+											label={row.label}
+											requiredCount={row.requiredCount}
+											segments={coverageSegments(
+												row.items.map((item) => ({
+													start: item.start,
+													end: item.end,
+													key: item.shift.staffId,
+												})),
+												range,
+											)}
+											toX={toX}
+										/>
+									)}
+									<ul
+										aria-label={`${row.label}のシフト`}
+										className="absolute inset-x-0 bottom-0"
+										style={{
+											top:
+												row.requiredCount !== undefined
+													? BADGE_BAND_HEIGHT_PX
+													: 0,
+										}}
+									>
 										{row.items.map((item) => (
 											<ShiftBlock
 												key={item.shift.id}
@@ -295,12 +330,52 @@ const ShiftTimeline = ({
 			</div>
 
 			<p className="text-xs text-gray-500">
-				点線の枠は下書き、オレンジの枠は希望外の割り当てです。⌘ / Ctrl
+				点線の枠は下書き、オレンジの枠は希望外の割り当てです。役割別の行の上の数字は「入っている人数
+				/ 必要な人数」で、足りない時間帯は赤くなります。⌘ / Ctrl
 				を押しながらホイール（ピンチ）でズームできます。
 			</p>
 		</section>
 	);
 };
+
+/** 役割の行の上に、時間帯ごとの「入っている人数 / 必要な人数」を出す（FR-4-D） */
+const StaffingBand = ({
+	label,
+	requiredCount,
+	segments,
+	toX,
+}: {
+	label: string;
+	requiredCount: number;
+	segments: CoverageSegment[];
+	toX: (ms: number) => number;
+}) => (
+	<ul
+		aria-label={`${label}の充足状況`}
+		className="absolute inset-x-0 top-0"
+		style={{ height: BADGE_BAND_HEIGHT_PX }}
+	>
+		{segments.map((segment) => {
+			const short = segment.count < requiredCount;
+			const text = `${segment.count}/${requiredCount}`;
+			return (
+				<li
+					key={segment.start}
+					aria-label={`${formatTime(segment.start)}〜${formatTime(segment.end)}、${segment.count} 人 / 必要 ${requiredCount} 人${short ? "、不足" : ""}`}
+					title={`${formatTime(segment.start)}〜${formatTime(segment.end)}：${text}`}
+					className={`absolute top-0.5 flex items-center justify-center overflow-hidden rounded-sm text-[11px] font-semibold tabular-nums ${short ? "bg-red-100 text-red-700" : "bg-emerald-50 text-emerald-700"}`}
+					style={{
+						left: toX(segment.start) + 1,
+						width: Math.max(toX(segment.end) - toX(segment.start) - 2, 2),
+						height: BADGE_BAND_HEIGHT_PX - 4,
+					}}
+				>
+					{text}
+				</li>
+			);
+		})}
+	</ul>
+);
 
 const ShiftBlock = ({
 	item,
