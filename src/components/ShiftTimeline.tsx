@@ -50,6 +50,8 @@ interface ShiftTimelineProps {
 	/** ShiftSetting.timeUnitMinutes。ズームの初期値と、編集のときの吸着の刻みに使う */
 	timeUnitMinutes: number;
 	editing?: TimelineEditing;
+	/** 希望と違う割り当て（FR-4-E）：シフトの ID → 理由。シフトを編集できる人にだけ届く */
+	preferenceConflicts?: Record<string, string[]>;
 }
 
 /** 1 目盛りの幅（px）。ズームを変えると 1 分あたりの幅が変わる */
@@ -135,6 +137,7 @@ const ShiftTimeline = ({
 	staffs,
 	timeUnitMinutes,
 	editing,
+	preferenceConflicts,
 }: ShiftTimelineProps) => {
 	const [axis, setAxis] = useState<TimelineAxis>("position");
 	const [zoom, setZoom] = useState<ZoomMinutes>(toZoom(timeUnitMinutes));
@@ -337,6 +340,7 @@ const ShiftTimeline = ({
 												pxPerMs={pxPerMs}
 												unitMinutes={timeUnitMinutes}
 												editing={editing}
+												conflicts={preferenceConflicts?.[item.shift.id]}
 											/>
 										))}
 									</ul>
@@ -413,6 +417,7 @@ const ShiftBlock = ({
 	pxPerMs,
 	unitMinutes,
 	editing,
+	conflicts,
 }: {
 	item: TimelineItem;
 	axis: TimelineAxis;
@@ -420,6 +425,8 @@ const ShiftBlock = ({
 	pxPerMs: number;
 	unitMinutes: number;
 	editing?: TimelineEditing;
+	/** スタッフの希望と違うところ（なければ undefined） */
+	conflicts?: string[];
 }) => {
 	const { shift, position, staff } = item;
 	// ドラッグ中・保存中は、動かした先を仮に表示する。保存後にデータが変われば消す
@@ -438,9 +445,12 @@ const ShiftBlock = ({
 	// 持ち場別の行ではスタッフ名、スタッフ別の行では持ち場名を出す
 	const title = axis === "position" ? staff?.name : position?.name;
 	const time = `${formatTime(shown.start)}〜${formatTime(shown.end)}`;
+	// 希望と違う割り当て：手で付けた「希望外」か、スタッフの希望（持ち場・休憩）と違うもの
+	const overridden = !shift.isPreferredPosition || (conflicts?.length ?? 0) > 0;
 	const notes = [
 		isDraft ? "下書き" : undefined,
 		shift.isPreferredPosition ? undefined : "希望外の割り当て",
+		...(conflicts ?? []),
 	].filter(Boolean);
 	const label = [staff?.name, position?.name, time, ...notes]
 		.filter(Boolean)
@@ -532,7 +542,7 @@ const ShiftBlock = ({
 				setPreview(null);
 			}}
 			onKeyDown={handleKeyDown}
-			className={`absolute overflow-hidden rounded px-1 text-xs leading-tight shadow-sm select-none focus:outline-2 focus:outline-offset-1 focus:outline-blue-600 ${isDraft ? "border-2 border-dashed" : "border"} ${shift.isPreferredPosition ? "border-gray-700/40" : "border-orange-500 ring-2 ring-orange-400"} ${editing ? "cursor-grab touch-none active:cursor-grabbing" : ""} ${preview ? "opacity-80 shadow-lg" : ""}`}
+			className={`absolute overflow-hidden rounded px-1 text-xs leading-tight shadow-sm select-none focus:outline-2 focus:outline-offset-1 focus:outline-blue-600 ${isDraft ? "border-2 border-dashed" : "border"} ${overridden ? "border-orange-500 ring-2 ring-orange-400" : "border-gray-700/40"} ${editing ? "cursor-grab touch-none active:cursor-grabbing" : ""} ${preview ? "opacity-80 shadow-lg" : ""}`}
 			style={{
 				left,
 				width: Math.max(width - 2, 4),

@@ -19,6 +19,7 @@ const ShiftBoardPage = ({
 		timeUnitMinutes: number;
 		canEdit: boolean;
 		liveTransport: RealtimeTransport;
+		preferenceConflicts: Record<string, string[]>;
 	};
 	scope: ShiftScopeParams;
 	status: ShiftStatus;
@@ -41,6 +42,7 @@ const ShiftBoardPage = ({
 			scope={scope}
 			canEdit={board.canEdit}
 			liveTransport={board.liveTransport}
+			preferenceConflicts={board.preferenceConflicts}
 		/>
 	</main>
 );

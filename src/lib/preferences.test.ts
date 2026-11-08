@@ -3,6 +3,7 @@ import {
 	decodePreferenceScope,
 	effectivePreference,
 	encodePreferenceScope,
+	preferenceConflicts,
 	validatePreference,
 } from "./preferences";
 
@@ -116,5 +117,33 @@ describe("effectivePreference", () => {
 				event: pref("イベント", ["event-position"]),
 			}).positionIds,
 		).toEqual(["tenant-position"]);
+	});
+});
+
+describe("preferenceConflicts（希望と違う割り当て）", () => {
+	const shift = (positionId: string, start: string, end: string) => ({
+		positionId,
+		...range(start, end),
+	});
+
+	it("希望の持ち場の外・休憩との重なりを、それぞれ理由にする", () => {
+		expect(
+			preferenceConflicts(shift("reg", "11:30", "12:30"), {
+				breaks: [range("12:00", "13:00")],
+				positionIds: ["reception"],
+			}),
+		).toEqual([
+			"希望の持ち場ではありません",
+			"休憩（12:00〜13:00）と重なっています",
+		]);
+	});
+
+	it("持ち場の希望がなければ持ち場は問わず、休憩に接するだけなら重ならない", () => {
+		expect(
+			preferenceConflicts(shift("reg", "13:00", "14:00"), {
+				breaks: [range("12:00", "13:00")],
+				positionIds: [],
+			}),
+		).toEqual([]);
 	});
 });

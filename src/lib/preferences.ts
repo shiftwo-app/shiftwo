@@ -173,3 +173,35 @@ export const effectivePreference = <
 		source,
 	};
 };
+
+const conflictTimeFormatter = new Intl.DateTimeFormat("ja-JP", {
+	timeZone: "Asia/Tokyo",
+	hour: "2-digit",
+	minute: "2-digit",
+});
+
+/**
+ * シフトがスタッフの希望と違うところ（FR-4-E）。違わなければ空。
+ * - 持ち場の希望があって、その中にない持ち場
+ * - 休憩・参加できない時間と重なる
+ */
+export const preferenceConflicts = (
+	shift: { positionId: string; start: number; end: number },
+	preference: { breaks: TimeRangeMs[]; positionIds: string[] },
+): string[] => {
+	const reasons: string[] = [];
+	if (
+		preference.positionIds.length > 0 &&
+		!preference.positionIds.includes(shift.positionId)
+	) {
+		reasons.push("希望の持ち場ではありません");
+	}
+	for (const range of preference.breaks) {
+		if (range.start < shift.end && shift.start < range.end) {
+			reasons.push(
+				`休憩（${conflictTimeFormatter.format(range.start)}〜${conflictTimeFormatter.format(range.end)}）と重なっています`,
+			);
+		}
+	}
+	return reasons;
+};

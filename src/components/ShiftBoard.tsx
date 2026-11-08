@@ -70,6 +70,7 @@ const ShiftBoard = ({
 	scope,
 	canEdit,
 	liveTransport,
+	preferenceConflicts,
 }: {
 	shifts: Shift[];
 	positions: Position[];
@@ -83,6 +84,8 @@ const ShiftBoard = ({
 	canEdit: boolean;
 	/** ほかの人の変更を受け取る方式 */
 	liveTransport: RealtimeTransport;
+	/** 希望と違う割り当て（FR-4-E）：シフトの ID → 理由 */
+	preferenceConflicts: Record<string, string[]>;
 }) => {
 	const router = useRouter();
 	const create = useServerFn(createShift);
@@ -300,6 +303,7 @@ const ShiftBoard = ({
 				positions={positions}
 				staffs={staffs}
 				timeUnitMinutes={timeUnitMinutes}
+				preferenceConflicts={preferenceConflicts}
 				editing={
 					canEdit && editMode
 						? { onChangeTime: handleChangeTime, onDelete: handleDelete }

@@ -205,28 +205,31 @@ const toStored = (row: {
 	updatedAt: row.updatedAt,
 });
 
+type ScopeIds = PreferenceContext["ids"];
+
+const levelOf = (ids: ScopeIds): PreferenceLevel =>
+	ids.eventId ? "event" : ids.tenantId ? "tenant" : "org";
+
 /** この単位と、その上の単位（テナント・団体）の名前。近い順 */
 const layerKeys = (
-	context: PreferenceContext,
+	ids: ScopeIds,
 ): { level: PreferenceLevel; key: string }[] => {
 	const keys: { level: PreferenceLevel; key: string }[] = [];
-	if (context.ids.eventId)
-		keys.push({ level: "event", key: `e:${context.ids.eventId}` });
-	if (context.ids.tenantId)
-		keys.push({ level: "tenant", key: `t:${context.ids.tenantId}` });
+	if (ids.eventId) keys.push({ level: "event", key: `e:${ids.eventId}` });
+	if (ids.tenantId) keys.push({ level: "tenant", key: `t:${ids.tenantId}` });
 	keys.push({ level: "org", key: "org" });
 	return keys;
 };
 
 /** スタッフごとの、この単位と上の単位の希望 */
 const loadLayers = async (
-	context: PreferenceContext,
+	ids: ScopeIds,
 	staffIds: string[],
 ): Promise<Map<string, PreferenceLayers<StoredPreference>>> => {
-	const keys = layerKeys(context);
+	const keys = layerKeys(ids);
 	const rows = await prisma.staffPreference.findMany({
 		where: {
-			organizationId: context.ids.organizationId,
+			organizationId: ids.organizationId,
 			staffId: { in: staffIds },
 			scopeKey: { in: keys.map((k) => k.key) },
 		},
@@ -242,6 +245,24 @@ const loadLayers = async (
 		if (level && entry) entry[level] = toStored(row);
 	}
 	return layers;
+};
+
+/**
+ * シフトの単位で使う、スタッフごとの希望（シフトの画面で、希望と違う割り当てを見つけるのに使う）。
+ * 見せてよい人かの確かめは呼ぶ側で行う
+ */
+export const loadEffectivePreferences = async (
+	ids: ScopeIds,
+	staffIds: string[],
+) => {
+	const layers = await loadLayers(ids, staffIds);
+	const level = levelOf(ids);
+	return new Map(
+		[...layers].map(([staffId, layer]) => [
+			staffId,
+			effectivePreference(level, layer),
+		]),
+	);
 };
 
 export type PreferenceView = {
@@ -267,7 +288,7 @@ export const getPreferenceOf = async (
 	context: PreferenceContext,
 	staff: { id: string; name: string },
 ): Promise<PreferenceView> => {
-	const layers = await loadLayers(context, [staff.id]);
+	const layers = await loadLayers(context.ids, [staff.id]);
 	return toView(context, staff, layers.get(staff.id)!);
 };
 
@@ -282,7 +303,7 @@ export const listPreferences = async (
 		orderBy: { name: "asc" },
 	});
 	const layers = await loadLayers(
-		context,
+		context.ids,
 		staffs.map((s) => s.id),
 	);
 	return staffs.map((staff) => toView(context, staff, layers.get(staff.id)!));
