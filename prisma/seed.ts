@@ -314,7 +314,7 @@ async function main() {
 				"山田 太郎",
 				"メインホール",
 				range("2024-06-01", "10:30", "11:30"),
-				"#0E7C7B",
+				"#6FB3AE",
 				["keynote"],
 			),
 			session(
@@ -322,7 +322,7 @@ async function main() {
 				"佐藤 花子",
 				"サブホール",
 				range("2024-06-01", "11:00", "11:45"),
-				"#4F46E5",
+				"#7FA7DE",
 				["beginner"],
 			),
 			session(
@@ -330,7 +330,7 @@ async function main() {
 				"—",
 				"メインホール",
 				range("2024-06-01", "12:00", "13:00"),
-				"#475569",
+				"#A3ADB8",
 				[],
 			),
 			session(
@@ -346,7 +346,7 @@ async function main() {
 				"高橋 美咲",
 				"サブホール",
 				range("2024-06-01", "13:30", "14:15"),
-				"#B45309",
+				"#EDB27A",
 				["community"],
 			),
 			session(
@@ -362,7 +362,7 @@ async function main() {
 				"実行委員会",
 				"メインホール",
 				range("2024-06-02", "10:00", "16:00"),
-				"#15803D",
+				"#93C49A",
 				["contributor"],
 			),
 		],

@@ -328,14 +328,15 @@ export const roomsOf = (sessions: { room: string }[]): string[] => [
 
 /** 部屋（ホール）の色。トラック色がないセッションと、部屋の見出しのラベルに使う（FR-6-B） */
 export const ROOM_COLORS = [
-	"#2f8a87",
-	"#6168cc",
-	"#bf7a3e",
-	"#c25a86",
-	"#46935e",
-	"#3a82ad",
-	"#8a6bd1",
-	"#64748a",
+	// 持ち場の色の見本（ペールトーン）と同じ色。明るい画面・暗い画面のどちらでも沈まない
+	"#6FB3AE",
+	"#7FA7DE",
+	"#A99BE0",
+	"#E39AB6",
+	"#EE9A8A",
+	"#EDB27A",
+	"#D9C27A",
+	"#93C49A",
 ] as const;
 
 export const roomColor = (index: number): string =>
