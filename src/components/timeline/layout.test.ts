@@ -26,6 +26,7 @@ const shift = (
 	end: string,
 ): Shift => ({
 	id,
+	organizationId: "org",
 	staffId,
 	roleId,
 	timeRange: { start: at(start), end: at(end) },
@@ -34,8 +35,20 @@ const shift = (
 });
 
 const roles: Role[] = [
-	{ id: "r1", name: "受付", color: "#3357FF", requiredStaffCount: 2 },
-	{ id: "r2", name: "司会", color: "#33FFF6", requiredStaffCount: 1 },
+	{
+		id: "r1",
+		organizationId: "org",
+		name: "受付",
+		color: "#3357FF",
+		requiredStaffCount: 2,
+	},
+	{
+		id: "r2",
+		organizationId: "org",
+		name: "司会",
+		color: "#33FFF6",
+		requiredStaffCount: 1,
+	},
 ];
 const staffs = [
 	{ id: "s1", name: "山田", unavailableTimes: [] },

@@ -20,7 +20,23 @@ export const Route = createRootRoute({
 		],
 	}),
 	component: RootComponent,
+	notFoundComponent: NotFound,
 });
+
+// 見つからないとき（所属していない団体も、団体があるかどうかを漏らさないよう同じ表示にする）
+function NotFound() {
+	return (
+		<main className="mx-auto max-w-md space-y-4 p-6">
+			<h1 className="text-2xl font-bold">見つかりません</h1>
+			<p className="text-sm">
+				ページが見つからないか、見る権限がありません。団体のページなら、その団体に参加しているか確かめてください。
+			</p>
+			<a href="/" className="text-sm underline">
+				トップへ
+			</a>
+		</main>
+	);
+}
 
 function RootComponent() {
 	return (

@@ -70,7 +70,26 @@ pnpm dev
 
 はじめての人は、どちらの方法でもアカウントが作られ、`/welcome` で名前を決めてから使い始めます（新規登録は `/signup`）。
 
-画面（`/`・`/draft`）、server function、API（`/api/*`）は、どれもログインが必要です。
+画面、server function、API（`/api/*`）は、どれもログインが必要です。
+
+### 団体（複数の団体が同じインスタンスを使う）
+
+- 団体の画面は `/o/<団体の URL 名>`（確定シフト・下書き・設定とメンバー）。ログイン後のトップ（`/`）に、所属している団体の一覧が出ます
+- 団体は `/orgs/new` で作れます（作った人がオーナー）。ほかの人は **招待コード**（`/join`）で参加します
+- 招待コードは 8 文字（読み間違えやすい 0・O・1・I・L は使わない）。発行するときに、参加したときの役割・使える回数（既定は 1 回）・有効期限（既定は 7 日）を決めます。発行と取り消しはリーダー以上
+- 表示名は団体ごとに決められます（設定とメンバーの画面）
+- 役割とできること
+
+  |                                          | オーナー | リーダー | スタッフ | ゲスト |
+  | ---------------------------------------- | -------- | -------- | -------- | ------ |
+  | シフトを見る・メンバーを見る             | ○        | ○        | ○        | ○      |
+  | シフトを作る・変える・確定する           | ○        | ○        |          |        |
+  | 招待コードを発行・取り消す               | ○        | ○        |          |        |
+  | メンバーの役割を変える・外す、団体の設定 | ○        |          |          |        |
+
+- **所属していない団体のデータは見えません。** 団体のデータを読み書きする処理は、必ず `requireOrgAccess`（`src/server/org-access.server.ts`）でメンバーかと権限を確かめ、団体の ID で絞り込みます。所属していない団体は「見つかりません」（404）として扱い、団体があるかどうかも漏らしません。これは `src/server/org-isolation.integration.test.ts` で、実際の DB を使って確かめています（`DATABASE_URL` がないと飛ばします）
+- API は `/api/o/<団体の URL 名>/staff`・`/shifts`・`/shifts/draft`・`/shifts/:id` です
+- `pnpm prisma:seed` は、団体「WordCamp 2024 運営」（`/o/demo`）とそのオーナー `leader@example.com`、もう 1 つの団体（`/o/other`、`leader@example.com` は所属しない）を作ります
 
 ### DB とマイグレーション
 
@@ -89,9 +108,9 @@ DB は Postgres（自前・Docker・Cloudflare Hyperdrive）と SQLite（Cloudfl
 src/
   routes/          # 画面と API（ファイル名がそのまま URL になる）
     __root.tsx     # 全ページ共通の HTML
-    index.tsx      # /（確定シフト）
-    draft.tsx      # /draft（下書きシフト）
-    api/           # /api/staff・/api/shifts など外から呼べる API
+    _authed/       # ログインが必要な画面（/・/orgs/new・/join・/o/<団体>/...）
+    login.tsx・signup.tsx・welcome.tsx
+    api/           # /api/auth/*（ログイン）と /api/o/<団体>/*（団体の API）
   server/          # サーバーだけで動く処理（DB アクセス・server function）
   components/      # 画面の部品
   lib/             # Prisma Client・.env の読み込みなど

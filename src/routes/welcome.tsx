@@ -2,6 +2,7 @@ import { createFileRoute, redirect, useRouter } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useId, useState } from "react";
 import type { FormEvent } from "react";
+import { authClient } from "../lib/auth-client";
 import { NAME_MAX_LENGTH, suggestNameFromEmail } from "../lib/profile";
 import { safeRedirectPath } from "../lib/safe-redirect";
 import { completeOnboarding, getSession } from "../server/session.functions";
@@ -89,6 +90,19 @@ function WelcomePage() {
 					))}
 				</ul>
 			)}
+			<p className="text-sm text-gray-600">
+				名前を決めたら、団体を作るか、招待コードで団体に参加します。
+			</p>
+			<button
+				type="button"
+				onClick={async () => {
+					await authClient.signOut();
+					router.history.push("/login");
+				}}
+				className="text-sm underline"
+			>
+				別のアカウントでログインする（ログアウト）
+			</button>
 		</main>
 	);
 }

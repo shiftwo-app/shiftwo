@@ -5,27 +5,39 @@
 
 model Staff {
   id              String    @id @default(uuid())
+  organizationId  String
+  organization    Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   name            String
   preferredRoles  Role[]    @relation("StaffPreferredRoles")
   // TimeRange（start, end）の配列。SQLite（D1）には配列型がないので、Json の中に配列で持つ。
   // @default("[]") は付けない（SQLite では Prisma が既定値を空文字列で出力してしまう）。作る側で [] を渡す
   unavailableTimes Json
   shifts          Shift[]
+
+  @@index([organizationId])
 }
 
 model Role {
   id              String    @id @default(uuid())
+  organizationId  String
+  organization    Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   name            String
   color           String
   requiredStaffCount Int
   preferredBy     Staff[]   @relation("StaffPreferredRoles")
   shifts          Shift[]
+
+  @@index([organizationId])
 }
 
 model Event {
-  id    String @id @default(uuid())
-  name  String
-  rooms Room[]
+  id             String @id @default(uuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  name           String
+  rooms          Room[]
+
+  @@index([organizationId])
 }
 
 model Room {
@@ -34,18 +46,23 @@ model Room {
   // TimeRange（start, end）の配列（unavailableTimes と同じ理由で Json）
   timeTable Json
   eventId   String
-  event     Event  @relation(fields: [eventId], references: [id])
+  event     Event  @relation(fields: [eventId], references: [id], onDelete: Cascade)
 }
 
 model Shift {
   id              String    @id @default(uuid())
-  staff           Staff     @relation(fields: [staffId], references: [id])
+  organizationId  String
+  organization    Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  // 団体を消したときに一緒に消えるよう Cascade（スタッフ・役割を消すと、そのシフトも消える）
+  staff           Staff     @relation(fields: [staffId], references: [id], onDelete: Cascade)
   staffId         String
-  role            Role      @relation(fields: [roleId], references: [id])
+  role            Role      @relation(fields: [roleId], references: [id], onDelete: Cascade)
   roleId          String
   timeRange       Json // TimeRange (start, end)
   isPreferredRole Boolean
   status          ShiftStatus @default(draft)
+
+  @@index([organizationId, status])
 }
 
 enum ShiftStatus {
@@ -53,9 +70,73 @@ enum ShiftStatus {
   confirmed
 }
 
+// 団体ごとに 1 つ
 model ShiftSetting {
   id              String    @id @default(uuid())
+  organizationId  String    @unique
+  organization    Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   timeUnitMinutes Int
+}
+
+// ---- 団体（複数の団体が同じインスタンスを使う）----
+
+// 団体。URL は /o/<slug>
+model Organization {
+  id           String         @id @default(uuid())
+  slug         String         @unique
+  name         String
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+  members      Member[]
+  invites      Invite[]
+  staffs       Staff[]
+  roles        Role[]
+  events       Event[]
+  shifts       Shift[]
+  shiftSetting ShiftSetting?
+}
+
+enum MemberRole {
+  owner
+  leader
+  staff
+  guest
+}
+
+// 団体への所属。表示名は団体ごとに決められる
+model Member {
+  id             String       @id @default(uuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  userId         String
+  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role           MemberRole
+  displayName    String
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  @@unique([organizationId, userId])
+  @@index([userId])
+}
+
+// 招待コード。団体に参加するときに入力する
+model Invite {
+  id             String       @id @default(uuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  code           String       @unique
+  // 参加したときの役割（owner にはできない）
+  role           MemberRole
+  // 使える回数（null なら制限なし）と、使った回数
+  maxUses        Int?
+  uses           Int          @default(0)
+  expiresAt      DateTime
+  revokedAt      DateTime?
+  createdById    String
+  createdBy      User         @relation(fields: [createdById], references: [id], onDelete: Cascade)
+  createdAt      DateTime     @default(now())
+
+  @@index([organizationId])
 }
 
 // ---- ログイン（Better Auth）----
@@ -74,6 +155,8 @@ model User {
   updatedAt     DateTime  @updatedAt
   sessions      Session[]
   accounts      Account[]
+  members       Member[]
+  invites       Invite[]
 
   @@unique([email])
   @@map("user")
