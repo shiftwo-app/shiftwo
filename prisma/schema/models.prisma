@@ -72,6 +72,7 @@ model Event {
   positions       Position[]
   shifts          Shift[]
   members         EventMember[]
+  sessions        EventSession[]
 
   @@unique([tenantId, slug])
   @@index([organizationId])
@@ -84,6 +85,32 @@ model Room {
   timeTable Json
   eventId   String
   event     Event  @relation(fields: [eventId], references: [id], onDelete: Cascade)
+}
+
+// イベントのタイムテーブルのセッション（FR-6）。CSV / JSON で取り込み、イベントごとにまるごと置き換える。
+// 部屋は名前（文字）で持ち、同じ名前のセッションを 1 つの列（ホール）として並べる
+model EventSession {
+  id             String   @id @default(uuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  eventId        String
+  event          Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  title          String
+  speaker        String
+  room           String
+  startsAt       DateTime
+  endsAt         DateTime
+  // トラックの色（#RRGGBB。任意）
+  trackColor     String?
+  // タグ（文字列の配列。SQLite（D1）には配列型がないので Json）
+  tags           Json
+  // どこから取り込んだか（csv / json と、ファイル名）
+  importSource   String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@index([eventId, startsAt])
+  @@index([organizationId])
 }
 
 // シフト。必ずテナントに属し、イベントに紐づかない（eventId なし）ものは日常シフト
@@ -199,6 +226,7 @@ model Organization {
   positions    Position[]
   tenants      Tenant[]
   events       Event[]
+  eventSessions EventSession[]
   shifts       Shift[]
 }
 

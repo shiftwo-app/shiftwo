@@ -4,6 +4,7 @@ import type { ShiftScopeParams } from "../lib/shift-scope";
 import type { Position, Shift, Staff } from "../types";
 import { ShiftStatus } from "../types";
 import ShiftBoard from "./ShiftBoard";
+import type { Session } from "./timetable/session";
 import Alert from "./ui/Alert";
 import PageHeader from "./ui/PageHeader";
 
@@ -24,6 +25,7 @@ const ShiftBoardPage = ({
 		liveTransport: RealtimeTransport;
 		preferenceConflicts: Record<string, string[]>;
 		positionsEnabled: boolean;
+		sessions: Session[];
 	};
 	scope: ShiftScopeParams;
 	status: ShiftStatus;
@@ -55,6 +57,7 @@ const ShiftBoardPage = ({
 				liveTransport={board.liveTransport}
 				preferenceConflicts={board.preferenceConflicts}
 				positionsEnabled={board.positionsEnabled}
+				sessions={board.sessions}
 			/>
 		</main>
 	);

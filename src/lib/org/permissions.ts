@@ -2,7 +2,8 @@
 // サーバーの権限チェックと、画面の出し分けの両方で使う（画面で隠すのは見た目のためで、守りはサーバーのチェック）
 
 import type { MessageKey } from "../i18n/messages";
-import { type Translate, translatorFor } from "../i18n/translate";
+// i18n は型だけを読む（prisma/seed.ts が、この中の DEFAULT_ROLES を Node でそのまま読むため）
+import type { Translate } from "../i18n/translate";
 
 // 画面に出す名前はメッセージのキー（labelKey）で持ち、画面の言語で引く
 export const PERMISSIONS = [
@@ -56,19 +57,14 @@ export const SCOPED_PERMISSIONS: readonly Permission[] = PERMISSIONS.filter(
 	(p) => p.scoped,
 ).map((p) => p.key);
 
-/** 権限の名前（画面の言語で）。t を渡さなければ日本語 */
+/** 権限の名前（画面の言語で） */
 export const permissionLabel = (
 	permission: Permission,
-	t: Translate = translatorFor("ja"),
+	t: Translate,
 ): string => {
 	const entry = PERMISSIONS.find((p) => p.key === permission);
 	return entry ? t(entry.labelKey) : permission;
 };
-
-/** 権限の名前（日本語）。画面では permissionLabel(p, t) を使う */
-export const PERMISSION_LABELS = Object.fromEntries(
-	PERMISSIONS.map((p) => [p.key, permissionLabel(p.key)]),
-) as Record<Permission, string>;
 
 const isPermission = (value: unknown): value is Permission =>
 	typeof value === "string" &&

@@ -20,6 +20,7 @@ import {
 	type ShiftWriteResult,
 } from "./shift-write.server";
 import { conflictsOf } from "./shift-conflicts.server";
+import { listSessions } from "./timetable.server";
 import { findShiftBoard } from "./shifts.server";
 
 // 画面から呼ぶ。どれもログインが必要で（requireUserMiddleware）、
@@ -139,6 +140,8 @@ export const getShiftBoard = createServerFn({ method: "GET" })
 				: {},
 			/** ほかの人の変更を受け取る方式（同時編集） */
 			liveTransport: platform.realtime.transport,
+			/** イベントのタイムテーブル（FR-6-C。シフトの画面に重ねて出す）。日常シフトでは空 */
+			sessions: access.event ? await listSessions(access.event.id) : [],
 		};
 	});
 

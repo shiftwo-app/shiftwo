@@ -279,6 +279,95 @@ async function main() {
 		],
 	});
 
+	// イベントのタイムテーブル（FR-6）
+	const session = (
+		title: string,
+		speaker: string,
+		room: string,
+		timeRange: { start: Date; end: Date },
+		trackColor: string | null,
+		tags: string[],
+	) => ({
+		organizationId,
+		eventId: event.id,
+		title,
+		speaker,
+		room,
+		startsAt: timeRange.start,
+		endsAt: timeRange.end,
+		trackColor,
+		tags,
+		importSource: "seed",
+	});
+	await prisma.eventSession.createMany({
+		data: [
+			session(
+				"オープニング",
+				"実行委員会",
+				"メインホール",
+				range("2024-06-01", "10:00", "10:20"),
+				null,
+				[],
+			),
+			session(
+				"基調講演：これからの WordPress",
+				"山田 太郎",
+				"メインホール",
+				range("2024-06-01", "10:30", "11:30"),
+				"#0E7C7B",
+				["keynote"],
+			),
+			session(
+				"ブロックテーマ入門",
+				"佐藤 花子",
+				"サブホール",
+				range("2024-06-01", "11:00", "11:45"),
+				"#4F46E5",
+				["beginner"],
+			),
+			session(
+				"ランチ",
+				"—",
+				"メインホール",
+				range("2024-06-01", "12:00", "13:00"),
+				"#475569",
+				[],
+			),
+			session(
+				"パフォーマンス改善の実例",
+				"鈴木 一郎",
+				"メインホール",
+				range("2024-06-01", "13:00", "13:45"),
+				null,
+				["advanced"],
+			),
+			session(
+				"コミュニティの育て方",
+				"高橋 美咲",
+				"サブホール",
+				range("2024-06-01", "13:30", "14:15"),
+				"#B45309",
+				["community"],
+			),
+			session(
+				"ライトニングトーク",
+				"登壇者のみなさん",
+				"メインホール",
+				range("2024-06-01", "16:00", "17:00"),
+				null,
+				["lt"],
+			),
+			session(
+				"コントリビューターデイ",
+				"実行委員会",
+				"メインホール",
+				range("2024-06-02", "10:00", "16:00"),
+				"#15803D",
+				["contributor"],
+			),
+		],
+	});
+
 	// ---- 団体どうしのデータが混ざらないことを確かめるための、もう 1 つの団体（leader@example.com は所属しない）。
 	// テナントは 1 つなので、テナントを選ぶ手順は出ない ----
 	const otherOrg = await prisma.organization.create({

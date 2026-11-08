@@ -86,6 +86,13 @@ function OrgLayout() {
 				label: t("report.tab"),
 				link: { to: "/o/$orgSlug/t/$tenantSlug/e/$eventSlug/report", params },
 			},
+			{
+				label: t("timetable.tab"),
+				link: {
+					to: "/o/$orgSlug/t/$tenantSlug/e/$eventSlug/timetable",
+					params,
+				},
+			},
 			...(canOpenSettings
 				? [
 						{

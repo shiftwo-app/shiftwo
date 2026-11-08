@@ -18,7 +18,9 @@ import {
 	type CoverageSegment,
 	coverageSegments,
 	formatDayIn,
+	assignLanes,
 	formatTime,
+	toMs,
 	isHourTick,
 	listShiftDays,
 	MINUTE_MS,
@@ -30,6 +32,8 @@ import {
 	type ZoomMinutes,
 } from "./timeline/layout";
 import Avatar from "./Avatar";
+import { asTimed, type Session } from "./timetable/session";
+import { roomColor, roomsOf } from "../lib/timetable";
 import { applyDrag, type DragMode } from "./timeline/snap";
 import {
 	accumulateWheelZoom,
@@ -56,6 +60,8 @@ interface ShiftTimelineProps {
 	preferenceConflicts?: Record<string, string[]>;
 	/** 持ち場を使うか。使わないなら、スタッフ別だけを出し、必要人数も出さない */
 	positionsEnabled?: boolean;
+	/** イベントのタイムテーブル（FR-6-C）。部屋ごとの行として、シフトの上に重ねて出す */
+	sessions?: Session[];
 }
 
 /** 1 目盛りの幅（px）。ズームを変えると 1 分あたりの幅が変わる */
@@ -63,6 +69,8 @@ const TICK_WIDTH_PX = 40;
 const LANE_HEIGHT_PX = 40;
 /** 持ち場別の行の上に出す、充足バッジの帯の高さ */
 const BADGE_BAND_HEIGHT_PX = 22;
+/** タイムテーブルの行の 1 段の高さ */
+const SESSION_LANE_HEIGHT_PX = 28;
 /** 編集モードで表示期間の前後に足す余白 */
 const EDIT_PADDING_MS = 60 * 60_000;
 const DAY_MS = 24 * 60 * 60_000;
@@ -169,6 +177,7 @@ const ShiftTimeline = ({
 	editing,
 	preferenceConflicts,
 	positionsEnabled = true,
+	sessions = [],
 }: ShiftTimelineProps) => {
 	const t = useT();
 	const intlLocale = useIntlLocale();
@@ -191,8 +200,17 @@ const ShiftTimeline = ({
 		}
 	}, [zoom]);
 
+	// タイムテーブル（FR-6-C）を重ねるか。重ねるときは、セッションの日と時間帯も表示の範囲に入れる
+	const [showSessions, setShowSessions] = useState(true);
+	const overlay = showSessions && sessions.length > 0;
+	const timedSessions = useMemo(() => sessions.map(asTimed), [sessions]);
+	const allRooms = useMemo(() => roomsOf(sessions), [sessions]);
+
 	// 複数日のイベントは 1 日ずつ表示する。最初はシフトのある最初の日
-	const days = useMemo(() => listShiftDays(shifts), [shifts]);
+	const days = useMemo(
+		() => listShiftDays(overlay ? [...shifts, ...timedSessions] : shifts),
+		[shifts, timedSessions, overlay],
+	);
 	const [selectedDay, setSelectedDay] = useState<number | undefined>(days[0]);
 	const day =
 		selectedDay !== undefined && days.includes(selectedDay)
@@ -202,11 +220,48 @@ const ShiftTimeline = ({
 		() => (day === undefined ? shifts : shiftsOnDay(shifts, day)),
 		[shifts, day],
 	);
+	const daySessions = useMemo(
+		() =>
+			!overlay
+				? []
+				: day === undefined
+					? timedSessions
+					: shiftsOnDay(timedSessions, day),
+		[overlay, timedSessions, day],
+	);
+	const sessionRows = useMemo(
+		() =>
+			allRooms
+				.map((room, index) => {
+					const items = daySessions
+						.filter((session) => session.room === room)
+						.sort((a, b) => toMs(a.start) - toMs(b.start));
+					const lanes = assignLanes(
+						items.map((item) => ({
+							start: toMs(item.start),
+							end: toMs(item.end),
+						})),
+					);
+					return {
+						room,
+						color: roomColor(index),
+						items,
+						lanes,
+						laneCount: Math.max(1, ...lanes.map((lane) => lane + 1)),
+					};
+				})
+				.filter((row) => row.items.length > 0),
+		[allRooms, daySessions],
+	);
 
 	// 編集中は前後に 1 時間ずつ余白を足し、端のシフトも外側へ動かせるようにする（その日の中で）
 	const isEditing = editing !== undefined;
 	const range = useMemo(() => {
-		const base = computeDisplayRange(dayShifts, undefined, day);
+		const base = computeDisplayRange(
+			[...dayShifts, ...daySessions],
+			undefined,
+			day,
+		);
 		if (!isEditing) return base;
 		const padded = {
 			start: base.start - EDIT_PADDING_MS,
@@ -217,7 +272,7 @@ const ShiftTimeline = ({
 			start: Math.max(padded.start, day),
 			end: Math.min(padded.end, day + DAY_MS),
 		};
-	}, [dayShifts, day, isEditing]);
+	}, [dayShifts, daySessions, day, isEditing]);
 	const ticks = useMemo(() => buildTicks(range, zoom), [range, zoom]);
 	const rows = useMemo(
 		() =>
@@ -273,6 +328,17 @@ const ShiftTimeline = ({
 							</label>
 						))}
 					</fieldset>
+				)}
+				{sessions.length > 0 && (
+					<label className="flex items-center gap-2 text-xs text-ink-muted">
+						<input
+							type="checkbox"
+							checked={showSessions}
+							onChange={(event) => setShowSessions(event.target.checked)}
+							className="size-4 accent-primary"
+						/>
+						{t("timetable.overlayToggle")}
+					</label>
 				)}
 				<label
 					htmlFor={zoomSelectId}
@@ -349,6 +415,75 @@ const ShiftTimeline = ({
 							)}
 						</div>
 					</div>
+
+					{/* タイムテーブル（FR-6-C）：部屋ごとの行。セッションは透ける色で重ねる */}
+					{sessionRows.length > 0 && (
+						<ul
+							aria-label={t("timetable.overlayRows")}
+							className="border-b-2 border-line-strong bg-surface-sunken/60"
+						>
+							{sessionRows.map((row) => (
+								<li
+									key={row.room}
+									className="flex border-b border-line last:border-b-0"
+								>
+									<div
+										className="sticky left-0 z-[15] flex shrink-0 items-center gap-2 border-r border-line bg-surface-sunken py-1 pr-2 pl-3 text-xs"
+										style={{ width: "var(--header-w)" }}
+									>
+										<span
+											aria-hidden
+											className="size-2.5 shrink-0 rounded-full"
+											style={{ backgroundColor: row.color }}
+										/>
+										<span className="truncate font-bold text-ink-muted">
+											{row.room}
+										</span>
+									</div>
+									<ul
+										aria-label={t("timetable.overlayRoom", { room: row.room })}
+										className="relative"
+										style={{
+											width,
+											height: row.laneCount * SESSION_LANE_HEIGHT_PX,
+										}}
+									>
+										{row.items.map((item, index) => {
+											const start = Math.max(toMs(item.start), range.start);
+											const end = Math.min(toMs(item.end), range.end);
+											if (end <= start) return null;
+											const accent = item.trackColor ?? row.color;
+											const label = t("timetable.sessionLabel", {
+												time: `${formatTime(toMs(item.start))}–${formatTime(toMs(item.end))}`,
+												title: item.title,
+												speaker: item.speaker,
+											});
+											return (
+												<li
+													key={item.id}
+													title={label}
+													className="absolute flex items-center overflow-hidden rounded px-1.5 text-[11px] leading-tight text-ink"
+													style={{
+														left: toX(start) + 1,
+														width: Math.max((end - start) * pxPerMs - 2, 4),
+														top: row.lanes[index]! * SESSION_LANE_HEIGHT_PX + 3,
+														height: SESSION_LANE_HEIGHT_PX - 6,
+														borderLeft: `3px solid ${accent}`,
+														backgroundColor: `color-mix(in srgb, ${accent} 16%, transparent)`,
+													}}
+												>
+													<span className="sr-only">{label}</span>
+													<span aria-hidden className="truncate">
+														{item.title}
+													</span>
+												</li>
+											);
+										})}
+									</ul>
+								</li>
+							))}
+						</ul>
+					)}
 
 					{/* 行 */}
 					<ul aria-label={t("board.rowsLabel", { axis: t(AXIS_LABELS[axis]) })}>
@@ -474,6 +609,15 @@ const ShiftTimeline = ({
 								className="inline-block h-3 w-5 rounded-sm bg-danger-soft ring-1 ring-danger/40"
 							/>
 							{t("board.legendShort")}
+						</li>
+					)}
+					{sessionRows.length > 0 && (
+						<li className="flex items-center gap-1.5">
+							<span
+								aria-hidden
+								className="inline-block h-3 w-5 rounded-sm border-l-[3px] border-ink-muted bg-ink-muted/15"
+							/>
+							{t("timetable.overlayRows")}
 						</li>
 					)}
 					<li className="flex items-center gap-1.5">

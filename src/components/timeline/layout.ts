@@ -2,7 +2,7 @@
 import type { Position, Shift, Staff } from "../../types";
 
 export const MINUTE_MS = 60_000;
-const HOUR_MS = 60 * MINUTE_MS;
+export const HOUR_MS = 60 * MINUTE_MS;
 export const DAY_MS = 24 * HOUR_MS;
 
 /** 表示に使うタイムゾーン。SSR とブラウザで表示がずれないよう、閲覧者の環境ではなく固定にする */
@@ -52,6 +52,9 @@ export type CoverageSegment = Interval & { count: number };
 
 export const toMs = (value: Date | string): number => new Date(value).getTime();
 
+/** 時間の範囲を持つもの（シフトや、タイムテーブルのセッション）。日の一覧や表示の範囲の計算に使う */
+export type Timed = { timeRange: { start: Date | string; end: Date | string } };
+
 const timeFormatter = new Intl.DateTimeFormat("ja-JP", {
 	timeZone: DISPLAY_TIME_ZONE,
 	hour: "2-digit",
@@ -87,7 +90,7 @@ export const startOfDisplayDay = (ms: number): number =>
 	Math.floor((ms + DISPLAY_OFFSET_MS) / DAY_MS) * DAY_MS - DISPLAY_OFFSET_MS;
 
 /** シフトのある日（0:00 の時刻）を早い順に。日をまたぐシフトは、かかっている日すべてに数える */
-export const listShiftDays = (shifts: Shift[]): number[] => {
+export const listShiftDays = (shifts: readonly Timed[]): number[] => {
 	const days = new Set<number>();
 	for (const shift of shifts) {
 		const end = toMs(shift.timeRange.end);
@@ -103,7 +106,7 @@ export const listShiftDays = (shifts: Shift[]): number[] => {
 };
 
 /** その日にかかっているシフトだけを残す */
-export const shiftsOnDay = (shifts: Shift[], day: number): Shift[] =>
+export const shiftsOnDay = <T extends Timed>(shifts: T[], day: number): T[] =>
 	shifts.filter(
 		(shift) =>
 			toMs(shift.timeRange.start) < day + DAY_MS &&
@@ -119,7 +122,7 @@ export const formatTime = (ms: number): string => timeFormatter.format(ms);
  * シフトがなければ、day（なければ now）の日の 9:00〜22:00（表示のタイムゾーン）
  */
 export const computeDisplayRange = (
-	shifts: Shift[],
+	shifts: readonly Timed[],
 	now: Date = new Date(),
 	day?: number,
 ): Interval => {
