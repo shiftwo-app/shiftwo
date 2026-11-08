@@ -1,6 +1,7 @@
 // イベントのタイムテーブル（FR-6）の読み書き。
 // 見るのはシフトを見られる人（shift.view）。取り込み・直す・消すのは、イベントを管理できる人（event.manage）だけ（FR-6-D）。
 // どの操作も、そのイベントの ID で絞り込み、ほかのイベントのセッションには触れない
+import { announceBoardChange } from "./board-live.server";
 import { serverT } from "../lib/i18n/request-locale.server";
 import { hasPermission } from "../lib/org/permissions";
 import { prisma } from "../lib/prisma.server";
@@ -81,6 +82,17 @@ export const listSessions = async (eventId: string): Promise<SessionView[]> => {
 	}));
 };
 
+/** シフトの画面に重ねているタイムテーブルが変わったことを、そのイベントの画面に知らせる */
+const announceTimetable = (access: TimetableAccess) =>
+	announceBoardChange(
+		{
+			organizationId: access.organization.id,
+			tenantId: access.tenant.id,
+			eventId: access.event.id,
+		},
+		"timetable",
+	);
+
 const forbidden = () => ({
 	ok: false as const,
 	errors: [serverT("timetable.errorForbidden")],
@@ -143,6 +155,7 @@ export const importTimetable = async (
 			})),
 		}),
 	]);
+	announceTimetable(access);
 	return { ok: true, applied: true, count: parsed.rows.length };
 };
 
@@ -186,9 +199,11 @@ export const updateSession = async (
 			tags: row.tags,
 		},
 	});
-	return count > 0
-		? { ok: true }
-		: { ok: false, errors: [serverT("timetable.errorNotFound")] };
+	if (count === 0) {
+		return { ok: false, errors: [serverT("timetable.errorNotFound")] };
+	}
+	announceTimetable(access);
+	return { ok: true };
 };
 
 /** 1 セッションを消す */
@@ -200,9 +215,11 @@ export const deleteSession = async (
 	const { count } = await prisma.eventSession.deleteMany({
 		where: { id, eventId: access.event.id },
 	});
-	return count > 0
-		? { ok: true }
-		: { ok: false, errors: [serverT("timetable.errorNotFound")] };
+	if (count === 0) {
+		return { ok: false, errors: [serverT("timetable.errorNotFound")] };
+	}
+	announceTimetable(access);
+	return { ok: true };
 };
 
 /** このイベントのタイムテーブルをまるごと消す */
@@ -213,5 +230,6 @@ export const clearTimetable = async (
 	const { count } = await prisma.eventSession.deleteMany({
 		where: { eventId: access.event.id },
 	});
+	announceTimetable(access);
 	return { ok: true, count };
 };

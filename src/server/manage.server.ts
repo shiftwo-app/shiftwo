@@ -1,6 +1,7 @@
 // テナント・イベント・持ち場・スタッフ・テナントとイベントでのロールの割り当て（サーバー専用）。
 // どの操作も団体（とテナント・イベント）の ID で絞り込み、ほかの単位のものには触れない。
 // 「権限を持っているか」の確認は呼ぶ側（manage.functions.ts）で行う
+import { announceBoardChange, announceForLevel } from "./board-live.server";
 import type {
 	EventInput,
 	PositionInput,
@@ -57,6 +58,11 @@ export const updateTenant = async (
 			data: input,
 		});
 		if (result.count === 0) return fail("settings.errorTenantNotFound");
+		// 時間粒度などが変わるので、テナントの画面（日常シフトとイベント）に知らせる
+		await announceForLevel(
+			{ organizationId, tenantId, eventId: null },
+			"settings",
+		);
 		return { ok: true, slug: input.slug };
 	} catch (error) {
 		return slugTaken(error);
@@ -91,6 +97,7 @@ export const updateEvent = async (
 			data: input,
 		});
 		if (result.count === 0) return fail("settings.errorEventNotFound");
+		await announceForLevel({ ...ids, eventId }, "settings");
 		return { ok: true, slug: input.slug };
 	} catch (error) {
 		return slugTaken(error);
@@ -117,6 +124,7 @@ export const createPosition = async (
 	input: PositionInput,
 ): Promise<Result> => {
 	await prisma.position.create({ data: { ...scope, ...input } });
+	announceBoardChange(scope, "positions");
 	return { ok: true };
 };
 
@@ -129,9 +137,9 @@ export const updatePosition = async (
 		where: { id: positionId, ...scope },
 		data: input,
 	});
-	return result.count === 0
-		? fail("settings.errorPositionNotFound")
-		: { ok: true };
+	if (result.count === 0) return fail("settings.errorPositionNotFound");
+	announceBoardChange(scope, "positions");
+	return { ok: true };
 };
 
 /** 持ち場を消す（その持ち場のシフトも消える） */
@@ -142,12 +150,16 @@ export const deletePosition = async (
 	const result = await prisma.position.deleteMany({
 		where: { id: positionId, ...scope },
 	});
-	return result.count === 0
-		? fail("settings.errorPositionNotFound")
-		: { ok: true };
+	if (result.count === 0) return fail("settings.errorPositionNotFound");
+	announceBoardChange(scope, "positions");
+	return { ok: true };
 };
 
 // ---- スタッフ（団体全体） ----
+
+/** スタッフは団体全体で共通なので、団体のすべてのシフトの画面に知らせる */
+const announceStaffChange = (organizationId: string) =>
+	announceForLevel({ organizationId, tenantId: null, eventId: null }, "staff");
 
 /** 紐づけるメンバーが同じ団体のメンバーかを確かめる */
 const memberBelongs = async (organizationId: string, memberId: string | null) =>
@@ -177,6 +189,7 @@ export const createStaff = async (
 				unavailableTimes: [],
 			},
 		});
+		await announceStaffChange(organizationId);
 		return { ok: true };
 	} catch (error) {
 		return staffMemberTaken(error);
@@ -196,9 +209,9 @@ export const updateStaff = async (
 			where: { id: staffId, organizationId },
 			data: { name: input.name, memberId: input.memberId },
 		});
-		return result.count === 0
-			? fail("settings.errorStaffNotFound")
-			: { ok: true };
+		if (result.count === 0) return fail("settings.errorStaffNotFound");
+		await announceStaffChange(organizationId);
+		return { ok: true };
 	} catch (error) {
 		return staffMemberTaken(error);
 	}
@@ -212,9 +225,9 @@ export const deleteStaff = async (
 	const result = await prisma.staff.deleteMany({
 		where: { id: staffId, organizationId },
 	});
-	return result.count === 0
-		? fail("settings.errorStaffNotFound")
-		: { ok: true };
+	if (result.count === 0) return fail("settings.errorStaffNotFound");
+	await announceStaffChange(organizationId);
+	return { ok: true };
 };
 
 // ---- テナント・イベントでのロールの割り当て ----

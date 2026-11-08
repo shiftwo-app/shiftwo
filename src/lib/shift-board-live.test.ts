@@ -30,7 +30,17 @@ describe("シフトの画面のリアルタイムの更新", () => {
 				'{"type":"shift.changed","shiftId":"x","version":2}',
 			),
 		).toEqual({ type: "shift.changed", shiftId: "x", version: 2 });
-		for (const data of ["pong", "{}", '{"type":"other"}', 1, null]) {
+		expect(
+			parseShiftBoardEvent('{"type":"board.changed","reason":"positions"}'),
+		).toEqual({ type: "board.changed", reason: "positions" });
+		for (const data of [
+			"pong",
+			"{}",
+			'{"type":"other"}',
+			'{"type":"board.changed","reason":"unknown"}',
+			1,
+			null,
+		]) {
 			expect(parseShiftBoardEvent(data)).toBeNull();
 		}
 	});

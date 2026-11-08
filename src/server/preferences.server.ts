@@ -4,6 +4,7 @@
 //               ほかの人の希望と、締切のあとの直しは「全員の希望を扱える人」だけ
 //   全員の希望を扱える人 … 団体全体の希望は staff.manage、テナント・イベントの希望は、その単位での shift.edit
 //   締切・期間を決める人 … 団体は org.settings、テナントは tenant.manage、イベントは event.manage
+import { announceForLevel } from "./board-live.server";
 import { serverT } from "../lib/i18n/request-locale.server";
 import { hasPermission, type Permission } from "../lib/org/permissions";
 import {
@@ -436,6 +437,7 @@ export const savePreference = async (
 		},
 		update: data,
 	});
+	await announceForLevel(context.ids, "preferences");
 	return { ok: true };
 };
 
@@ -454,6 +456,7 @@ export const removePreference = async (
 			scopeKey: context.scopeKey,
 		},
 	});
+	await announceForLevel(context.ids, "preferences");
 	return { ok: true };
 };
 
@@ -596,5 +599,6 @@ export const importPreferences = async (
 		const result = await savePreference(context, row.staffId!, row.input, now);
 		if (!result.ok) return result;
 	}
+	await announceForLevel(context.ids, "preferences");
 	return { ok: true, applied: true, count: parsed.rows.length, rows };
 };
