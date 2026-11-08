@@ -1,3 +1,4 @@
+import { announceForLevel } from "./board-live.server";
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import {
@@ -472,6 +473,14 @@ export const setPositionsSettingFn = createServerFn({ method: "POST" })
 				where: { id: membership.organization.id },
 				data: { positionsEnabled: value },
 			});
+			await announceForLevel(
+				{
+					organizationId: membership.organization.id,
+					tenantId: null,
+					eventId: null,
+				},
+				"settings",
+			);
 			return { ok: true };
 		}
 		const scope = {
@@ -489,6 +498,14 @@ export const setPositionsSettingFn = createServerFn({ method: "POST" })
 				where: { id: access.event!.id, organizationId: access.organization.id },
 				data: { positionsEnabled: value },
 			});
+			await announceForLevel(
+				{
+					organizationId: access.organization.id,
+					tenantId: access.tenant.id,
+					eventId: access.event!.id,
+				},
+				"settings",
+			);
 			return { ok: true };
 		}
 		await requireOrgAccess(context.user.id, data.orgSlug, "tenant.manage");
@@ -501,6 +518,14 @@ export const setPositionsSettingFn = createServerFn({ method: "POST" })
 			where: { id: access.tenant.id, organizationId: access.organization.id },
 			data: { positionsEnabled: value },
 		});
+		await announceForLevel(
+			{
+				organizationId: access.organization.id,
+				tenantId: access.tenant.id,
+				eventId: null,
+			},
+			"settings",
+		);
 		return { ok: true };
 	});
 
