@@ -22,6 +22,8 @@
 cp env.example .env
 ```
 
+`.env` には、少なくとも `DATABASE_URL` と `BETTER_AUTH_SECRET`（`openssl rand -base64 32` などで作る）を入れてください。
+
 ### 2. DB と依存の準備
 
 devcontainer を使う場合は、VS Code で「Reopen in Container」を選ぶと DB も一緒に起動し、`pnpm install` まで実行されます。
@@ -59,6 +61,17 @@ pnpm dev
 
 書式と lint の設定は `vite.config.ts` の `fmt`・`lint` にあります。
 
+### ログインと新規登録
+
+ログインは [Better Auth](https://www.better-auth.com/) で、次の 2 つの方法があります。
+
+- **メール**：確認コードと、押すだけでログインできるリンクを 1 通のメールで送ります（10 分で使えなくなります）。開発中（`MAIL_TRANSPORT` が未設定）はメールを送らず、dev サーバーのターミナルに出します
+- **Discord**：`DISCORD_CLIENT_ID` と `DISCORD_CLIENT_SECRET` の両方を設定したときだけ、ログイン画面にボタンが出ます。[Discord Developer Portal](https://discord.com/developers/applications) でアプリを作り、OAuth2 の Redirects に `<BETTER_AUTH_URL>/api/auth/callback/discord` を登録してください
+
+はじめての人は、どちらの方法でもアカウントが作られ、`/welcome` で名前を決めてから使い始めます（新規登録は `/signup`）。
+
+画面（`/`・`/draft`）、server function、API（`/api/*`）は、どれもログインが必要です。
+
 ### DB とマイグレーション
 
 DB は Postgres（自前・Docker・Cloudflare Hyperdrive）と SQLite（Cloudflare D1）の両方に対応しています。
@@ -67,6 +80,7 @@ DB は Postgres（自前・Docker・Cloudflare Hyperdrive）と SQLite（Cloudfl
 - 両方の DB で使える書き方だけにしてください（配列型 `String[]`・`Json[]`、`@db.*` の型指定、`Json` の `@default` は使えません）
 - マイグレーションは DB ごとに `prisma/migrations/postgresql` と `prisma/migrations/sqlite` にあります。モデルを変えたら `pnpm prisma:migrate new <名前>` で両方を作り、`pnpm prisma:migrate check` で両方がモデルと合っているかを確かめます
 - どちらの DB を使うかは `DATABASE_PROVIDER`（`postgresql` か `sqlite`、既定は `postgresql`）で選びます
+- モデルを変えてクライアントを作り直したら、dev サーバーを再起動してください（動いている dev サーバーは古いクライアントを持ったままになります）
 - `.env` はアプリ・Prisma CLI・seed のどれからも `src/lib/load-env.ts` で読み込み、すでに設定されている環境変数は上書きしません
 
 ## ディレクトリ

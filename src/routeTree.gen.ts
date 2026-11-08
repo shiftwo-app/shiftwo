@@ -9,26 +9,61 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as IndexRouteImport } from './routes/index'
-import { Route as DraftRouteImport } from './routes/draft'
+import { Route as AuthedRouteImport } from './routes/_authed'
+import { Route as LoginRouteImport } from './routes/login'
+import { Route as SignupRouteImport } from './routes/signup'
+import { Route as WelcomeRouteImport } from './routes/welcome'
+import { Route as AuthedIndexRouteImport } from './routes/_authed/index'
+import { Route as AuthedDraftRouteImport } from './routes/_authed/draft'
 import { Route as ApiStaffRouteImport } from './routes/api/staff'
+import { Route as LoginVerifyRouteImport } from './routes/login_.verify'
+import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
 import { Route as ApiShiftsIndexRouteImport } from './routes/api/shifts/index'
 import { Route as ApiShiftsIdRouteImport } from './routes/api/shifts/$id'
 import { Route as ApiShiftsDraftRouteImport } from './routes/api/shifts/draft'
 
-const IndexRoute = IndexRouteImport.update({
-  id: '/',
-  path: '/',
+const AuthedRoute = AuthedRouteImport.update({
+  id: '/_authed',
   getParentRoute: () => rootRouteImport,
 } as any)
-const DraftRoute = DraftRouteImport.update({
+const LoginRoute = LoginRouteImport.update({
+  id: '/login',
+  path: '/login',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SignupRoute = SignupRouteImport.update({
+  id: '/signup',
+  path: '/signup',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const WelcomeRoute = WelcomeRouteImport.update({
+  id: '/welcome',
+  path: '/welcome',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AuthedIndexRoute = AuthedIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => AuthedRoute,
+} as any)
+const AuthedDraftRoute = AuthedDraftRouteImport.update({
   id: '/draft',
   path: '/draft',
-  getParentRoute: () => rootRouteImport,
+  getParentRoute: () => AuthedRoute,
 } as any)
 const ApiStaffRoute = ApiStaffRouteImport.update({
   id: '/api/staff',
   path: '/api/staff',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LoginVerifyRoute = LoginVerifyRouteImport.update({
+  id: '/login_/verify',
+  path: '/login/verify',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiAuthSplatRoute = ApiAuthSplatRouteImport.update({
+  id: '/api/auth/$',
+  path: '/api/auth/$',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiShiftsIndexRoute = ApiShiftsIndexRouteImport.update({
@@ -48,26 +83,42 @@ const ApiShiftsDraftRoute = ApiShiftsDraftRouteImport.update({
 } as any)
 
 export interface FileRoutesByFullPath {
-  '/': typeof IndexRoute
-  '/draft': typeof DraftRoute
+  '/': typeof AuthedIndexRoute
+  '/login': typeof LoginRoute
+  '/signup': typeof SignupRoute
+  '/welcome': typeof WelcomeRoute
+  '/draft': typeof AuthedDraftRoute
   '/api/staff': typeof ApiStaffRoute
+  '/login/verify': typeof LoginVerifyRoute
+  '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/shifts/$id': typeof ApiShiftsIdRoute
   '/api/shifts/draft': typeof ApiShiftsDraftRoute
   '/api/shifts/': typeof ApiShiftsIndexRoute
 }
 export interface FileRoutesByTo {
-  '/': typeof IndexRoute
-  '/draft': typeof DraftRoute
+  '/login': typeof LoginRoute
+  '/signup': typeof SignupRoute
+  '/welcome': typeof WelcomeRoute
+  '/draft': typeof AuthedDraftRoute
   '/api/staff': typeof ApiStaffRoute
+  '/login/verify': typeof LoginVerifyRoute
+  '/': typeof AuthedIndexRoute
+  '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/shifts/$id': typeof ApiShiftsIdRoute
   '/api/shifts/draft': typeof ApiShiftsDraftRoute
   '/api/shifts': typeof ApiShiftsIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
-  '/': typeof IndexRoute
-  '/draft': typeof DraftRoute
+  '/_authed': typeof AuthedRouteWithChildren
+  '/login': typeof LoginRoute
+  '/signup': typeof SignupRoute
+  '/welcome': typeof WelcomeRoute
+  '/_authed/draft': typeof AuthedDraftRoute
   '/api/staff': typeof ApiStaffRoute
+  '/login_/verify': typeof LoginVerifyRoute
+  '/_authed/': typeof AuthedIndexRoute
+  '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/shifts/$id': typeof ApiShiftsIdRoute
   '/api/shifts/draft': typeof ApiShiftsDraftRoute
   '/api/shifts/': typeof ApiShiftsIndexRoute
@@ -76,33 +127,53 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/login'
+    | '/signup'
+    | '/welcome'
     | '/draft'
     | '/api/staff'
+    | '/login/verify'
+    | '/api/auth/$'
     | '/api/shifts/$id'
     | '/api/shifts/draft'
     | '/api/shifts/'
   fileRoutesByTo: FileRoutesByTo
   to:
-    | '/'
+    | '/login'
+    | '/signup'
+    | '/welcome'
     | '/draft'
     | '/api/staff'
+    | '/login/verify'
+    | '/'
+    | '/api/auth/$'
     | '/api/shifts/$id'
     | '/api/shifts/draft'
     | '/api/shifts'
   id:
     | '__root__'
-    | '/'
-    | '/draft'
+    | '/_authed'
+    | '/login'
+    | '/signup'
+    | '/welcome'
+    | '/_authed/draft'
     | '/api/staff'
+    | '/login_/verify'
+    | '/_authed/'
+    | '/api/auth/$'
     | '/api/shifts/$id'
     | '/api/shifts/draft'
     | '/api/shifts/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
-  IndexRoute: typeof IndexRoute
-  DraftRoute: typeof DraftRoute
+  AuthedRoute: typeof AuthedRouteWithChildren
+  LoginRoute: typeof LoginRoute
+  SignupRoute: typeof SignupRoute
+  WelcomeRoute: typeof WelcomeRoute
   ApiStaffRoute: typeof ApiStaffRoute
+  LoginVerifyRoute: typeof LoginVerifyRoute
+  ApiAuthSplatRoute: typeof ApiAuthSplatRoute
   ApiShiftsIdRoute: typeof ApiShiftsIdRoute
   ApiShiftsDraftRoute: typeof ApiShiftsDraftRoute
   ApiShiftsIndexRoute: typeof ApiShiftsIndexRoute
@@ -110,25 +181,67 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/': {
-      id: '/'
-      path: '/'
+    '/_authed': {
+      id: '/_authed'
+      path: ''
       fullPath: '/'
-      preLoaderRoute: typeof IndexRouteImport
+      preLoaderRoute: typeof AuthedRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/draft': {
-      id: '/draft'
+    '/login': {
+      id: '/login'
+      path: '/login'
+      fullPath: '/login'
+      preLoaderRoute: typeof LoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/signup': {
+      id: '/signup'
+      path: '/signup'
+      fullPath: '/signup'
+      preLoaderRoute: typeof SignupRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/welcome': {
+      id: '/welcome'
+      path: '/welcome'
+      fullPath: '/welcome'
+      preLoaderRoute: typeof WelcomeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/_authed/': {
+      id: '/_authed/'
+      path: '/'
+      fullPath: '/'
+      preLoaderRoute: typeof AuthedIndexRouteImport
+      parentRoute: typeof AuthedRoute
+    }
+    '/_authed/draft': {
+      id: '/_authed/draft'
       path: '/draft'
       fullPath: '/draft'
-      preLoaderRoute: typeof DraftRouteImport
-      parentRoute: typeof rootRouteImport
+      preLoaderRoute: typeof AuthedDraftRouteImport
+      parentRoute: typeof AuthedRoute
     }
     '/api/staff': {
       id: '/api/staff'
       path: '/api/staff'
       fullPath: '/api/staff'
       preLoaderRoute: typeof ApiStaffRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/login_/verify': {
+      id: '/login_/verify'
+      path: '/login/verify'
+      fullPath: '/login/verify'
+      preLoaderRoute: typeof LoginVerifyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/auth/$': {
+      id: '/api/auth/$'
+      path: '/api/auth/$'
+      fullPath: '/api/auth/$'
+      preLoaderRoute: typeof ApiAuthSplatRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/shifts/': {
@@ -155,10 +268,27 @@ declare module '@tanstack/react-router' {
   }
 }
 
+interface AuthedRouteChildren {
+  AuthedDraftRoute: typeof AuthedDraftRoute
+  AuthedIndexRoute: typeof AuthedIndexRoute
+}
+
+const AuthedRouteChildren: AuthedRouteChildren = {
+  AuthedDraftRoute: AuthedDraftRoute,
+  AuthedIndexRoute: AuthedIndexRoute,
+}
+
+const AuthedRouteWithChildren =
+  AuthedRoute._addFileChildren(AuthedRouteChildren)
+
 const rootRouteChildren: RootRouteChildren = {
-  IndexRoute: IndexRoute,
-  DraftRoute: DraftRoute,
+  AuthedRoute: AuthedRouteWithChildren,
+  LoginRoute: LoginRoute,
+  SignupRoute: SignupRoute,
+  WelcomeRoute: WelcomeRoute,
   ApiStaffRoute: ApiStaffRoute,
+  LoginVerifyRoute: LoginVerifyRoute,
+  ApiAuthSplatRoute: ApiAuthSplatRoute,
   ApiShiftsIdRoute: ApiShiftsIdRoute,
   ApiShiftsDraftRoute: ApiShiftsDraftRoute,
   ApiShiftsIndexRoute: ApiShiftsIndexRoute,

@@ -1,10 +1,11 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { prisma } from "../../lib/prisma.server";
+import { withUser } from "../../server/session.server";
 
 export const Route = createFileRoute("/api/staff")({
 	server: {
 		handlers: {
-			GET: async () => {
+			GET: withUser(async () => {
 				try {
 					const staffs = await prisma.staff.findMany({
 						include: { preferredRoles: true },
@@ -17,7 +18,7 @@ export const Route = createFileRoute("/api/staff")({
 						{ status: 500 },
 					);
 				}
-			},
+			}),
 		},
 	},
 });
