@@ -34,6 +34,20 @@ datasource db {
 
 `;
 
+// StringList（Better Auth が文字列の配列で持つ項目）を、DB ごとの型にする。
+// - Postgres：必須のものは配列型（String[]）。省けるもの（StringList?）は Json?
+//   （Prisma は配列型の NULL を [] として読むが、Better Auth は「null＝制限なし」「[]＝何も許さない」を分けて使うため。
+//   null を書くときは src/lib/auth-database.server.ts が Prisma の DbNull に変える）
+// - SQLite：JSON の文字列（Better Auth の adapter が、SQLite では配列を JSON にして書く）
+const withStringLists = (provider: DatabaseProvider) =>
+	models.replace(/\bStringList(\?)?/g, (_, optional: string | undefined) =>
+		provider === "postgresql"
+			? optional
+				? "Json?"
+				: "String[]"
+			: `String${optional ?? ""}`,
+	);
+
 for (const provider of DATABASE_PROVIDERS) {
 	for (const workerd of [false, true]) {
 		const file = join(
@@ -43,7 +57,7 @@ for (const provider of DATABASE_PROVIDERS) {
 			"schema.prisma",
 		);
 		mkdirSync(dirname(file), { recursive: true });
-		writeFileSync(file, header(provider, workerd) + models);
+		writeFileSync(file, header(provider, workerd) + withStringLists(provider));
 		console.log(`wrote ${file}`);
 	}
 }

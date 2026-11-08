@@ -179,6 +179,17 @@ pnpm dev
 - Node は 1 台で動かす前提です（つながっている人をプロセスのメモリで覚えるため）。複数台にするときは、Redis などで配る仕組みが要ります
 - 持ち場・スタッフの変更は、まだ知らせません（シフトの画面を読み直すと反映されます）
 
+#### AI のアシスタントから使う（MCP）
+
+Claude などの AI のアシスタントから、MCP（Model Context Protocol）でシフトヲを使えます。つなぎ先は `<BETTER_AUTH_URL>/api/mcp` です（アカウントの設定にも出ます）。
+
+- **つなぎ方は OAuth です。** シフトヲが認可サーバーになり（Better Auth の `jwt` と `@better-auth/mcp`）、アシスタントは自分を登録してから（動的なクライアント登録。Node では URL で名乗る Client ID Metadata Document も使えます）、利用者のブラウザでログインと同意を求めます。発見のための案内は `/.well-known/oauth-protected-resource/api/mcp` と `/.well-known/oauth-authorization-server/api/auth` です
+- **できることは、その人がシフトヲでできることだけです。** どの道具も、トークンの持ち主として、画面と同じ確かめ方（`requireScopeAccess`・`saveShift`・`requirePreferenceContext` など）で動きます。所属していない団体は見えず、シフトを見るだけの人は作れず、希望は自分の分だけです
+- **さらに、つなぐときに範囲を絞れます。** 同意の画面で「変更も許す」を外すと、見るだけ（`shiftwo:read`）になり、書く道具は使えません（`shiftwo:write` が要ります）
+- 道具：`list_organizations`・`list_scopes`・`get_shift_board`・`get_my_preference`（読む）、`create_shift`・`update_shift`・`delete_shift`・`submit_my_preference`（書く）。シフトの更新・削除は、同時編集と同じく `version` を確かめます。時刻は日本時間（+09:00）で返します
+- アカウントの設定の「つないだアプリ」で、つながりを切れます。同意とトークンを消し、`/api/mcp` は同意が残っているかを毎回確かめるので、すぐに使えなくなります
+- アクセストークン（JWT）は、同じプロセスの中の鍵で確かめます（Workers は自分のドメインへの fetch ができないため、鍵を HTTP で取りに行きません）。送り手に縛ったトークン（DPoP）は受け付けません
+
 #### データの分離
 
 - **所属していない団体のデータは見えません。** シフトを読み書きする処理は、必ず `requireScopeAccess`（`src/server/scope-access.server.ts`）で、団体のメンバーか・テナントやイベントがその団体の下にあるか・その単位での権限を確かめ、その単位の ID で絞り込みます

@@ -5,6 +5,7 @@ import LanguageSwitcher from "../components/shell/LanguageSwitcher";
 import type { MessageKey } from "../lib/i18n/messages";
 import { useT } from "../lib/i18n/react";
 import { translate } from "../lib/i18n/translate";
+import { isServerPath } from "../lib/oauth-resume";
 import { safeRedirectPath } from "../lib/safe-redirect";
 import { getLoginMethods, getSession } from "../server/session.functions";
 
@@ -13,7 +14,12 @@ export const Route = createFileRoute("/signup")({
 		redirect: safeRedirectPath(search.redirect),
 	}),
 	beforeLoad: async ({ search }) => {
-		if (await getSession()) throw redirect({ href: search.redirect });
+		if (await getSession()) {
+			throw redirect({
+				href: search.redirect,
+				reloadDocument: isServerPath(search.redirect),
+			});
+		}
 	},
 	loader: () => getLoginMethods(),
 	head: ({ match }) => ({
