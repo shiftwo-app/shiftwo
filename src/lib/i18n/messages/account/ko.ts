@@ -30,4 +30,8 @@ export default {
 	discordLink: "Discord 연동하기",
 	nameRequired: "이름을 입력해 주세요",
 	nameTooLong: "이름은 {max}자까지 입력해 주세요",
+	languageTitle: "언어",
+	languageDescription:
+		"화면과 나에게 오는 메일(로그인 메일 등)에 쓰이는 언어예요.",
+	languageAuto: "브라우저에 맞추기",
 } satisfies Messages<typeof ja>;

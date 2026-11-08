@@ -30,4 +30,7 @@ export default {
 	discordLink: "关联 Discord",
 	nameRequired: "请输入名字",
 	nameTooLong: "名字最多 {max} 个字符",
+	languageTitle: "语言",
+	languageDescription: "用于界面以及发送给你的邮件（如登录邮件）。",
+	languageAuto: "跟随浏览器",
 } satisfies Messages<typeof ja>;

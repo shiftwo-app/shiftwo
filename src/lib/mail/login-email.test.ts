@@ -34,7 +34,7 @@ describe("ログインのメール", () => {
 			otp: "123456",
 			link: "https://shiftwo.example/login/verify?x",
 		});
-		expect(mail.subject).toBe("shiftwo のログイン（確認コード 123456）");
+		expect(mail.subject).toBe("シフトヲのログイン（確認コード 123456）");
 		expect(mail.text).toContain("どちらも 10 分で使えなくなります。");
 	});
 

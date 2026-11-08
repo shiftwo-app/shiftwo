@@ -1,6 +1,8 @@
 // ログインしている人を調べる（サーバー専用）
 import { getRequestHeaders } from "@tanstack/react-start/server";
 import { auth } from "../lib/auth.server";
+import type { Locale } from "../lib/i18n/locales";
+import { parseUserLocale } from "./user-locale.server";
 
 /** 画面やクライアントに渡してよい、ログインしている人の情報 */
 export type SessionUser = {
@@ -10,6 +12,8 @@ export type SessionUser = {
 	image: string | null;
 	/** はじめての設定（/welcome）を済ませたか */
 	onboarded: boolean;
+	/** 本人が選んだ言語（選んでいなければ null） */
+	locale: Locale | null;
 };
 
 const toSessionUser = (user: {
@@ -18,12 +22,14 @@ const toSessionUser = (user: {
 	email: string;
 	image?: string | null;
 	onboardedAt?: Date | null;
+	locale?: string | null;
 }): SessionUser => ({
 	id: user.id,
 	name: user.name,
 	email: user.email,
 	image: user.image ?? null,
 	onboarded: user.onboardedAt != null,
+	locale: parseUserLocale(user.locale),
 });
 
 /** リクエストの Cookie から、ログインしている人を返す。ログインしていなければ null */

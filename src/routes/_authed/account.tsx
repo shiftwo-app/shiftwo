@@ -11,6 +11,8 @@ import Section from "../../components/ui/Section";
 import { authClient } from "../../lib/auth-client";
 import { useT } from "../../lib/i18n/react";
 import { translate } from "../../lib/i18n/translate";
+import { isLocale, LOCALE_NAMES, LOCALES } from "../../lib/i18n/locales";
+import { setLocaleFn } from "../../server/locale.functions";
 import {
 	getAccountSummary,
 	refreshMyDiscordStatus,
@@ -38,6 +40,8 @@ function AccountPage() {
 	const { linked } = Route.useSearch();
 	const router = useRouter();
 	const t = useT();
+	const { user } = Route.useRouteContext();
+	const setLocale = useServerFn(setLocaleFn);
 	const refresh = useServerFn(refreshMyDiscordStatus);
 	const [busy, setBusy] = useState(false);
 	const [message, setMessage] = useState<{
@@ -114,6 +118,34 @@ function AccountPage() {
 					<span className="font-bold break-all">{summary.email}</span>
 					<span className="text-ink-muted">{t("account.emailNote")}</span>
 				</p>
+			</Section>
+			<Section
+				id="account-language"
+				title={t("account.languageTitle")}
+				description={t("account.languageDescription")}
+			>
+				<label htmlFor="account-language-select" className="sr-only">
+					{t("account.languageTitle")}
+				</label>
+				<select
+					id="account-language-select"
+					value={user.locale ?? ""}
+					onChange={async (event) => {
+						const value = event.target.value;
+						await setLocale({
+							data: { locale: isLocale(value) ? value : null },
+						});
+						window.location.reload();
+					}}
+					className="control w-full sm:max-w-xs"
+				>
+					<option value="">{t("account.languageAuto")}</option>
+					{LOCALES.map((value) => (
+						<option key={value} value={value} lang={value}>
+							{LOCALE_NAMES[value]}
+						</option>
+					))}
+				</select>
 			</Section>
 			<Section
 				id="account-discord"
